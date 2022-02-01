@@ -1,0 +1,21 @@
+version: 2.1
+
+orbs: 
+  docker: circleci/docker@2.0.1
+  ggshield: gitguardian/ggshield@1.1.0
+
+workflows:
+  build-and-publish:
+    jobs:
+      - ggshield/scan:
+          name: Scan using Gitguardian shield
+          base_revision: <<pipeline.git.base_revision>>
+          revision: <<pipeline.git.revision>>
+          context:
+            - gitguardian
+
+      - docker/build:
+          name: Build only without secrets
+          image: thinxcloud/console
+          context:
+            - dockerhub
