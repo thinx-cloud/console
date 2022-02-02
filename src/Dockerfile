@@ -49,11 +49,12 @@ RUN apk update \
 WORKDIR /home/node/build
 
 # Install app dependencies & source code
-COPY package*.json ./
+COPY package.json ./
 COPY . .
 RUN npm install . \
-    && npm run build \
-    && npm audit fix
+    && npm install . \
+    && npm audit fix --force \
+    && npm run build
 
 # To make scanner happy, this will NOT be contained in final image.
 RUN apk del g++ gcc make
