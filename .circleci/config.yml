@@ -5,7 +5,8 @@ orbs:
   ggshield: gitguardian/ggshield@1.1.0
 
 workflows:
-  build-only:
+
+  scan:
     jobs:
       - ggshield/scan:
           name: Scan using Gitguardian shield
@@ -13,3 +14,41 @@ workflows:
           revision: <<pipeline.git.revision>>
           context:
             - gitguardian
+
+  build-and-push:
+    jobs:
+      - build:
+          executor: docker/docker
+          context:
+            - dockerhub
+            - thinx-docker-repo
+          filters:
+            branches:
+              only:
+                - thinx-swarm
+          steps:
+            - setup_remote_docker
+            - checkout
+            - docker/check:
+                registry: registry.thinx.cloud:5000
+            - docker/build:
+                registry: registry.thinx.cloud:5000
+                docker-context: src
+                image: thinx/console
+                dockerfile: src/Dockerfile
+                extra_build_args: |
+                  --build-arg ROLLBAR_ACCESS_TOKEN=${ROLLBAR_ACCESS_TOKEN} \
+                  --build-arg LANDING_HOSTNAME=${LANDING_HOSTNAME} \
+                  --build-arg API_HOSTNAME=${API_HOSTNAME} \
+                  --build-arg API_BASEURL=${API_BASEURL} \
+                  --build-arg WEB_HOSTNAME=${WEB_HOSTNAME} \
+                  --build-arg GOOGLE_ANALYTICS_ID=${GOOGLE_ANALYTICS_ID} \
+                  --build-arg CRISP_WEBSITE_ID=${CRISP_WEBSITE_ID} \
+                  --build-arg ENTERPRISE=false \
+                  --build-arg ENVIRONMENT=${ENVIRONMENT} \
+                tag: 'swarm'
+            - docker/push:
+                digest-path: /tmp/digest.txt
+                image: thinx/console
+                registry: registry.thinx.cloud:5000
+                tag: 'swarm'
