@@ -5,7 +5,7 @@ orbs:
   ggshield: gitguardian/ggshield@1.1.0
 
 workflows:
-  build-and-publish:
+  build-only:
     jobs:
       - ggshield/scan:
           name: Scan using Gitguardian shield
@@ -13,9 +13,3 @@ workflows:
           revision: <<pipeline.git.revision>>
           context:
             - gitguardian
-
-      - docker/build:
-          name: Build only without secrets
-          image: thinxcloud/console
-          context:
-            - dockerhub
