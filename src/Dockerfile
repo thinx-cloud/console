@@ -53,7 +53,7 @@ WORKDIR /home/node/build
 # Install app dependencies & source code
 COPY package*.json ./
 COPY . .
-RUN npm install . --only-prod \
+RUN npm install . \
     && npm run build \
     && npm audit fix
 
