@@ -21,6 +21,7 @@ var RTM = angular.module( "RTM", [
 
 RTM.config( [ "RollbarProvider", function( RollbarProvider ) {
   RollbarProvider.init( {
+    // deepcode ignore HardcodedNonCryptoSecret: this is a placeholder
     accessToken: "<ENV::rollbarAccessToken>",
     captureUncaught: true,
     payload: {
@@ -70,7 +71,6 @@ RTM.factory( "settings", [ "$rootScope", function( $rootScope ) {
     $rootScope.meta.notifications = []; // notification messages
     $rootScope.meta.apikeys = {};
     $rootScope.meta.sources = {};
-    $rootScope.meta.auditlogs = {}; // flags for auditlogs
     $rootScope.meta.auditlogs = {}; // flags for auditlogs
     $rootScope.meta.latestFirmwareEnvelope = {};
   }
@@ -122,7 +122,6 @@ RTM.factory( "settings", [ "$rootScope", function( $rootScope ) {
 
   $rootScope.sources = [];
   $rootScope.devices = [];
-  //$rootScope.rsakeys = [];
   $rootScope.deploykeys = [];
   $rootScope.channels = [];
   $rootScope.apikeys = [];
