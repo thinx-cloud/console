@@ -8,8 +8,7 @@
     "coverage": "npm test; nyc report --reporter=text-lcov | coveralls",
     "build": "./node_modules/.bin/gulp build",
     "buildAll": "./node_modules/.bin/gulp buildPublic buildApp",
-    "lint": "./node_modules/.bin/eslint --ignore-path .eslintignore ./",
-    "preinstall": "npx npm-force-resolutions"
+    "lint": "./node_modules/.bin/eslint --ignore-path .eslintignore ./"
   },
   "author": "Mikulas Sychra @ THiNX Cloud",
   "repository": {
@@ -23,12 +22,13 @@
     "qs": "6.10.3"
   },
   "overrides": {
-    "graceful-fs": "^4.2.9",
-    "negotiator": "0.6.3"
-  },
-  "resolutions": {
-    "graceful-fs": "^4.2.9",
-    "negotiator": "0.6.3"
+    "graceful-fs": "4.2.9",
+    "negotiator": "0.6.3",
+    "lodash": "4.17.21",
+    "lodash.template": "4.5.0",
+    "minimatch": "3.0.4",
+    "postcss": "8.2.13",
+    "uuid": "8.3.2"
   },
   "devDependencies": {
     "coveralls": "^3.1.1",
@@ -52,9 +52,8 @@
     "gulp-sass": "^5.1.0",
     "gulp-sourcemaps": "^2.6.5",
     "gulp-uglify-es": "^3.0.0",
-    "gulp-util": "^3.0.8",
+    "gulp-util": "^3.0.8", 
     "merge-stream": "^2.0.0",
-    "npm-force-resolutions": "^0.0.10",
     "nyc": "^15.1.0",
     "protractor": "^7.0.0"
   },

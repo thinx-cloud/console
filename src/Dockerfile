@@ -38,10 +38,9 @@ USER root
 
 # Install, build, protect
 RUN apk update \
-    && apk upgrade \
-    && apk add g++ gcc libgcc libstdc++ linux-headers make python3 \
     && apk add ca-certificates \
-    && update-ca-certificates \
+    && mkdir -p /etc/ssl/certs/ && update-ca-certificates \
+    && apk add g++ gcc libgcc libstdc++ linux-headers make python3 \
     && apk --no-cache add --virtual native-deps \
     && npm install node-gyp eslint -g
 
@@ -52,7 +51,6 @@ WORKDIR /home/node/build
 COPY package.json ./
 COPY . .
 RUN npm install . \
-    && npm install . \
     && npm audit fix --force \
     && npm run build
 
