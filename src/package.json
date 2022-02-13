@@ -8,7 +8,12 @@
     "coverage": "npm test; nyc report --reporter=text-lcov | coveralls",
     "build": "./node_modules/.bin/gulp build",
     "buildAll": "./node_modules/.bin/gulp buildPublic buildApp",
-    "lint": "./node_modules/.bin/eslint --ignore-path .eslintignore ./"
+    "lint": "./node_modules/.bin/eslint --ignore-path .eslintignore ./",
+    "cy:install": "./node_modules/cypress/bin/cypress install",
+    "start:local": "http-server ./html -p 8080 -g",
+    "cy:run": "./node_modules/cypress/bin/cypress run",
+    "cy": "start-test 'npm run start:local' 8080 'npm run cy:test'",
+    "cy:open": "./node_modules/cypress/bin/cypress open"
   },
   "author": "Mikulas Sychra @ THiNX Cloud",
   "repository": {
@@ -31,7 +36,9 @@
     "uuid": "8.3.2"
   },
   "devDependencies": {
+    "@cypress/code-coverage": "^3.9.12",
     "coveralls": "^3.1.1",
+    "cypress": "^9.4.1",
     "eslint": "^8.7.0",
     "eslint-config-angular": "^0.5.0",
     "eslint-config-jquery": "^3.0.0",
@@ -52,18 +59,18 @@
     "gulp-sass": "^5.1.0",
     "gulp-sourcemaps": "^2.6.5",
     "gulp-uglify-es": "^3.0.0",
-    "gulp-util": "^3.0.8", 
+    "gulp-util": "^3.0.8",
     "merge-stream": "^2.0.0",
     "nyc": "^15.1.0",
-    "protractor": "^7.0.0"
+    "start-server-and-test": "^1.14.0"
   },
   "nyc": {
     "check-coverage": true,
     "include": [
-      "html/app/**/*.js"
+      "src/**/*.js"
     ],
     "exclude": [
-      "test/**/*.spec.js"
+      "cypress/**/*.spec.js"
     ],
     "reporter": [
       "lcov",

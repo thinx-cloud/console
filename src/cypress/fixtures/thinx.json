@@ -1,0 +1,11 @@
+{
+  "username": "test",
+  "password": "tset",
+  "email": "thinxtest@qool.cz",
+  "new": {
+    "first_name": "cypress",
+    "last_name": "test",
+    "owner": "cypresstest",
+    "email": "cypresstest@thinx.cloud"
+  }
+}
