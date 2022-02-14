@@ -6,3 +6,6 @@ package-lock.json
 coverage
 dist
 html
+src/.nyc_output
+src/cypress/screenshots
+src/cypress/videos
