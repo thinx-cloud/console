@@ -4,7 +4,7 @@
   "description": "THiNX Console",
   "main": "gulpfile.js",
   "scripts": {
-    "preinstall": "if [[ -f ./package-lock.json ]]; then npx force resolutions; fi",
+    "preinstall": "if [[ -f ./package-lock.json ]]; then npx force-resolutions; fi",
     "test": "protractor test/conf.js",
     "coverage": "npm test; nyc report --reporter=text-lcov | coveralls",
     "build": "./node_modules/.bin/gulp build",
