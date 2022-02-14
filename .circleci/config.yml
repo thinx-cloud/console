@@ -10,7 +10,7 @@ jobs:
   test:
     
     docker:
-      - image: node:17-buster
+      - image: thinxcloud/console-build-env
     
     steps:
       
@@ -23,7 +23,6 @@ jobs:
             npm install
             npm install
             npm run build
-            npm run cy
 
       - run:
           name: Test the project
