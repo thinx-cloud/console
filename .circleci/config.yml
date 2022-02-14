@@ -10,7 +10,7 @@ jobs:
   test:
     
     docker:
-      - image: cimg/node:14.17-browsers
+      - image: thinxcloud/alpine-gulp:11
     
     steps:
       

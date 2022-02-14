@@ -1,6 +1,6 @@
 # docker build -t thinx/console .
 
-FROM thinxcloud/alpine-gulp
+FROM thinxcloud/alpine-gulp:11
 
 ARG COMPOSE_PROJECT_NAME
 ARG LANDING_HOSTNAME
