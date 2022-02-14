@@ -8,13 +8,21 @@ orbs:
 jobs:
 
   test:
+    
     docker:
       - image: cimg/node:14.17-browsers
+    
     steps:
+      
       - checkout
+      
       - run:
           name: Install dependencies and test project
-          command: npm test
+          command: |
+            cd src
+            npm install
+            npm test
+
       - sonarcloud/scan
 
   build:
