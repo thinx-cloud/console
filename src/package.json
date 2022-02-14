@@ -4,6 +4,7 @@
   "description": "THiNX Console",
   "main": "gulpfile.js",
   "scripts": {
+    "preinstall": "npx force resolutions",
     "test": "protractor test/conf.js",
     "coverage": "npm test; nyc report --reporter=text-lcov | coveralls",
     "build": "./node_modules/.bin/gulp build",
@@ -23,12 +24,22 @@
   },
   "license": "ISC",
   "dependencies": {
+    "force-resolutions": "^1.0.10",
     "minimatch": "3.0.4",
     "negotiator": "0.6.3",
     "qs": "6.10.3"
   },
   "overrides": {
-    "graceful-fs": "~4.2.2",
+    "graceful-fs": "4.2.2",
+    "negotiator": "0.6.3",
+    "lodash": "4.17.21",
+    "lodash.template": "4.5.0",
+    "minimatch": "3.0.4",
+    "postcss": "8.2.13",
+    "uuid": "8.3.2"
+  },
+  "resolutions": {
+    "graceful-fs": "4.2.2",
     "negotiator": "0.6.3",
     "lodash": "4.17.21",
     "lodash.template": "4.5.0",
