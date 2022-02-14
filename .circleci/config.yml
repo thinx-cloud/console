@@ -7,16 +7,6 @@ orbs:
 
 jobs:
 
-  scan:
-    executor: docker/docker
-    steps:
-      - ggshield/scan:
-          name: Scan using Gitguardian shield
-          base_revision: <<pipeline.git.base_revision>>
-          revision: <<pipeline.git.revision>>
-          context:
-            - gitguardian
-
   test:
     executor: docker/docker
     steps:
@@ -62,8 +52,12 @@ workflows:
       - test:
           context: sonarcloud
 
-      - scan:
-          context: gitguardian
+      - ggshield/scan:
+          name: Scan using Gitguardian shield
+          base_revision: <<pipeline.git.base_revision>>
+          revision: <<pipeline.git.revision>>
+          context:
+            - gitguardian
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
       - build:
