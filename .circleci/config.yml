@@ -3,11 +3,13 @@ version: 2.1
 orbs: 
   docker: circleci/docker@2.0.1
   ggshield: gitguardian/ggshield@1.1.0
+  sonarcloud: sonarsource/sonarcloud@1.0.1
 
-workflows:
+jobs:
 
   scan:
-    jobs:
+    executor: docker/docker
+    steps:
       - ggshield/scan:
           name: Scan using Gitguardian shield
           base_revision: <<pipeline.git.base_revision>>
@@ -15,40 +17,61 @@ workflows:
           context:
             - gitguardian
 
-  build-and-push:
+  test:
+    executor: docker/docker
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies and test project
+          command: npm test
+      - sonarcloud/scan
+
+  build:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker
+      - checkout
+      - docker/check:
+          registry: registry.thinx.cloud:5000
+      - docker/build:
+          registry: registry.thinx.cloud:5000
+          docker-context: src
+          image: thinx/console
+          dockerfile: src/Dockerfile
+          extra_build_args: |
+            --build-arg ROLLBAR_ACCESS_TOKEN=${ROLLBAR_ACCESS_TOKEN} \
+            --build-arg LANDING_HOSTNAME=${LANDING_HOSTNAME} \
+            --build-arg API_HOSTNAME=${API_HOSTNAME} \
+            --build-arg API_BASEURL=${API_BASEURL} \
+            --build-arg WEB_HOSTNAME=${WEB_HOSTNAME} \
+            --build-arg GOOGLE_ANALYTICS_ID=${GOOGLE_ANALYTICS_ID} \
+            --build-arg CRISP_WEBSITE_ID=${CRISP_WEBSITE_ID} \
+            --build-arg ENTERPRISE=false \
+            --build-arg ENVIRONMENT=${ENVIRONMENT} \
+          tag: 'swarm'
+      - docker/push:
+          digest-path: /tmp/digest.txt
+          image: thinx/console
+          registry: registry.thinx.cloud:5000
+          tag: 'swarm'
+
+workflows:
+
+  main:
     jobs:
+      - test:
+          context: sonarcloud
+
+      - scan:
+          context: gitguardian
+
+      # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
       - build:
-          executor: docker/docker
           context:
             - dockerhub
             - thinx-docker-repo
+            - sonarcloud
           filters:
             branches:
               only:
                 - thinx-swarm
-          steps:
-            - setup_remote_docker
-            - checkout
-            - docker/check:
-                registry: registry.thinx.cloud:5000
-            - docker/build:
-                registry: registry.thinx.cloud:5000
-                docker-context: src
-                image: thinx/console
-                dockerfile: src/Dockerfile
-                extra_build_args: |
-                  --build-arg ROLLBAR_ACCESS_TOKEN=${ROLLBAR_ACCESS_TOKEN} \
-                  --build-arg LANDING_HOSTNAME=${LANDING_HOSTNAME} \
-                  --build-arg API_HOSTNAME=${API_HOSTNAME} \
-                  --build-arg API_BASEURL=${API_BASEURL} \
-                  --build-arg WEB_HOSTNAME=${WEB_HOSTNAME} \
-                  --build-arg GOOGLE_ANALYTICS_ID=${GOOGLE_ANALYTICS_ID} \
-                  --build-arg CRISP_WEBSITE_ID=${CRISP_WEBSITE_ID} \
-                  --build-arg ENTERPRISE=false \
-                  --build-arg ENVIRONMENT=${ENVIRONMENT} \
-                tag: 'swarm'
-            - docker/push:
-                digest-path: /tmp/digest.txt
-                image: thinx/console
-                registry: registry.thinx.cloud:5000
-                tag: 'swarm'
