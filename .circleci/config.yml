@@ -17,12 +17,18 @@ jobs:
       - checkout
       
       - run:
-          name: Install dependencies and test project
+          name: Install dependencies and build
           command: |
             cd src
             npm install
             npm install
             npm run build
+            npm run cy
+
+      - run:
+          name: Test the project
+          command: |
+            cd src
             npm run cy
 
       - sonarcloud/scan
