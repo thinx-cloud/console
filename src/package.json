@@ -13,7 +13,7 @@
     "lint": "./node_modules/.bin/eslint --ignore-path .eslintignore ./",
     "cy:install": "./node_modules/cypress/bin/cypress install",
     "start": "http-server ./html -p 8080 -g",
-    "cy:run": "nyc ./node_modules/cypress/bin/cypress run",
+    "cy:run": "./node_modules/cypress/bin/cypress run",
     "cy": "start-test 'npm run start' 8080 'npm run cy:run'",
     "cy:open": "./node_modules/cypress/bin/cypress open"
   },
