@@ -10,7 +10,7 @@ jobs:
   test:
     
     docker:
-      - image: thinxcloud/alpine-gulp:17
+      - image: thinxcloud/alpine-gulp:14
     
     steps:
       
