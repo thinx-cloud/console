@@ -68,6 +68,10 @@ workflows:
           revision: <<pipeline.git.revision>>
           context:
             - gitguardian
+          filters:
+            branches:
+              only:
+                - main
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
       - build:

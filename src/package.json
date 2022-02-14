@@ -61,6 +61,7 @@
     "gulp-sourcemaps": "^2.6.5",
     "gulp-uglify-es": "^3.0.0",
     "gulp-util": "^3.0.8",
+    "http-server": "^14.1.0",
     "merge-stream": "^2.0.0",
     "nyc": "^15.1.0",
     "start-server-and-test": "^1.14.0"
