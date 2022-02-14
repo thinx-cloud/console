@@ -38,7 +38,7 @@ USER root
 
 # Install, build, protect
 RUN apt update \
-    && apt install g++ gcc libstdc++ make python3 \
+    && apt install g++ gcc make python3 \
     && npm install node-gyp eslint -g
 
 # Create app directory
