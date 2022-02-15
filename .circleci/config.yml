@@ -32,7 +32,21 @@ jobs:
 
       - sonarcloud/scan
 
-  build:
+  scan:
+
+    docker:
+      - image: thinxcloud/console-build-env:latest
+
+    steps:
+
+      - checkout
+
+      - ggshield/scan:
+          name: Scan using Gitguardian shield
+          base_revision: <<pipeline.git.base_revision>>
+          revision: <<pipeline.git.revision>>
+
+  deploy:
     executor: docker/docker
     steps:
       - setup_remote_docker
@@ -70,10 +84,7 @@ workflows:
       - test:
           context: sonarcloud
 
-      - ggshield/scan:
-          name: Scan using Gitguardian shield
-          base_revision: <<pipeline.git.base_revision>>
-          revision: <<pipeline.git.revision>>
+      - scan:
           context:
             - gitguardian
           filters:
@@ -82,7 +93,7 @@ workflows:
                 - main
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
-      - build:
+      - deploy:
           context:
             - dockerhub
             - thinx-docker-repo
