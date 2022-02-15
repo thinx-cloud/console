@@ -34,6 +34,15 @@ jobs:
           name: Collect test artifacts and metadata
           path: /root/project/src/cypress
 
+      - store_artifacts:
+          name: Collect test artifacts and metadata
+          path: ./src/cypress
+          destination: src-cypress
+
+      - store_artifacts:
+          path: /root/project/src/cypress
+          destination: artifact-file
+
       - sonarcloud/scan
 
   deploy:
