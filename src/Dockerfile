@@ -1,6 +1,6 @@
 # docker build -t thinx/console .
 
-FROM node:17-buster
+FROM ubuntu:bionic
 
 ARG COMPOSE_PROJECT_NAME
 ARG LANDING_HOSTNAME
@@ -38,8 +38,7 @@ USER root
 
 # Install, build, protect
 RUN apt-get update \
-    && apt-get install -y -qq \
-    && libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb \
+    && apt-get install -y -qq libgtk-3-0 libgtk2.0-0 libgbm-dev libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb \
     && curl -fsSL https://deb.nodesource.com/setup_17.x | sudo -E bash - \
     && apt-get install -y nodejs \
     && npm install node-gyp eslint -g

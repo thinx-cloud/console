@@ -10,7 +10,7 @@ jobs:
   test:
     
     docker:
-      - image: thinxcloud/console-build-env
+      - image: thinxcloud/console-build-env:latest
     
     steps:
       
