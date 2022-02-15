@@ -31,17 +31,18 @@ jobs:
             npm run cy
 
       - store_test_results:
-          name: Collect test artifacts and metadata
-          path: /root/project/src/cypress
+          name: Collect test results
+          path: ./src/coverage
 
       - store_artifacts:
-          name: Collect test artifacts and metadata
-          path: ./src/cypress
-          destination: src-cypress
-
+          name: Collect screenshots
+          path: ./src/cypress/screenshots
+          destination: cypress-screenshots
+      
       - store_artifacts:
-          path: /root/project/src/cypress
-          destination: artifact-file
+          name: Collect videos
+          path: ./src/cypress/videos
+          destination: cypress-videos
 
       - sonarcloud/scan
 
