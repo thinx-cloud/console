@@ -12,7 +12,11 @@
     "codeCoverage": {
       "url": "http://localhost:8080/__coverage__",
       "expectBackendCoverageOnly": false,
-      "reporter": ["text", "json", "lcov"]
+      "reporter": ["text", "json", "lcov", "junit"],
+      "reporterOptions": {
+        "mochaFile": "coverage/junit-coverage-output.xml",
+        "toConsole": true
+      }
     }
   },
   "testFiles": [
