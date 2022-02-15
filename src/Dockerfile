@@ -1,6 +1,6 @@
 # docker build -t thinx/console .
 
-FROM ubuntu:bionic
+FROM thinxcloud/console-build-env
 
 ARG COMPOSE_PROJECT_NAME
 ARG LANDING_HOSTNAME
@@ -30,25 +30,14 @@ ENV NGINX_HOST=${WEB_HOSTNAME}
 ENV NGINX_PORT=80
 ENV CACHEBUST=1
 
-#
-# Builder and Test Image
-#
-
-USER root
-
-# Install, build, protect
-RUN apt-get update \
-    && apt-get install -y -qq libgtk-3-0 libgtk2.0-0 libgbm-dev libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb \
-    && curl -fsSL https://deb.nodesource.com/setup_17.x | sudo -E bash - \
-    && apt-get install -y nodejs \
-    && npm install node-gyp eslint -g
-
 # Create app directory
 WORKDIR /home/node/build
 
 # Install app dependencies & source code
 COPY package.json ./
+
 COPY . .
+
 RUN npm install . \
     && npm install -g npm@8.4.0 \
     && npm audit fix --force \
