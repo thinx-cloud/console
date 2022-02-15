@@ -30,6 +30,10 @@ jobs:
             cd src
             npm run cy
 
+      - store_test_results:
+          name: Collect test artifacts and metadata
+          path: /root/project/src/cypress
+
       - sonarcloud/scan
 
   deploy:
