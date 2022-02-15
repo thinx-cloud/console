@@ -32,20 +32,6 @@ jobs:
 
       - sonarcloud/scan
 
-  scan:
-
-    docker:
-      - image: thinxcloud/console-build-env:latest
-
-    steps:
-
-      - checkout
-
-      - ggshield/scan:
-          name: Scan using Gitguardian shield
-          base_revision: <<pipeline.git.base_revision>>
-          revision: <<pipeline.git.revision>>
-
   deploy:
     executor: docker/docker
     steps:
@@ -84,7 +70,10 @@ workflows:
       - test:
           context: sonarcloud
 
-      - scan:
+      - ggshield/scan:
+          name: Scan using Gitguardian shield
+          base_revision: <<pipeline.git.base_revision>>
+          revision: <<pipeline.git.revision>>
           context:
             - gitguardian
           filters:
