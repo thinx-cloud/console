@@ -1,6 +1,6 @@
 # docker build -t thinx/console .
 
-FROM thinxcloud/alpine-gulp
+FROM thinxcloud/console-build-env
 
 ARG COMPOSE_PROJECT_NAME
 ARG LANDING_HOSTNAME
@@ -30,33 +30,18 @@ ENV NGINX_HOST=${WEB_HOSTNAME}
 ENV NGINX_PORT=80
 ENV CACHEBUST=1
 
-#
-# Builder Image
-#
-
-USER root
-
-# Install, build, protect
-RUN apk update \
-    && apk add ca-certificates \
-    && mkdir -p /etc/ssl/certs/ && update-ca-certificates \
-    && apk add g++ gcc libgcc libstdc++ linux-headers make python3 \
-    && apk --no-cache add --virtual native-deps \
-    && npm install node-gyp eslint -g
-
 # Create app directory
 WORKDIR /home/node/build
 
 # Install app dependencies & source code
 COPY package.json ./
+
 COPY . .
+
 RUN npm install . \
     && npm install -g npm@8.4.0 \
     && npm audit fix --force \
     && npm run build
-
-# To make scanner happy, this will NOT be contained in final image.
-RUN apk del g++ gcc make
 
 #
 # Deployment Image

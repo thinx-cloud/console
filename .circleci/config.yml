@@ -10,22 +10,48 @@ jobs:
   test:
     
     docker:
-      - image: cimg/node:14.17-browsers
+      - image: thinxcloud/console-build-env:latest
     
     steps:
       
       - checkout
       
       - run:
-          name: Install dependencies and test project
+          name: Install dependencies and build
           command: |
             cd src
             npm install
-#            npm test
+            npm install
+            npm run build
+
+      - run:
+          name: Test the project
+          command: |
+            cd src
+            npm run cy
+
+      - store_test_results:
+          name: Collect test results
+          path: ./src/coverage
+          # The `path` key is an absolute or relative path to your working_directory containing 
+          # subdirectories of JUnit XML or Cucumber JSON test metadata files,
+          # or the path of a single file containing all test results.
+          # Make sure that your path value is not a hidden folder (example: .my_hidden_directory would be an invalid format).
+
+
+      - store_artifacts:
+          name: Collect screenshots
+          path: ./src/cypress/screenshots
+          destination: cypress-screenshots
+      
+      - store_artifacts:
+          name: Collect videos
+          path: ./src/cypress/videos
+          destination: cypress-videos
 
       - sonarcloud/scan
 
-  build:
+  deploy:
     executor: docker/docker
     steps:
       - setup_remote_docker
@@ -57,7 +83,9 @@ jobs:
 workflows:
 
   main:
+
     jobs:
+
       - test:
           context: sonarcloud
 
@@ -67,9 +95,13 @@ workflows:
           revision: <<pipeline.git.revision>>
           context:
             - gitguardian
+          filters:
+            branches:
+              only:
+                - main
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
-      - build:
+      - deploy:
           context:
             - dockerhub
             - thinx-docker-repo
