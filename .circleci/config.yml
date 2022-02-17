@@ -8,6 +8,8 @@ orbs:
 jobs:
 
   test:
+
+    working_directory: /root/project/src
     
     docker:
       - image: thinxcloud/console-build-env:latest
@@ -28,7 +30,7 @@ jobs:
           name: Test the project
           command: |
             cd src
-            npm run cy
+            npm run cy:run
 
       - store_test_results:
           name: Collect test results
