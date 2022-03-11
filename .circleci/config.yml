@@ -26,11 +26,12 @@ jobs:
             npm install
             npm run build
 
-      - run:
-          name: Test the project
-          command: |
-            cd src
-            npm run cy:run
+      # Disabled, will never work here, must be migrated to thinx-device-api .circle/config.yml `test` job
+      # - run:
+      #     name: Test the project
+      #     command: |
+      #       cd src
+      #       npm run cy:run
 
       - store_test_results:
           name: Collect test results
@@ -41,15 +42,15 @@ jobs:
           # Make sure that your path value is not a hidden folder (example: .my_hidden_directory would be an invalid format).
 
 
-      - store_artifacts:
-          name: Collect screenshots
-          path: ./src/cypress/screenshots
-          destination: cypress-screenshots
+      # - store_artifacts:
+      #     name: Collect screenshots
+      #     path: ./src/cypress/screenshots
+      #     destination: cypress-screenshots
       
-      - store_artifacts:
-          name: Collect videos
-          path: ./src/cypress/videos
-          destination: cypress-videos
+      # - store_artifacts:
+      #     name: Collect videos
+      #     path: ./src/cypress/videos
+      #     destination: cypress-videos
 
       - sonarcloud/scan
 
