@@ -1260,7 +1260,7 @@ function userDelete( deleteForm ) {
 
 function profileDownload() {
   return $.ajax( {
-    url: urlBase + "/../gdpr/transfer",
+    url: urlBase + "/gdpr/transfer",
     type: "POST",
     data: {},
     dataType: "json",
