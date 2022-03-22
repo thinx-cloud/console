@@ -1,4 +1,4 @@
-# Remote THiNX Management (RTM) Console
+# THiNX Management Console
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsuculent%2Fthinx-console.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsuculent%2Fthinx-console?ref=badge_shield)[![Total alerts](https://img.shields.io/lgtm/alerts/g/suculent/thinx-console.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/suculent/thinx-console/alerts/)
 
@@ -19,7 +19,7 @@ You can build your own image using `docker build -t yourname\console` and follow
 | `LANDING_HOSTNAME`     | https://thinx.yourdomain.tld     | Link to landing page             | https://thinx.cloud     |
 | `API_HOSTNAME`         | https://api.thinx.yourdomain.tld | Link to API                      | https://api.thinx.cloud |
 | `API_BASEURL`          | api.thinx.yourdomain.tld         | Link to API without protocol     | api.thinx.cloud         |
-| `WEB_HOSTNAME`         | console.thinx.yourdomain.tld     | Link to Console without protocol | rtm.thinx.cloud         |
+| `WEB_HOSTNAME`         | console.thinx.yourdomain.tld     | Link to Console without protocol | console.thinx.cloud         |
 | `ENTERPRISE`				| true or false                    | disables Google/GitHub SSO       | false                   |
 | `ENVIRONMENT`			| production                       | Console build config             | development             |
 | `ROLLBAR_ACCESS_TOKEN` | -                                | Integration                      | see Rollbar             |
