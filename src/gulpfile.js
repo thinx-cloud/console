@@ -254,13 +254,3 @@ gulp.task('buildPublic', function() {
     .pipe(gulp.dest(target));
 
 });
-
-gulp.task('buildApp', function() {
-
-    /*
-    * APP (angular index page dependencies)
-    */
-
-    // App is dependent on bootstrap/jquery components and app.js, which is used in public build
-
-});
