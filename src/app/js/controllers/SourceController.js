@@ -39,11 +39,6 @@ angular.module( "RTM" ).controller( "SourceController", [ "$rootScope", "$scope"
 
     console.log( "-- adding new source --" );
 
-    console.log( $scope.sourceUrl );
-    console.log( $scope.sourceAlias );
-    console.log( $scope.sourceBranch );
-    console.log( $scope.sourceCircleToken );
-
     // disable submit button
     $scope.addingSource = true;
 
@@ -58,7 +53,7 @@ angular.module( "RTM" ).controller( "SourceController", [ "$rootScope", "$scope"
 
     }
 
-    Thinx.addSource( $scope.sourceUrl, $scope.sourceAlias, $scope.sourceBranch, $scope.sourceCircleToken )
+    Thinx.addSource( $scope.sourceUrl, $scope.sourceAlias, $scope.sourceBranch, $scope.sourceCircleToken, $scope.sourceGitSecret )
     .done( function( response ) {
 
       if ( typeof( response ) !== "undefined" ) {
@@ -168,6 +163,7 @@ angular.module( "RTM" ).controller( "SourceController", [ "$rootScope", "$scope"
     $scope.sourceUrl = null;
     $scope.sourceBranch = null;
     $scope.sourceCircleToken = null;
+    $scope.sourceGitSecret = null;
     $scope.selectedItems = [];
   };
 

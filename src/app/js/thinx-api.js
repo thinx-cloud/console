@@ -68,8 +68,8 @@ var Thinx = {
   sourceList: function() {
     return sourceList();
   },
-  addSource: function( sourceUrl, sourceAlias, sourceBranch, sourceCircleToken ) {
-    return addSource( sourceUrl, sourceAlias, sourceBranch, sourceCircleToken );
+  addSource: function( sourceUrl, sourceAlias, sourceBranch, sourceCircleToken, $sourceGitSecret ) {
+    return addSource( sourceUrl, sourceAlias, sourceBranch, sourceCircleToken, $sourceGitSecret );
   },
   revokeSources: function( sourceIds ) {
     return revokeSources( sourceIds );
@@ -1151,7 +1151,7 @@ function sourceList() {
   } );
 }
 
-function addSource( url, alias, branch, circleToken ) {
+function addSource( url, alias, branch, circleToken, gitSecret ) {
   return $.ajax( {
     url: urlBase + "/user/source",
     type: "POST",
@@ -1159,7 +1159,8 @@ function addSource( url, alias, branch, circleToken ) {
       url: url,
       alias: alias,
       branch: branch,
-      circleToken: circleToken
+      circleToken: circleToken,
+      secret: gitSecret
     } ),
     dataType: "json",
     contentType: "application/json"
