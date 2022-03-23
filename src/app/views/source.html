@@ -89,6 +89,7 @@
             <tr ng-repeat="source in $root.sources | propsFilter:{'alias':searchText, 'url':searchText, 'platform':searchText}" ng-click="checkItem(source.sourceId)" ng-class="selectedItems.indexOf(source.sourceId) > -1 ? 'selected-row' : 'default-row'">
               <td>
                 <span style="float: right">
+
                   <span ng-repeat="device in $root.meta.sources[source.sourceId]">
                     <a ui-sref="device({udid: device.udid, origin: 'source'})" stop-event title="{{device.alias}}">
                       <span class="device-icon bg-{{device.category}} device-icon-small">
@@ -97,8 +98,9 @@
                       </span>
                     </a>
                   </span>
+
                 </span>
-                <div class="row-item-title">{{source.alias}}</div>
+                <div class="row-item-title">{{source.alias}} <i class="fa fa-key" title="Private repository" ng-if="source.is_private"></i></div>
                 <div>
                   <span class="source-label monospace-info">{{source.url}}</span>
                 </div>

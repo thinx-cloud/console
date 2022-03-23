@@ -199,13 +199,14 @@ function init( $rootScope, $scope ) {
         if ( typeof( value.platform ) === "undefined" ) {
           value.platform = "unknown";
         }
+        if ( typeof( value.is_private ) === "undefined" ) {
+          value.is_private = false;
+        }
         value.base_platform = value.platform.split( ":" )[ 0 ];
         $rootScope.sources.push( value );
       } );
 
       console.log( "/////// sources:" );
-      //console.log($rootScope.sources);
-      console.log( "refreshing view..." );
       $rootScope.$apply();
 
       // save user-spcific goal achievement
@@ -232,8 +233,6 @@ function init( $rootScope, $scope ) {
     $rootScope.apikeys = response.api_keys;
 
     console.log( "//////// apikeys:" );
-    //console.log($rootScope.apikeys);
-    console.log( "refreshing view..." );
     $rootScope.$apply();
   }
 
@@ -249,7 +248,6 @@ function init( $rootScope, $scope ) {
     $rootScope.rsakeys = response.rsa_keys;
     $scope.$apply();
     console.log( "//////// rsakeys:" );
-    //console.log($rootScope.rsakeys);
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -276,7 +274,6 @@ function init( $rootScope, $scope ) {
     $rootScope.deploykeys = response.rsa_keys;
     $scope.$apply();
     console.log( "//////// deploykeys:" );
-    //console.log($rootScope.deploykeys);
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -308,7 +305,6 @@ function init( $rootScope, $scope ) {
     $rootScope.channels = response.mesh_ids;
     $scope.$apply();
     console.log( "//////// channels:" );
-    console.log( $rootScope.channels );
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -412,7 +408,6 @@ function init( $rootScope, $scope ) {
       return new Date( b.date ) - new Date( a.date );
     } );
     console.log( "//////// deviceTimeline" );
-    //console.log(deviceTimeline);
 
     $rootScope.stats.timeline.MIN = deviceTimeline[ 0 ][ "date" ];
     $rootScope.stats.timeline.MAX = deviceTimeline[ deviceTimeline.length - 1 ][ "date" ];
@@ -432,7 +427,6 @@ function init( $rootScope, $scope ) {
 
     for ( let index in $rootScope.devices ) {
       var tagsArray = $rootScope.devices[ index ].tags;
-      // console.log("device tags", tagsArray);
       if ( tagsArray !== null ) {
         for ( var tagIndex in tagsArray ) {
           if ( $rootScope.profile.info.tags.includes( tagsArray[ tagIndex ] ) ) {
@@ -505,7 +499,6 @@ function init( $rootScope, $scope ) {
       var response = JSON.parse( data );
 
       console.log( "/////// Profile response:" );
-      //console.log(response);
 
       // validate response and refresh view
       if ( typeof( response ) !== "undefined" && typeof( response.success ) !== "undefined" ) {
@@ -566,7 +559,6 @@ function init( $rootScope, $scope ) {
     }
 
     console.log( "/////// transformers:" );
-    //console.log($rootScope.meta.transformers);
   }
 
   $scope.$on( "updateAuditHistory", function( event, data ) {
@@ -648,14 +640,10 @@ function init( $rootScope, $scope ) {
     var response = JSON.parse( data );
 
     console.log( "/////// stats data:" );
-    //console.log(response);
 
     if ( response.success ) {
-      console.log( "-- iterating over stats --" );
       var days = response.stats;
-      console.log( days );
       for ( var prop in days ) {
-        // console.log(prop, days[prop]);
         var propTotal = 0;
         for ( var i = 0; i < days[ prop ].length; i++ ) {
           propTotal = propTotal + parseInt( days[ prop ][ i ] );
@@ -715,8 +703,6 @@ function init( $rootScope, $scope ) {
       for ( let index in $rootScope.meta.deviceBuilds ) {
         $rootScope.meta.deviceBuilds[ index ].sort( sortByLastUpdate );
       }
-
-      console.log( "refreshing view..." );
       $scope.$apply();
     } else {
       console.log( "buildHistory fetch error." );
