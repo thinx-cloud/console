@@ -15,6 +15,8 @@ const removeCode = require('gulp-remove-code');
 const merge = require('merge-stream');
 const concat = require('gulp-concat');
 
+let versionCode = typeof(process.env.VERSION_CODE) == 'undefined' ? process.env.COMMIT_ID : process.env.VERSION_CODE;
+
 // Cleartext logging of sensitive information, development only.
 //console.log('----------- gulp process.env ------------');
 //console.log(JSON.stringify(process.env, null, 4));
@@ -22,7 +24,7 @@ const concat = require('gulp-concat');
 
 let isProduction = typeof(process.env.ENVIRONMENT) == 'undefined' || process.env.ENVIRONMENT !== 'production' ? false : true;
 let isEnterprise = typeof(process.env.ENTERPRISE) == 'undefined' || process.env.ENTERPRISE !== 'true' ? false : true;
-let makeBundle = false;
+let makeBundle;
 
 const env = {
   environment: isProduction ? 'production' : 'development',
@@ -40,7 +42,7 @@ const env = {
   crispWebsiteId: process.env.CRISP_WEBSITE_ID,
   googleMapsApikey: process.env.GOOGLE_MAPS_APIKEY,
   projectDescription: isEnterprise ? '' : 'Manage IoT devices (for MCUs eg. ESP32, ESP8266 or any systems running Node.js, Micropython, NodeMCU, Arduino, Pine64...), build and update firmwares remotely (FOTA/firmware-over-the-air), transform and route sensor data (MQTT)',
-  googleMapsApikey: process.env.VERSION_CODE
+  versionCode: versionCode
 };
 
 /*
@@ -52,7 +54,7 @@ console.log('makeBundle: ' + makeBundle);
 console.log('----------- -------- ------------');
 */
 
-gulp.task('build', function() {
+gulp.task('dev', function() {
 
   /* TODO: debug */
   isProduction = false; // production enables: minification, google analytics  NOT READY
@@ -163,7 +165,7 @@ gulp.task('build', function() {
 gulp.task('noop', function() { /* no operation */ });
 
 //*** Localhost server test
-gulp.task('buildPublic', function() {
+gulp.task('prod', function() {
 
   /* TODO: debug */
   isProduction = true;
