@@ -43,7 +43,7 @@ COPY . .
 RUN npm install . \
     && npm install -g npm@8.5.0 \
     && npm audit fix --force \
-    && npm run build
+    && npm run buildAll
 
 #
 # Deployment Image
