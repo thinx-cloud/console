@@ -15,7 +15,7 @@ const removeCode = require('gulp-remove-code');
 const merge = require('merge-stream');
 const concat = require('gulp-concat');
 
-let versionCode = typeof(process.env.VERSION_CODE) == 'undefined' ? process.env.COMMIT_ID : process.env.VERSION_CODE;
+let versionCode = typeof(process.env.COMMIT_ID) == 'undefined' ? process.env.VERSION_CODE : process.env.COMMIT_ID.slice(0,8);
 
 // Cleartext logging of sensitive information, development only.
 //console.log('----------- gulp process.env ------------');
