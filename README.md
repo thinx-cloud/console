@@ -19,8 +19,8 @@ You can build your own image using `docker build -t yourname\console` and follow
 | `LANDING_HOSTNAME`     | https://thinx.yourdomain.tld     | Link to landing page             | https://thinx.cloud     |
 | `API_HOSTNAME`         | https://api.thinx.yourdomain.tld | Link to API                      | https://api.thinx.cloud |
 | `API_BASEURL`          | api.thinx.yourdomain.tld         | Link to API without protocol     | api.thinx.cloud         |
-| `WEB_HOSTNAME`         | console.thinx.yourdomain.tld     | Link to Console without protocol | console.thinx.cloud         |
-| `ENTERPRISE`				| true or false                    | disables Google/GitHub SSO       | false                   |
+| `WEB_HOSTNAME`         | console.thinx.yourdomain.tld     | Link to Console without protocol | rtm.thinx.cloud     |
+| `ENTERPRISE`			| true or false                    | disables Google/GitHub SSO       | false                   |
 | `ENVIRONMENT`			| production                       | Console build config             | development             |
 | `ROLLBAR_ACCESS_TOKEN` | -                                | Integration                      | see Rollbar             |
 | `GOOGLE_ANALYTICS_ID`  | -                                | Integration                      | see GAI                 |
