@@ -7,5 +7,6 @@
     "last_name": "test",
     "owner": "cypresstest",
     "email": "cypresstest@thinx.cloud"
-  }
+  },
+  "serverUrl": ""
 }
