@@ -102,23 +102,18 @@ RTM.factory( "settings", [ "$rootScope", function( $rootScope ) {
     daily: {
       DEVICE_CHECKIN: [],
       DEVICE_NEW: [],
-      APIKEY_INVALID: [],
-      DEVICE_UPDATE_OK: [],
-      DEVICE_UPDATE_FAIL: []
+      APIKEY_INVALID: []
     }
   };
 
   // ID: [],
   // APIKEY_INVALID: [],
   // PASSWORD_INVALID: [],
-  // APIKEY_MISUSE: [],
   // DEVICE_NEW: [5,4,3,2,1,1,2,3,4,5],
   // DEVICE_CHECKIN: [1,2,3,4,5,5,4,3,2,1],
-  // DEVICE_UPDATE_OK: [],
-  // DEVICE_UPDATE_FAIL: [],
   // BUILD_STARTED: [],
   // BUILD_SUCCESS: [],
-  // BUILD_FAIL: []
+  // BUILD_FAILED: []
 
   $rootScope.sources = [];
   $rootScope.devices = [];
