@@ -1,0 +1,59 @@
+# docker build -t thinx/console .
+
+FROM thinxcloud/console-build-env
+
+ARG COMPOSE_PROJECT_NAME
+ARG LANDING_HOSTNAME
+ARG WEB_HOSTNAME
+ARG API_HOSTNAME
+ARG API_BASEURL
+ARG ENTERPRISE
+ARG ENVIRONMENT
+ARG GOOGLE_ANALYTICS_ID
+ARG ROLLBAR_ACCESS_TOKEN
+ARG CRISP_WEBSITE_ID
+ARG GOOGLE_MAPS_APIKEY
+
+ENV COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+ENV LANDING_HOSTNAME=${LANDING_HOSTNAME}
+ENV WEB_HOSTNAME=${WEB_HOSTNAME}
+ENV API_HOSTNAME=${API_HOSTNAME}
+ENV API_BASEURL=${API_BASEURL}
+ENV ENTERPRISE=${ENTERPRISE}
+ENV ENVIRONMENT=${ENVIRONMENT}
+ENV GOOGLE_ANALYTICS_ID=${GOOGLE_ANALYTICS_ID}
+ENV ROLLBAR_ACCESS_TOKEN=${ROLLBAR_ACCESS_TOKEN}
+ENV CRISP_WEBSITE_ID=${CRISP_WEBSITE_ID}
+ENV GOOGLE_MAPS_APIKEY=${GOOGLE_MAPS_APIKEY}
+
+ENV NGINX_HOST=${WEB_HOSTNAME}
+ENV NGINX_PORT=80
+ENV CACHEBUST=1
+
+# Create app directory
+WORKDIR /home/node/build
+
+# Install app dependencies & source code
+COPY package.json ./
+
+COPY . .
+
+RUN yarn \
+    && yarn build
+
+#
+# Deployment Image
+#
+
+# needs to include gulp
+FROM nginx:latest
+
+WORKDIR /usr/share/nginx/html
+COPY --from=0 /home/node/build/dist .
+
+COPY default.conf /etc/nginx/conf.d/default.conf
+
+RUN apt-get update && apt-get upgrade -y
+
+# Expose port (HOST:CONTAINER; nginx, may be configured from outside with docker-compose)
+EXPOSE 7440:80
