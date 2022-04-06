@@ -13,7 +13,7 @@ import ErrorPage from '@/pages/Error/Error';
 
 import Dashboard from '@/pages/Visits/Visits';
 
-import SourceManager from '@/pages/Sources/Sources';
+import RepoManager from '@/pages/Sources/Sources';
 
 Vue.use(Router);
 
@@ -43,46 +43,46 @@ export default new Router({
         {
           path: 'devices',
           name: 'Devices',
-          component: SourceManager, // Devices,
+          component: RepoManager, // Devices,
         },
         {
           path: 'apikeys',
           name: 'API Keys',
-          component: SourceManager, // ApikeyManager,
+          component: RepoManager, // ApikeyManager,
         },
         {
-          path: 'sources',
-          name: 'Code Sources',
-          component: SourceManager, // SourceManager,
+          path: 'repos',
+          name: 'Repositories',
+          component: RepoManager, // RepoManager,
         },
         {
           path: 'history',
           name: 'History',
-          component: SourceManager, // History,
+          component: RepoManager, // History,
         },
 
         {
           path: 'delpoykeys',
           name: 'Delpoy Keys',
-          component: SourceManager, // DeploykeyManager,
+          component: RepoManager, // DeploykeyManager,
         },
 
         {
           path: 'transformers',
           name: 'Transformers',
-          component: SourceManager, // Transformers,
+          component: RepoManager, // Transformers,
         },
 
         {
           path: 'enviros',
           name: 'Environment Globals',
-          component: SourceManager, // EnviroManager,
+          component: RepoManager, // EnviroManager,
         },
 
         {
           path: 'channels',
           name: 'Mesh Channels',
-          component: SourceManager, // ChannelManager,
+          component: RepoManager, // ChannelManager,
         },
 
 // TODO femove template routes

@@ -67,7 +67,7 @@
       </Widget>
     </b-container>
     <footer class="auth-footer">
-      Light Blue Vue Admin Dashboard Template - Made by <a href="https://flatlogic.com" target="_blank">Flatlogic</a>
+      THiNX Console by <a href="https://thinx.cloud" target="_blank">THiNX Cloud</a>
     </footer>
   </div>
 </template>
