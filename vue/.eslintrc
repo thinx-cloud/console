@@ -23,14 +23,14 @@
         "ecmaVersion": 2018
     },
     "rules": {
-        "no-console": "off",
-        "no-unused-vars": "off",
-        "lines-around-comment": "off",
-        "max-len": "off",
-        "camelcase": "off",
-        "eqeqeq": "off",
-        "dot-notation": "off",
-        "no-useless-escape": "off",
-        "quotes": [1, "always"]
+        // "no-console": "off",
+        // "no-unused-vars": "off",
+        // "lines-around-comment": "off",
+        // "max-len": "off",
+        // "camelcase": "off",
+        // "eqeqeq": "off",
+        // "dot-notation": "off",
+        // "no-useless-escape": "off",
+        // "quotes": [1, "always"]
     }
 }

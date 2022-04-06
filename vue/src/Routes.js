@@ -13,7 +13,7 @@ import ErrorPage from '@/pages/Error/Error';
 
 import Dashboard from '@/pages/Visits/Visits';
 
-import RepoManager from '@/pages/Sources/Sources';
+import RepoManager from '@/pages/Repositories/Repositories';
 
 Vue.use(Router);
 
@@ -51,7 +51,7 @@ export default new Router({
           component: RepoManager, // ApikeyManager,
         },
         {
-          path: 'repos',
+          path: 'repositories',
           name: 'Repositories',
           component: RepoManager, // RepoManager,
         },

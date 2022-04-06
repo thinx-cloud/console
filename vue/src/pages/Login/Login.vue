@@ -88,29 +88,32 @@ export default {
     ...mapMutations(["setUser", "setToken"]),
     async login(e) {
       e.preventDefault();
-      const username = this.$refs.username.value;
-      // const email = this.$refs.email.value;
-      const password = this.$refs.password.value;
+
+      // TODO env vars
+      const urlBase = 'https://rtm.thinx.cloud/api';
 
       if (username.length !== 0 && password.length !== 0) {
         // TODO start JWT login scenario
-
-        const response = await fetch("http://localhost:3000/login", {
+        const response = await fetch(urlBase + '/login', {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            username: this.username,
-            password: this.password,
+            username: this.$refs.username.value,
+            password: this.$refs.password.value,
           }),
         });
-        const { user, token } = await response.json();
+        //const { user, token } = await response.json();
+        const { status, success, access_token, redirectURL, g } = await response.json();
+
+        const user = { username: 'test'};
+
         this.setUser(user);
-        this.setToken(token);
+        this.setToken(access_token);
 
         // window.localStorage.setItem('authenticated', true);
-        // this.$router.push('/app/dashboard');
+        this.$router.push('/app/dashboard');
       }
     },
   },

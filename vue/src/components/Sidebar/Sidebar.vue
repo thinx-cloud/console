@@ -33,10 +33,10 @@
         isHeader
       />
       <NavLink
-        header="Code Sources"
-        link="/app/sources"
+        header="Repositories"
+        link="/app/repositories"
         iconName="flaticon-list-3"
-        index="code sources"
+        index="repositories"
         isHeader
       />
       <NavLink
