@@ -17,20 +17,23 @@
         </tr>
       </thead>
       <tbody>
-        <tr>
+        <tr v-for="item in datasource" :key="item.id">
+                      
           <td>
             <div class="abc-checkbox">
               <input type="checkbox"
-                id="checkbox2" :checked="checkboxes[1]"
-                @change="event => changeCheck(event, 'checkboxes', 1)"
+                id="checkbox2" :checked="checkboxes[item.id]"
+                @change="event => changeCheck(event, 'checkboxes', item.id)"
               />
               <label for="checkbox2" />
             </div>
           </td>
-          <td>Mark</td>
-          <td>Otto</td>
-          <td><b-badge variant="success">Online</b-badge></td>
+          <td>{{ item.alias }}</td>
+          <td>{{ item.branch }}</td>
+          <td><b-badge variant="success">{{ item.platform }}</b-badge></td>
         </tr>
+
+<!--
         <tr>
           <td>
             <div class="abc-checkbox">
@@ -59,6 +62,7 @@
           <td>the Bird</td>
           <td><b-badge variant="danger">Construct</b-badge></td>
         </tr>
+--->        
       </tbody>
     </table>
 </template>
@@ -68,13 +72,17 @@ import Vue from 'vue';
 export default {
   name: 'List',
   props: {
-    size: {type: Number, default: 21}
+    size: {type: Number, default: 21},
+    datasource: []
   },
   data() {
     return {
-      checkboxes: [false, false, false, false],
+      checkboxes: [],
     };
   },
+  // mounted() {
+    // this.checkboxes = new Array(this.datasource.length).fill(false);
+  // },
   methods: {
     checkAll(ev, checkbox) {
       const checkboxArr = (new Array(this[checkbox].length)).fill(ev.target.checked);

@@ -23,7 +23,7 @@
 
     <p>Manage your public or private git repositories</p>
 
-    <List @selection-update="selectionUpdated"></List>
+    <List @selection-update="selectionUpdated" :datasource="repsitories"></List>
   </div>
 </template>
 
@@ -39,11 +39,17 @@ export default {
       checkboxes: [false, false, false, false],
       isSelected: false,
       selectedCount: 0,
-      repsitories: []
+      repsitories: [],
     };
   },
   created() {
-    this.repsitories = this.fetchRepositories();
+    this.fetchRepositories().then((repsitories) => {
+      // this.repsitories = repsitories;
+    });
+  },
+  mounted() {
+    this.repsitories = this.getRepositories();
+    console.log('getRepositories', this.repsitories);
   },
   methods: {
     ...mapGetters(["getRepositories"]),

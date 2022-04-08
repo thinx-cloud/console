@@ -126,20 +126,7 @@ export default {
           this.setUser(user);
           this.setAccessToken(access_token);
 
-          // TODO start JWT login scenario
-          /*
-          const response = await fetch(redirectURL, {
-            method: "GET",
-            redirect: 'follow', // manual, *follow, error
-            mode: 'cors', // no-cors, *cors, same-origin
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-          */
-
-          //const { result } = await response.json();
-          // console.log('redir result', result);
+          window.localStorage.setItem("accessToken", access_token);
 
           window.localStorage.setItem("authenticated", true);
           this.$router.push("/app/dashboard");
