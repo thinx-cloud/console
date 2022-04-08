@@ -3,17 +3,24 @@
 </template>
 
 <script>
+
+import { mapGetters } from "vuex";
+
 export default {
   name: 'App',
+  methods: {
+    ...mapGetters(["isLoggedIn"]),
+  },
   created() {
-    const currentPath = this.$router.history.current.path;
+    const currentPath = this.$router.history.current.path;;
 
-    if (window.localStorage.getItem('authenticated') === 'false') {
+    // || !this.isLoggedIn()
+    if ((window.localStorage.getItem('authenticated') === 'false') && currentPath !== '/login') {
       this.$router.push('/login');
-    }
-
-    if (currentPath === '/' || currentPath === '/app') {
-      this.$router.push('/app/dashboard');
+    } else {
+      if (currentPath === '/' || currentPath === '/app') {
+        this.$router.push('/app/dashboard');
+      }
     }
   },
 };

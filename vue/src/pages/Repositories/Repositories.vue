@@ -8,40 +8,48 @@
       Management - <span class="fw-semi-bold">Repositories</span>
     </h1>
 
-    <p><b-button
-      variant="success" id="create-item" @click="create"
-    >Add Repository</b-button>
-    <b-button
-      variant="danger" id="delete-selected-items" @click="deleteSelected" :disabled="!isSelected"
-    >{{ selectedCount }}<span class="glyphicon glyphicon-trash"></span></b-button>
+    <p>
+      <b-button variant="success" id="create-item" @click="create"
+        >Add Repository</b-button
+      >
+      <b-button
+        variant="danger"
+        id="delete-selected-items"
+        @click="deleteSelected"
+        :disabled="!isSelected"
+        >{{ selectedCount }}<span class="glyphicon glyphicon-trash"></span
+      ></b-button>
     </p>
 
     <p>Manage your public or private git repositories</p>
-    
-    <List @selection-update="selectionUpdated"></List>
 
+    <List @selection-update="selectionUpdated"></List>
   </div>
 </template>
 
 <script>
-import List from '@/components/List/List';
+import List from "@/components/List/List";
+import { mapGetters, mapActions } from "vuex";
 
 export default {
-  name: 'Repositories',
+  name: "Repositories",
   components: { List },
   data() {
     return {
       checkboxes: [false, false, false, false],
       isSelected: false,
       selectedCount: 0,
+      repsitories: []
     };
   },
   created() {
+    this.repsitories = this.fetchRepositories();
   },
   methods: {
+    ...mapGetters(["getRepositories"]),
+    ...mapActions(["fetchRepositories"]),
     create() {
       // TODO implement
-      // console.log(ThinxDeviceApi.methods.repositories());
     },
     deleteSelected() {
       // TODO implement
@@ -50,6 +58,6 @@ export default {
       this.isSelected = value.state;
       this.selectedCount = value.count;
     },
-  }
+  },
 };
 </script>

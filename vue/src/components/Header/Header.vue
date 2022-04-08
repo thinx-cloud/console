@@ -113,7 +113,7 @@
 </template>
 
 <script>
-import { mapState, mapActions } from 'vuex';
+import { mapState, mapActions, mapMutations } from 'vuex';
 import Notifications from '@/components/Notifications/Notifications';
 
 export default {
@@ -132,6 +132,7 @@ export default {
   },
   methods: {
     ...mapActions('layout', ['switchSidebar', 'changeSidebarActive']),
+    ...mapMutations(["setUser", "setAccessToken"]),
     switchSidebarMethod() {
       if (!this.sidebarClose) {
         this.switchSidebar(true);
@@ -145,6 +146,8 @@ export default {
     },
     logout() {
       window.localStorage.setItem('authenticated', false);
+      this.setUser(undefined);
+      this.setAccessToken(undefined);
       this.$router.push('/login');
     },
   },

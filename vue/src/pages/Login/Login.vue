@@ -1,15 +1,17 @@
 <template>
   <div class="auth-page">
     <b-container>
-      <Widget class="widget-auth mx-auto" title="<h3 class='mt-0'>THiNX Login</h3>" customHeader>
-        <p class="widget-auth-info">
-          Use your username to sign in.
-        </p>
+      <Widget
+        class="widget-auth mx-auto"
+        title="<h3 class='mt-0'>THiNX Login</h3>"
+        customHeader
+      >
+        <p class="widget-auth-info">Use your username to sign in.</p>
         <form class="mt" @submit.prevent="login">
           <b-alert class="alert-sm" variant="danger" :show="!!errorMessage">
-            {{errorMessage}}
+            {{ errorMessage }}
           </b-alert>
-<!--
+          <!--
           <b-form-group label="Email" label-for="email">
             <b-input-group>
               <b-input-group-text slot="prepend"><i class="la la-user text-white"></i></b-input-group-text>
@@ -24,34 +26,42 @@
 -->
           <b-form-group label="Username" label-for="username">
             <b-input-group>
-              <b-input-group-text slot="prepend"><i class="la la-user text-white"></i></b-input-group-text>
-              <input id="username"
-                     ref="username"
-                     class="form-control input-transparent pl-3"
-                     type="text"
-                     required
-                     placeholder="Username"/>
+              <b-input-group-text slot="prepend"
+                ><i class="la la-user text-white"></i
+              ></b-input-group-text>
+              <input
+                id="username"
+                ref="username"
+                class="form-control input-transparent pl-3"
+                type="text"
+                required
+                placeholder="Username"
+              />
             </b-input-group>
           </b-form-group>
           <b-form-group label="Password" label-for="password">
             <b-input-group>
-              <b-input-group-text slot="prepend"><i class="la la-lock text-white"></i></b-input-group-text>
-              <input id="password"
-                     ref="password"
-                     class="form-control input-transparent pl-3"
-                     type="password"
-                     required
-                     placeholder="Password"/>
+              <b-input-group-text slot="prepend"
+                ><i class="la la-lock text-white"></i
+              ></b-input-group-text>
+              <input
+                id="password"
+                ref="password"
+                class="form-control input-transparent pl-3"
+                type="password"
+                required
+                placeholder="Password"
+              />
             </b-input-group>
           </b-form-group>
           <div class="bg-widget auth-widget-footer">
             <b-button type="submit" variant="danger" class="auth-btn" size="sm">
               Login
             </b-button>
-            <p class="widget-auth-info mt-4">
-              Don't have an account? Sign up now!
-            </p>
-            <router-link class="d-block text-center mb-4" to="login">Create an Account</router-link>
+            <p class="widget-auth-info mt-4">Don't have an account? Sign up now!</p>
+            <router-link class="d-block text-center mb-4" to="login"
+              >Create an Account</router-link
+            >
             <div class="social-buttons">
               <b-button variant="success" class="social-button">
                 <i class="social-icon social-github"></i>
@@ -73,11 +83,11 @@
 </template>
 
 <script>
-import Widget from '@/components/Widget/Widget';
-import { mapMutations } from "vuex";
+import Widget from "@/components/Widget/Widget";
+import { mapMutations, mapGetters } from "vuex";
 
 export default {
-  name: 'LoginPage',
+  name: "LoginPage",
   components: { Widget },
   data() {
     return {
@@ -85,42 +95,65 @@ export default {
     };
   },
   methods: {
-    ...mapMutations(["setUser", "setToken"]),
+    ...mapMutations(["setUser", "setAccessToken"]),
+    ...mapGetters(["getBase", "isLoggedIn"]),
     async login(e) {
       e.preventDefault();
 
-      // TODO env vars
-      const urlBase = 'https://rtm.thinx.cloud/api';
-
       if (username.length !== 0 && password.length !== 0) {
         // TODO start JWT login scenario
-        const response = await fetch(urlBase + '/login', {
+        const response = await fetch("/login", {
           method: "POST",
+          // mode: 'no-cors', // no-cors, *cors, same-origin
+          redirect: "manual", // manual, *follow, error
+          credentials: 'include',
+          // credentials: 'include',
           headers: {
             "Content-Type": "application/json",
+            // 'Access-Control-Allow-Origin': '*',
           },
           body: JSON.stringify({
             username: this.$refs.username.value,
             password: this.$refs.password.value,
           }),
         });
-        //const { user, token } = await response.json();
+
         const { status, success, access_token, redirectURL, g } = await response.json();
 
-        const user = { username: 'test'};
+        if (success) {
+          // TODO set uset
+          const user = { username: "test" };
+          this.setUser(user);
+          this.setAccessToken(access_token);
 
-        this.setUser(user);
-        this.setToken(access_token);
+          // TODO start JWT login scenario
+          /*
+          const response = await fetch(redirectURL, {
+            method: "GET",
+            redirect: 'follow', // manual, *follow, error
+            mode: 'cors', // no-cors, *cors, same-origin
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+          */
 
-        // window.localStorage.setItem('authenticated', true);
-        this.$router.push('/app/dashboard');
+          //const { result } = await response.json();
+          // console.log('redir result', result);
+
+          window.localStorage.setItem("authenticated", true);
+          this.$router.push("/app/dashboard");
+        } else {
+          this.errorMessage = "Invalid username or password";
+        }
       }
     },
   },
   created() {
     // TTODO validate
-    if (window.localStorage.getItem('authenticated') === 'true') {
-      this.$router.push('/app/dashboard');
+    //if (this.isLoggedIn()) {
+    if (window.localStorage.getItem("authenticated") === "true") {
+      this.$router.push("/app/dashboard");
     }
   },
 };
