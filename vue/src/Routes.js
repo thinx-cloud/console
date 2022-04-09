@@ -14,6 +14,7 @@ import ErrorPage from '@/pages/Error/Error';
 import Dashboard from '@/pages/Visits/Visits';
 
 import RepoManager from '@/pages/Repositories/Repositories';
+import ApikeyManager from '@/pages/Apikeys/Apikeys';
 
 Vue.use(Router);
 
@@ -48,7 +49,7 @@ export default new Router({
         {
           path: 'apikeys',
           name: 'API Keys',
-          component: RepoManager, // ApikeyManager,
+          component: ApikeyManager, // ApikeyManager,
         },
         {
           path: 'repositories',

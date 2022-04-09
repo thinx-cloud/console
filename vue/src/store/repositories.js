@@ -1,4 +1,5 @@
 export default {
+    namespaced: true,
     state: {
         repositories: [
           /*
@@ -11,7 +12,33 @@ export default {
           }
           */
         ],
-        initialised: false,
+        headers: [
+          {
+            title: 'id',
+            prop: 'id',
+            pos: null,
+          },
+          {
+            title: 'alias',
+            prop: 'alias',
+            pos: 0,
+          },
+          {
+            title: 'url',
+            prop: 'url',
+            pos: null,
+          },
+          {
+            title: 'branch',
+            prop: 'branch',
+            pos: 1,
+          },
+          {
+            title: 'platform',
+            prop: 'platform',
+            pos: 2,
+          },
+        ]
     },
     mutations: {
       saveRepositories(state, data) { 
@@ -29,12 +56,10 @@ export default {
         if (typeof rootState.auth.accessToken !== 'undefined') {
           accessToken = window.localStorage.getItem("accessToken");
         }
-
         console.log('accessToken', accessToken);
-
+        
         const response = await fetch("/user/sources/list", {
           method: "GET",
-          //cors: false,
           credentials: 'include',
           headers: {
             "Content-Type": "application/json",
@@ -43,17 +68,19 @@ export default {
           },
         });
         const { success, sources } = await response.json();
-
+        
         if (success) {
           commit('saveRepositories', { repositories: sources });
         }
-
         return state.repositories;
       },
     },
     getters: {
         getRepositories(state) {
           return state.repositories;
+        },
+        getHeaders(state) {
+          return state.headers;
         }
     },
   };
