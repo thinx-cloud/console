@@ -16,12 +16,14 @@ import Dashboard from '@/pages/Visits/Visits';
 import RepoManager from '@/pages/Repositories/Repositories';
 import ApikeyManager from '@/pages/Apikeys/Apikeys';
 import RsakeyManager from '@/pages/Rsakeys/Rsakeys';
-
 import EnviroManager from '@/pages/Enviros/Enviros';
+import ChannelManager from '@/pages/Channels/Channels';
+import DeviceManager from '@/pages/Devices/Devices';
+
 import TransformerManager from '@/pages/Rsakeys/Rsakeys';
-import MeshManager from '@/pages/Rsakeys/Rsakeys';
 import HistoryManager from '@/pages/Rsakeys/Rsakeys';
-import DeviceManager from '@/pages/Rsakeys/Rsakeys';
+
+
 
 Vue.use(Router);
 
@@ -90,7 +92,7 @@ export default new Router({
         {
           path: 'channels',
           name: 'Mesh Channels',
-          component: MeshManager, // ChannelManager,
+          component: ChannelManager, // ChannelManager,
         },
 
 // TODO femove template routes

@@ -42,35 +42,13 @@ Cypress.Commands.add("createOwner", (ownerData, url) => {
       cy.request({
           method: 'POST',
           failOnStatusCode: true,
-          url: url + '/login',
+          url: url + '/register',
           body: ownerData,
       }).then(
           (response) => {
               if (response.status === 200) { 
-                  expect(response.body).to.have.property('orgId');
-                  cy.log('createOrganization: Created organization with orgId', response.body.orgId);
-
-                  let orgMeta = {
-                      orgId: response.body.orgId,
-                      email: createSeedBody.org.email,
-                      emailPrefix: createSeedBody.org.createUsers.prefix,
-                      emailSuffix: createSeedBody.org.createUsers.emailSuffix,
-                      passwordPrefix: createSeedBody.org.createUsers.passwordPrefix,
-                      userIds: response.body.userIds,
-                      baseURL: response.body.baseURL,
-                      sysUserInvitationToken: response.body.sysUserInvitationToken
-                  };
-
-                  cy.task('setOrgMeta', orgMeta).then(result => {
-                      cy.log("createOrganization: DEBUG orgMeta", JSON.stringify(result));
-                      cy.task('getOrgUsers').then(orgUsers => {
-                          cy.log('createOrganization: Organization USERS', orgUsers);
-                      });
-                  });
-              } else {
-                  cy.log('createOrganization: Created organization ERROR', JSON.stringify(response.body.error));
+                  expect(response.body).to.have.property('access_token');
               }
-
               cy.wrap(response.body).as('createResponse');
           }
       )

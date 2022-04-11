@@ -56,7 +56,6 @@ export default {
         if (typeof rootState.auth.accessToken !== 'undefined') {
           accessToken = window.localStorage.getItem("accessToken");
         }
-        console.log('accessToken', accessToken);
         
         const response = await fetch("/user/sources/list", {
           method: "GET",

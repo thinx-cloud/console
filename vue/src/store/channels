@@ -4,45 +4,20 @@ export default {
         items: [
           /*
           
-            {"env_vars":["evnvar1","envvar2"]}
-
+              {"success":true,"mesh_ids":[{"mesh_id":"asd","alias":"teasd"}]}
           */
         ],
         headers: [
           {
-            title: 'id',
-            prop: 'id',
+            title: 'alias',
+            prop: 'alias',
             pos: 0,
           },
           {
-            title: 'label',
-            prop: 'label',
+            title: 'mesh_id',
+            prop: 'mesh_id',
             pos: 1,
-          },
-          /*
-          {
-            title: 'date',
-            prop: 'date',
-            pos: 1,
-          },
-          
-          {
-            title: 'fingerprint',
-            prop: 'fingerprint',
-            pos: 2,
-          },
-          
-          {
-            title: 'pubkey',
-            prop: 'pubkey',
-            pos: 3,
-          },
-          {
-            title: 'filename',
-            prop: 'filename',
-            pos: 4,
           }
-          */
         ]
     },
     mutations: {
@@ -52,16 +27,7 @@ export default {
           flatItems.push({id: id, ...data.items[id]});
         }
         state.items = flatItems;
-      },
-      saveSimpleArray(state, data) { 
-        let flatItems = data.items.map((item, index) => {
-            return{
-                id: index,
-                label: item,
-            }
-        });
-        state.items = flatItems
-      }
+      } 
     },
     actions: {
       async fetchItems({ state, commit, rootState }) {
@@ -70,8 +36,8 @@ export default {
         if (typeof rootState.auth.accessToken !== 'undefined') {
           accessToken = window.localStorage.getItem("accessToken");
         }
-
-        const response = await fetch("/user/env/list", {
+        
+        const response = await fetch("/mesh/list", {
           method: "GET",
           credentials: 'include',
           headers: {
@@ -80,11 +46,11 @@ export default {
             'Access-Control-Allow-Origin': 'http://localhost:3080',
           },
         });
-        const { env_vars } = await response.json();
+        const { success, mesh_ids } = await response.json();
         
-        //if (success) {
-          commit('saveSimpleArray', { items: env_vars });
-        //}
+        if (success) {
+          commit('saveItems', { items: mesh_ids });
+        }
         return state.items;
       },
     },

@@ -5,12 +5,12 @@
       <b-breadcrumb-item active>Management</b-breadcrumb-item>
     </b-breadcrumb>
     <h1 class="page-title">
-      Management - <span class="fw-semi-bold">Environmental Globals</span>
+      Management - <span class="fw-semi-bold">Devices</span>
     </h1>
 
     <p>
       <b-button variant="success" id="create-item" @click="create"
-        >Add Environmental Global</b-button
+        >Add Mesh Channels</b-button
       >
       <b-button
         variant="danger"
@@ -21,7 +21,7 @@
       ></b-button>
     </p>
 
-    <p>Manage your environmental global values</p>
+    <p>Manage your Devices</p>
 
     <List
       @selection-update="selectionUpdated"
@@ -32,11 +32,11 @@
 </template>
 
 <script>
-import List from "@/components/List/List";
-import { mapGetters, mapActions } from "vuex";
+import List from '@/components/List/List';
+import { mapGetters, mapActions } from 'vuex';
 
 export default {
-  name: "Enviros",
+  name: "Devices",
   components: { List },
   data() {
     return {
@@ -47,18 +47,18 @@ export default {
     };
   },
   created() {
-    this.fetchItems().then((enviros) => {
+    this.fetchItems().then((devices) => {
       // this.repositories = repositories;
     });
   },
   mounted() {
     this.items = this.getItems();
     this.headers = this.getHeaders();
-    console.log("getEnviros", this.items);
+    console.log('getDevices', this.items);
   },
   methods: {
-    ...mapGetters({ getItems: "enviros/getItems", getHeaders: "enviros/getHeaders" }),
-    ...mapActions({ fetchItems: "enviros/fetchItems" }),
+    ...mapGetters({ getItems: 'devices/getItems', getHeaders: 'devices/getHeaders' }),
+    ...mapActions({ fetchItems: 'devices/fetchItems' }),
     create() {
       // TODO implement
     },

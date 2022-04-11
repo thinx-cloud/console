@@ -5,11 +5,14 @@ import layout from './layout';
 import auth from './auth';
 import repositories from './repositories';
 import apikeys from './apikeys';
-
-// import meshes from './meshes';
-// import enviros from './enviros';
+import channels from './channels';
 import rsakeys from './rsakeys';
 import enviros from './enviros';
+import devices from './devices';
+import profile from './profile';
+
+//import history from './history';
+//import transformers from './history';
 
 Vue.use(Vuex);
 
@@ -20,6 +23,9 @@ export default new Vuex.Store({
     repositories,
     apikeys,
     rsakeys,
-    enviros
+    enviros,
+    channels,
+    profile,
+    devices
   },
 });

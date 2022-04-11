@@ -68,7 +68,6 @@ export default {
   methods: {
     ...mapActions('layout', ['changeSidebarActive']),
     togglePanelCollapse(link) {
-      console.log('DEBUG', link);
       this.changeSidebarActive(link);
       this.headerLinkWasClicked = !this.headerLinkWasClicked
       || !this.activeItem.includes(this.index);
@@ -79,7 +78,6 @@ export default {
       return `fi ${this.iconName}`;
     },
     isActive() {
-      console.log(this.activeItem);
       return (this.activeItem
       && this.activeItem.includes(this.index)
       && this.headerLinkWasClicked);
