@@ -971,19 +971,6 @@ function rsakeyList() {
   } );
 }
 
-function addRsakey( rsakeyAlias, rsakeyValue ) {
-  return $.ajax( {
-    url: urlBase + "/user/rsakey/add",
-    type: "POST",
-    data: JSON.stringify( {
-      alias: rsakeyAlias,
-      key: rsakeyValue
-    } ),
-    dataType: "json",
-    contentType: "application/json"
-  } );
-}
-
 function revokeRsakeys( fingerprints ) {
   return $.ajax( {
     url: urlBase + "/user/rsakey/revoke",
@@ -1026,7 +1013,7 @@ function revokeDeploykeys( filenames ) {
   } );
 }
 
-// Mesh channels /user/rsakey
+// Mesh channels //mesh/list
 //
 // createChannel
 // revokeChannels [channel_ids]

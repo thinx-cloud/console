@@ -694,30 +694,7 @@ RTM.config( [ "$stateProvider", "$urlRouterProvider", function( $stateProvider, 
       } ]
     }
   } )
-
-  // Rsakey Page
-  /*
-  .state('rsakey', {
-    url: "/rsakey",
-    templateUrl: "views/rsakey.html",
-    data: {pageTitle: 'RSA Key Management'},
-    controller: "RsakeyController",
-    resolve: {
-      deps: [ '$ocLazyLoad', function($ocLazyLoad) {
-        return $ocLazyLoad.load({
-          name: 'RTM',
-          insertBefore: '#ng_load_plugins_before',
-          files: [
-            'js/thinx-api.js',
-            'js/controllers/RsakeyController.js',
-            'js/controllers/LogviewController.js'
-          ]
-        });
-      } ]
-    }
-  })
-  */
-
+  
   // Deploy key Page
   .state( "deploykey", {
     url: "/deploykey",
