@@ -6,6 +6,11 @@ import auth from './auth';
 import repositories from './repositories';
 import apikeys from './apikeys';
 
+// import meshes from './meshes';
+// import enviros from './enviros';
+import rsakeys from './rsakeys';
+import enviros from './enviros';
+
 Vue.use(Vuex);
 
 export default new Vuex.Store({
@@ -13,6 +18,8 @@ export default new Vuex.Store({
     layout,
     auth,
     repositories,
-    apikeys
+    apikeys,
+    rsakeys,
+    enviros
   },
 });

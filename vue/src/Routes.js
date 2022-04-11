@@ -15,6 +15,13 @@ import Dashboard from '@/pages/Visits/Visits';
 
 import RepoManager from '@/pages/Repositories/Repositories';
 import ApikeyManager from '@/pages/Apikeys/Apikeys';
+import RsakeyManager from '@/pages/Rsakeys/Rsakeys';
+
+import EnviroManager from '@/pages/Enviros/Enviros';
+import TransformerManager from '@/pages/Rsakeys/Rsakeys';
+import MeshManager from '@/pages/Rsakeys/Rsakeys';
+import HistoryManager from '@/pages/Rsakeys/Rsakeys';
+import DeviceManager from '@/pages/Rsakeys/Rsakeys';
 
 Vue.use(Router);
 
@@ -44,7 +51,7 @@ export default new Router({
         {
           path: 'devices',
           name: 'Devices',
-          component: RepoManager, // Devices,
+          component: DeviceManager, // Devices,
         },
         {
           path: 'apikeys',
@@ -59,31 +66,31 @@ export default new Router({
         {
           path: 'history',
           name: 'History',
-          component: RepoManager, // History,
+          component: HistoryManager, // History,
         },
 
         {
-          path: 'delpoykeys',
-          name: 'Delpoy Keys',
-          component: RepoManager, // DeploykeyManager,
+          path: 'rsakeys',
+          name: 'RSA Keys',
+          component: RsakeyManager, // DeploykeyManager,
         },
 
         {
           path: 'transformers',
           name: 'Transformers',
-          component: RepoManager, // Transformers,
+          component: TransformerManager, // Transformers,
         },
 
         {
           path: 'enviros',
           name: 'Environment Globals',
-          component: RepoManager, // EnviroManager,
+          component: EnviroManager, // EnviroManager,
         },
 
         {
           path: 'channels',
           name: 'Mesh Channels',
-          component: RepoManager, // ChannelManager,
+          component: MeshManager, // ChannelManager,
         },
 
 // TODO femove template routes
