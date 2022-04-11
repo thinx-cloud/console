@@ -200,18 +200,20 @@
                   <td colspan="2">
                     <h4><i class="fa fa-github"></i> Git Webhook URL</h4>
                     <p>
-                      <small>Enables automatic build when new code is pushed to repo.</small>
-                      The webhook URL you should set on your repo (GitHub, etc.) is <b>https://rtm.thinx.cloud/githook</b>.
-                      You can set GitHub secret for each repository when adding Source.
+                      <small><b href="<ENV::baseUrl>/githook"><ENV::baseUrl>/githook</a> is the the webhook URL you should set on your repo (at GitHub, etc.).
+                        <br>You can set GitHub secret for each repository when adding Source.
+                      </small>
                     </p>
                   </td>
                 </tr>
               </table>
               <!--end profile-preferences-->
+              <!-- TODO DEPRECATED
               <div class="margin-top-10">
                 <a href="#" ng-click="submitProfileFormChanges(['git_webhook'])" class="btn green-haze"> Save Changes </a>
                 <a href="#" class="btn default"> Cancel </a>
               </div>
+              -->
             </form>
           </div>
           <!-- END PREFERENCES TAB -->
