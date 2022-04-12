@@ -5,12 +5,12 @@
       <b-breadcrumb-item active>Management</b-breadcrumb-item>
     </b-breadcrumb>
     <h1 class="page-title">
-      Management - <span class="fw-semi-bold">RSA Keys</span>
+      Management - <span class="fw-semi-bold">Transformers</span>
     </h1>
 
     <p>
       <b-button variant="success" id="create-item" @click="create"
-        >Add RSA Key</b-button
+        >Add Transformer</b-button
       >
       <b-button
         variant="danger"
@@ -21,7 +21,7 @@
       ></b-button>
     </p>
 
-    <p>Manage your private RSA keys</p>
+    <p>Manage your Transformers</p>
 
     <List
       @selection-update="selectionUpdated"
@@ -37,7 +37,7 @@ import List from '@/components/List/List';
 import { mapGetters, mapActions } from 'vuex';
 
 export default {
-  name: "Rsakeys",
+  name: "Transformers",
   components: { List },
   data() {
     return {
@@ -52,8 +52,8 @@ export default {
     this.$watch(() => this.$route.params, () => { this.loadData() }, { immediate: true });
   },
   methods: {
-    ...mapGetters({ getItems: 'rsakeys/getItems', getHeaders: 'rsakeys/getHeaders' }),
-    ...mapActions({ fetchItems: 'rsakeys/fetchItems' }),
+    ...mapGetters({ getItems: 'transformers/getItems', getHeaders: 'transformers/getHeaders' }),
+    ...mapActions({ fetchItems: 'transformers/fetchItems' }),
     create() {
       // TODO implement
     },

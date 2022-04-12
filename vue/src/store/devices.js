@@ -55,13 +55,10 @@ export default {
         state.items = flatItems;
       },
       saveDevices(state, data) { 
-
-        console.log('debuggggg', data);
         let flatItems = [];
         for (let item of data.items) {
           flatItems.push(item);
         }
-        console.log('flatItems', flatItems);
         state.items = flatItems;
       }
     },

@@ -84,7 +84,7 @@
 
 <script>
 import Widget from "@/components/Widget/Widget";
-import { mapMutations, mapGetters } from "vuex";
+import { mapMutations, mapGetters, mapActions } from "vuex";
 
 export default {
   name: "LoginPage",
@@ -95,8 +95,9 @@ export default {
     };
   },
   methods: {
-    ...mapMutations(["setUser", "setAccessToken"]),
-    ...mapGetters(["getBase", "isLoggedIn"]),
+    ...mapMutations({ setAccessToken: "auth/setAccessToken", setUser: "auth/setUser" }),
+    ...mapActions({ fetchProfile: "profile/fetchProfile" }),
+    ...mapGetters({ isLoggedIn: "auth/isLoggedIn", getProfile: "profile/getProfile" }),
     async login(e) {
       e.preventDefault();
 
@@ -106,7 +107,7 @@ export default {
           method: "POST",
           // mode: 'no-cors', // no-cors, *cors, same-origin
           redirect: "manual", // manual, *follow, error
-          credentials: 'include',
+          credentials: "include",
           // credentials: 'include',
           headers: {
             "Content-Type": "application/json",
@@ -121,15 +122,14 @@ export default {
         const { status, success, access_token, redirectURL, g } = await response.json();
 
         if (success) {
-          // TODO set uset
-          const user = { username: "test" };
-          this.setUser(user);
           this.setAccessToken(access_token);
-
           window.localStorage.setItem("accessToken", access_token);
-
           window.localStorage.setItem("authenticated", true);
-          this.$router.push("/app/dashboard");
+
+          this.fetchProfile().then(() => {
+            this.setUser(this.getProfile());
+            this.$router.push("/app/dashboard");
+          });
         } else {
           this.errorMessage = "Invalid username or password";
         }

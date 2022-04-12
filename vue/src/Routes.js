@@ -19,8 +19,8 @@ import RsakeyManager from '@/pages/Rsakeys/Rsakeys';
 import EnviroManager from '@/pages/Enviros/Enviros';
 import ChannelManager from '@/pages/Channels/Channels';
 import DeviceManager from '@/pages/Devices/Devices';
+import TransformerManager from '@/pages/Transformers/Transformers';
 
-import TransformerManager from '@/pages/Rsakeys/Rsakeys';
 import HistoryManager from '@/pages/Rsakeys/Rsakeys';
 
 

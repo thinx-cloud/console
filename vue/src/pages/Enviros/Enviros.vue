@@ -27,6 +27,7 @@
       @selection-update="selectionUpdated"
       :datasource="items"
       :dataheaders="headers"
+      :showLoading="loading"
     ></List>
   </div>
 </template>
@@ -44,17 +45,11 @@ export default {
       selectedCount: 0,
       items: [],
       headers: [],
+      loading: true,
     };
   },
   created() {
-    this.fetchItems().then((enviros) => {
-      // this.repositories = repositories;
-    });
-  },
-  mounted() {
-    this.items = this.getItems();
-    this.headers = this.getHeaders();
-    console.log("getEnviros", this.items);
+    this.$watch(() => this.$route.params, () => { this.loadData() }, { immediate: true });
   },
   methods: {
     ...mapGetters({ getItems: "enviros/getItems", getHeaders: "enviros/getHeaders" }),
@@ -68,6 +63,14 @@ export default {
     selectionUpdated(value) {
       this.isSelected = value.count > 0;
       this.selectedCount = value.count;
+    },
+    loadData() {
+      this.loading = true;
+      this.fetchItems().then((items) => {
+        this.items = this.getItems();
+        this.headers = this.getHeaders();
+        this.loading = false;
+      });
     },
   },
 };

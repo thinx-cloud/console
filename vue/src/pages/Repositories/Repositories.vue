@@ -27,6 +27,7 @@
       @selection-update="selectionUpdated"
       :datasource="repositories"
       :dataheaders="headers"
+      :showLoading="loading"
     ></List>
   </div>
 </template>
@@ -40,26 +41,28 @@ export default {
   components: { List },
   data() {
     return {
-      checkboxes: [false, false, false, false],
       isSelected: false,
       selectedCount: 0,
       repositories: [],
       headers: [],
+      loading: true,
     };
   },
   created() {
-    this.fetchRepositories().then((repositories) => {
-      // this.repositories = repositories;
-    });
-  },
-  mounted() {
-    this.repositories = this.getRepositories();
-    this.headers = this.getHeaders();
-    console.log("getRepositories", this.repositories);
+    this.$watch(
+      () => this.$route.params,
+      () => {
+        this.loadData();
+      },
+      { immediate: true }
+    );
   },
   methods: {
-    ...mapGetters({ getRepositories: 'repositories/getRepositories', getHeaders: 'repositories/getHeaders' }),
-    ...mapActions({ fetchRepositories: 'repositories/fetchRepositories' }),
+    ...mapGetters({
+      getRepositories: "repositories/getRepositories",
+      getHeaders: "repositories/getHeaders",
+    }),
+    ...mapActions({ fetchRepositories: "repositories/fetchRepositories" }),
     create() {
       // TODO implement
     },
@@ -69,6 +72,14 @@ export default {
     selectionUpdated(value) {
       this.isSelected = value.count > 0;
       this.selectedCount = value.count;
+    },
+    loadData() {
+      this.loading = true;
+      this.fetchRepositories().then((repositories) => {
+        this.repositories = this.getRepositories();
+        this.headers = this.getHeaders();
+        this.loading = false;
+      });
     },
   },
 };

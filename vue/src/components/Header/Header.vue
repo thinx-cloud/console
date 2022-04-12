@@ -165,11 +165,13 @@ export default {
   },
   methods: {
     ...mapActions(
-      { fetchProfile: 'profile/fetchProfile' },
-      { switchSidebar: 'layout/switchSidebar' },
-      { changeSidebarActive: 'layout/changeSidebarActive' },
+      { 
+        fetchProfile: 'profile/fetchProfile',
+        switchSidebar: 'layout/switchSidebar',
+        changeSidebarActive: 'layout/changeSidebarActive' 
+      },
     ),
-    ...mapMutations({ setUser: 'auth/setUser' }, { setAccessToken: 'auth/setAccessToken' }),
+    ...mapMutations({ setAccessToken: 'auth/setAccessToken', setUser: 'auth/setUser' }),
     ...mapGetters({ getProfile: 'profile/getProfile' }),
     switchSidebarMethod() {
       if (!this.sidebarClose) {

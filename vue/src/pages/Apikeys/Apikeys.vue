@@ -27,6 +27,7 @@
       @selection-update="selectionUpdated"
       :datasource="items"
       :dataheaders="headers"
+      :showLoading="loading"
     ></List>
   </div>
 </template>
@@ -36,7 +37,7 @@ import List from '@/components/List/List';
 import { mapGetters, mapActions } from 'vuex';
 
 export default {
-  name: "Repositories",
+  name: "Apikeys",
   components: { List },
   data() {
     return {
@@ -44,17 +45,11 @@ export default {
       selectedCount: 0,
       items: [],
       headers: [],
+      loading: true,
     };
   },
   created() {
-    this.fetchItems().then((apikeys) => {
-      // this.repositories = repositories;
-    });
-  },
-  mounted() {
-    this.items = this.getItems();
-    this.headers = this.getHeaders();
-    console.log('getApikeys', this.items);
+    this.$watch(() => this.$route.params, () => { this.loadData() }, { immediate: true });
   },
   methods: {
     ...mapGetters({ getItems: 'apikeys/getItems', getHeaders: 'apikeys/getHeaders' }),
@@ -68,6 +63,14 @@ export default {
     selectionUpdated(value) {
       this.isSelected = value.count > 0;
       this.selectedCount = value.count;
+    },
+    loadData() {
+      this.loading = true;
+      this.fetchItems().then((items) => {
+        this.items = this.getItems();
+        this.headers = this.getHeaders();
+        this.loading = false;
+      });
     },
   },
 };

@@ -1,5 +1,6 @@
 <template>
-  <table class="table table-striped">
+  <div v-if="showLoading" class="loading-indicator">Loading...</div>
+  <table v-else class="table table-striped">
     <thead>
       <tr>
         <th>
@@ -45,18 +46,15 @@ export default {
   name: "List",
   props: {
     size: { type: Number, default: 21 },
-    datasource: [],
-    dataheaders: [],
+    datasource: { type: Array, default: [] },
+    dataheaders: { type: Array, default: [] },
+    showLoading: { type: Boolean, default: true },
   },
   data() {
     return {
-      checkboxes: [],
       selectedItems: [],
     };
   },
-  // mounted() {
-  // this.checkboxes = new Array(this.datasource.length).fill(false);
-  // },
   computed: {
     filteredHeaders() {
       return this.dataheaders.filter((h) => h.pos !== null);
