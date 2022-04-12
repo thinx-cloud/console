@@ -11,8 +11,8 @@ import enviros from './enviros';
 import devices from './devices';
 import profile from './profile';
 
-//import history from './history';
 import transformers from './transformers';
+import history from './history';
 
 Vue.use(Vuex);
 
@@ -25,8 +25,12 @@ export default new Vuex.Store({
     rsakeys,
     enviros,
     channels,
-    transformers,
+    
     profile,
-    devices
+    transformers,
+
+    devices,
+
+    history
   },
 });

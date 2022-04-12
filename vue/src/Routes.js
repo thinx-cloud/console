@@ -21,8 +21,7 @@ import ChannelManager from '@/pages/Channels/Channels';
 import DeviceManager from '@/pages/Devices/Devices';
 import TransformerManager from '@/pages/Transformers/Transformers';
 
-import HistoryManager from '@/pages/Rsakeys/Rsakeys';
-
+import HistoryManager from '@/pages/History/History';
 
 
 Vue.use(Router);

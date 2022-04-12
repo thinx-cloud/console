@@ -49,13 +49,7 @@ export default {
     };
   },
   created() {
-    this.$watch(
-      () => this.$route.params,
-      () => {
-        this.loadData();
-      },
-      { immediate: true }
-    );
+    this.$watch(() => this.$route.params, () => { this.loadData() }, { immediate: true });
   },
   methods: {
     ...mapGetters({
