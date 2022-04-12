@@ -26,7 +26,11 @@
       <b-nav-item-dropdown right class="avatar-toggle" menu-class="py-0">
         <template slot="button-content">
           <span class="avatar rounded-circle thumb-sm-1 float-left mr-2">
-            <img class="rounded-circle" :src="require(`@/assets/${avatarFallback}`)" alt="..." />
+            <img
+              class="rounded-circle"
+              :src="avatarFallback"
+              alt="..."
+            />
           </span>
           <span class="text-white"
             >{{ this.profile.first_name }} {{ this.profile.last_name }}</span
@@ -165,14 +169,15 @@ export default {
       sidebarStatic: (state) => state.sidebarStatic,
     }),
     avatarFallback() {
-      // const images = require.context('../../assets/thinx/', false, /\.png$/);
-      // console.log('images', images('./' + defaultAvatar + ".png"));
-      const fallbackPath = 'thinx/default_avatar_sm.png';
-      if (this.profile && typeof this.profile.avatar !== "undefined" && this.profile.avatar.length > 0) {
-        console.log("avatar found", this.profile.avatar);
+      const fallbackPath = "thinx/default_avatar_sm.png";
+      if (
+        this.profile &&
+        typeof this.profile.avatar !== "undefined" &&
+        this.profile.avatar.length > 0
+      ) {
         return this.profile.avatar;
       }
-      return fallbackPath;
+      return require(`@/assets/${fallbackPath}`);
     },
   },
   methods: {
