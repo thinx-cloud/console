@@ -13,7 +13,7 @@ import profile from './profile';
 
 import transformers from './transformers';
 import buildlog from './buildlog';
-import auditlog from './auditlog';
+import auditlog from './auditlog.js';
 
 Vue.use(Vuex);
 

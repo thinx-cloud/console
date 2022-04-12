@@ -32,7 +32,12 @@ export default {
     this.$watch(
       () => this.$route.params,
       () => {
-        this.loadData();
+          console.log('itemslength', this.getAuditItems().length);
+        if (this.getAuditItems().length == 0) {
+            this.loadData();
+        } else {
+            this.refreshData();
+        }
       },
       { immediate: true }
     );
@@ -51,19 +56,24 @@ export default {
     loadData() {
       this.loading = true;
       this.headers = this.getAuditHeaders();
-
       this.fetchBuildlog().then((items) => {
         console.log("# fetchBuildlog");
         this.buildlog = this.getBuildItems();
-        
         this.fetchAuditlog().then((items) => {
             console.log("# fetchAuditlog");
             this.auditlog = this.getAuditItems();
             this.loading = false;
         });
-
       });
     },
+    refreshData() {
+        this.loading = false;
+        this.auditlog = this.getAuditItems();
+        this.buildlog = this.getBuildItems();
+
+        this.headers = this.getAuditHeaders();
+        console.log('TODO refresh data on view enter');
+    }
   },
 };
 </script>
