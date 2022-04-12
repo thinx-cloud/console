@@ -29,30 +29,40 @@ export default {
     };
   },
   created() {
-    this.$watch(() => this.$route.params, () => { this.loadData() }, { immediate: true });
+    this.$watch(
+      () => this.$route.params,
+      () => {
+        this.loadData();
+      },
+      { immediate: true }
+    );
   },
   methods: {
-    ...mapGetters({ getItems: "history/getItems", getHeaders: "history/getHeaders" }),
-    ...mapActions({ fetchAuditlog: "history/fetchAuditlog", fetchBuildlog: "history/fetchBuildLog" }),
-
+    ...mapGetters({ 
+        getAuditItems: "auditlog/getItems", 
+        getAuditHeaders: "auditlog/getHeaders",
+        getBuildItems: "buildlog/getItems", 
+        getBuildHeaders: "buildlog/getHeaders",
+    }),
+    ...mapActions({
+      fetchAuditlog: "auditlog/fetchAuditlog",
+      fetchBuildlog: "buildlog/fetchBuildLog",
+    }),
     loadData() {
-        this.loading = true;
-        this.headers = this.getHeaders();
+      this.loading = true;
+      this.headers = this.getAuditHeaders();
 
-        this.fetchBuildlog().then((items) => {
-            console.log("# fetchBuildlog");
-            this.fetchAuditlog().then((items) => {
-                console.log("# fetchAuditlog");
-
-                this.items = this.getItems();
-                this.headers = this.getHeaders();
-
-                this.loading = false;
-            });
-
+      this.fetchBuildlog().then((items) => {
+        console.log("# fetchBuildlog");
+        this.buildlog = this.getBuildItems();
+        
+        this.fetchAuditlog().then((items) => {
+            console.log("# fetchAuditlog");
+            this.auditlog = this.getAuditItems();
+            this.loading = false;
         });
 
-  
+      });
     },
   },
 };

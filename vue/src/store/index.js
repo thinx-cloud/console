@@ -12,7 +12,8 @@ import devices from './devices';
 import profile from './profile';
 
 import transformers from './transformers';
-import history from './history';
+import buildlog from './buildlog';
+import auditlog from './auditlog';
 
 Vue.use(Vuex);
 
@@ -31,6 +32,7 @@ export default new Vuex.Store({
 
     devices,
 
-    history
+    buildlog,
+    auditlog,
   },
 });
