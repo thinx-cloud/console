@@ -26,9 +26,11 @@
       <b-nav-item-dropdown right class="avatar-toggle" menu-class="py-0">
         <template slot="button-content">
           <span class="avatar rounded-circle thumb-sm-1 float-left mr-2">
-            <img class="rounded-circle" src="../../assets/people/a7.png" alt="..." />
+            <img class="rounded-circle" :src="require(`@/assets/${avatarFallback}`)" alt="..." />
           </span>
-          <span class="text-white">{{ this.profile.first_name }} {{ this.profile.last_name }}</span>
+          <span class="text-white"
+            >{{ this.profile.first_name }} {{ this.profile.last_name }}</span
+          >
           <span class="mx-2 circle bg-danger text-dark fs-sm fw-bold">9</span>
           <i class="fi flaticon-arrow-down" />
         </template>
@@ -162,17 +164,25 @@ export default {
       sidebarClose: (state) => state.sidebarClose,
       sidebarStatic: (state) => state.sidebarStatic,
     }),
+    avatarFallback() {
+      // const images = require.context('../../assets/thinx/', false, /\.png$/);
+      // console.log('images', images('./' + defaultAvatar + ".png"));
+      const fallbackPath = 'thinx/default_avatar_sm.png';
+      if (this.profile && typeof this.profile.avatar !== "undefined" && this.profile.avatar.length > 0) {
+        console.log("avatar found", this.profile.avatar);
+        return this.profile.avatar;
+      }
+      return fallbackPath;
+    },
   },
   methods: {
-    ...mapActions(
-      { 
-        fetchProfile: 'profile/fetchProfile',
-        switchSidebar: 'layout/switchSidebar',
-        changeSidebarActive: 'layout/changeSidebarActive' 
-      },
-    ),
-    ...mapMutations({ setAccessToken: 'auth/setAccessToken', setUser: 'auth/setUser' }),
-    ...mapGetters({ getProfile: 'profile/getProfile' }),
+    ...mapActions({
+      fetchProfile: "profile/fetchProfile",
+      switchSidebar: "layout/switchSidebar",
+      changeSidebarActive: "layout/changeSidebarActive",
+    }),
+    ...mapMutations({ setAccessToken: "auth/setAccessToken", setUser: "auth/setUser" }),
+    ...mapGetters({ getProfile: "profile/getProfile" }),
     switchSidebarMethod() {
       if (!this.sidebarClose) {
         this.switchSidebar(true);
@@ -191,19 +201,12 @@ export default {
       this.$router.push("/login");
     },
   },
-  created() {
-
-    
-  },
+  created() {},
   mounted() {
     //this.profile = this.getProfile();
     this.fetchProfile().then(() => {
       this.profile = this.getProfile();
-      console.log(
-        "--- PROFILE DEBUG ---",
-        this.profile,
-      );
-
+      console.log("--- PROFILE DEBUG ---", this.profile);
     });
   },
 };
