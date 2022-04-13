@@ -40,8 +40,9 @@ COPY package.json ./
 
 COPY . .
 
-RUN npm install -g npm \
-    && npm install --only-prod . \
+RUN npm install . \
+    && npm install -g npm@8.5.5 \
+    && npm audit fix --force \
     && npm run build
 
 #
