@@ -40,9 +40,11 @@ COPY package.json ./
 
 COPY . .
 
-RUN npm install . \
-    && npm install -g npm@8.5.5 \
-    && npm audit fix --force \
+# this should be in the build-image that will may go change for Vue
+RUN apt-get update && apt-get install -y git
+
+RUN npm install -g npm \
+    && npm install . \
     && npm run build
 
 #
