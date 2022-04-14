@@ -569,8 +569,7 @@ function init( $rootScope, $scope ) {
   var dangerStr = "error";
   var invalidStr = "invalid";
 
-  function updateAuditHistory( data ) {
-    var response = JSON.parse( data );
+  function updateAuditHistory( response ) {
     console.log( "/////// auditHistory response:" );
 
     if ( typeof( response.success ) !== "undefined" && response.success ) {
@@ -669,9 +668,7 @@ function init( $rootScope, $scope ) {
     return 0;
   }
 
-  function updateBuildHistory( data ) {
-    var response = JSON.parse( data );
-
+  function updateBuildHistory( response ) {
     if ( typeof( response.success ) !== "undefined" && response.success ) {
       console.log( "buildHistory list length:", response.builds.length );
       $rootScope.buildHistory = response.builds;
