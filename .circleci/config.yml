@@ -136,7 +136,7 @@ jobs:
           registry: registry.thinx.cloud:5000
           docker-context: vue
           image: thinx/console
-          dockerfile: src/Dockerfile
+          dockerfile: vue/Dockerfile
           extra_build_args: |
             --build-arg ROLLBAR_ACCESS_TOKEN=${ROLLBAR_ACCESS_TOKEN} \
             --build-arg LANDING_HOSTNAME=${LANDING_HOSTNAME} \
