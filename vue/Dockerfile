@@ -38,7 +38,7 @@ COPY package.json ./
 
 COPY . .
 
-RUN npm install --global yarn && \
+RUN npm install yarn && \
     yarn && \
     yarn build
 
