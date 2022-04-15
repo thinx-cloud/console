@@ -185,6 +185,8 @@ workflows:
             - dockerhub
             - thinx-docker-repo
             - sonarcloud
+          requires:
+            - test
           filters:
             branches:
               only:
@@ -195,6 +197,8 @@ workflows:
             - dockerhub
             - thinx-docker-repo
             - sonarcloud
+          #requires:
+          #  - test_vue
           # filters:
           #   branches:
           #     only:
