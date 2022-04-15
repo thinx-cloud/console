@@ -41,8 +41,7 @@ COPY . .
 
 RUN npm install yarn
 
-RUN  yarn && \
-    yarn build
+RUN yarn && yarn build
 
 #
 # Deployment Image
