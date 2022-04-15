@@ -38,8 +38,9 @@ COPY package.json ./
 
 COPY . .
 
-RUN yarn \
-    && yarn build
+RUN npm install --global yarn && \
+    yarn && \
+    yarn build
 
 #
 # Deployment Image
