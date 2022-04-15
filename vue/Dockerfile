@@ -39,8 +39,9 @@ COPY package.json ./
 
 COPY . .
 
-RUN npm install yarn && \
-    yarn && \
+RUN npm install yarn
+
+RUN  yarn && \
     yarn build
 
 #
