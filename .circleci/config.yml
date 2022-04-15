@@ -85,7 +85,7 @@ jobs:
           registry: registry.thinx.cloud:5000
           tag: 'swarm'
 
-test-vue:
+  test_vue:
 
     working_directory: /root/project/src
     
@@ -125,7 +125,7 @@ test-vue:
 
       - sonarcloud/scan
 
-  deploy-vue:
+  deploy_vue:
     executor: docker/docker
     steps:
       - setup_remote_docker
@@ -164,7 +164,7 @@ workflows:
       - test:
           context: sonarcloud
 
-      - test-vue:
+      - test_vue:
           context: sonarcloud
 
       - ggshield/scan:
@@ -189,7 +189,7 @@ workflows:
               only:
                 - thinx-staging
 
-      - deploy-vue:
+      - deploy_vue:
           context:
             - dockerhub
             - thinx-docker-repo
