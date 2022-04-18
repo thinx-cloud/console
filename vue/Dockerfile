@@ -38,7 +38,9 @@ COPY package.json ./
 
 COPY . .
 
-RUN yarn && yarn build
+RUN yarn
+
+RUN yarn build
 
 #
 # Deployment Image
