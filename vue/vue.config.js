@@ -1,9 +1,9 @@
-let publicPath = process.env.NODE_ENV === 'production' ? 'light-blue-vue-admin/' : '/';
+let publicPath = process.env.NODE_ENV === 'production' ? '/' : '/';
 
 module.exports = {
   publicPath,
   productionSourceMap: false,
   devServer: {
-    proxy: 'https://rtm.thinx.cloud/api',
+    proxy: 'https://console.thinx.cloud/api',
   }
 };
