@@ -1,7 +1,7 @@
 {
-  "username": "test",
-  "password": "tset",
-  "email": "thinxtest@qool.cz",
+  "username": "dynamic",
+  "password": "dynamic",
+  "email": "dynamic@example.com",
   "new": {
     "first_name": "cypress",
     "last_name": "test",
