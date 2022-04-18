@@ -101,7 +101,7 @@ jobs:
           command: |
             export ENV NODE_OPTIONS=--openssl-legacy-provider
             cd vue
-            npm install -g yarn
+            npm install -g yarn vite
             yarn
             yarn build
             yarn test:unit:ci
