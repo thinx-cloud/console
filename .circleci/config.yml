@@ -171,6 +171,10 @@ workflows:
       - test:
           name: Test legacy console
           context: sonarcloud
+          filters:
+            branches:
+              only:
+                - thinx-staging
 
       - test_vue:
           name: Test Vue console
