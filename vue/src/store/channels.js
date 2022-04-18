@@ -37,7 +37,7 @@ export default {
           accessToken = window.localStorage.getItem("accessToken");
         }
         
-        const response = await fetch("/mesh/list", {
+        const response = await fetch( process.env.API_HOSTNAME + "/mesh/list", {
           method: "GET",
           credentials: 'include',
           headers: {

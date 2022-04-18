@@ -51,7 +51,7 @@ export default {
           accessToken = window.localStorage.getItem("accessToken");
         }
         
-        const response = await fetch("/user/apikey/list", {
+        const response = await fetch( process.env.API_HOSTNAME + "/user/apikey/list", {
           method: "GET",
           credentials: 'include',
           headers: {

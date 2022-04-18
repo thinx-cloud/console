@@ -103,7 +103,7 @@ export default {
 
       if (username.length !== 0 && password.length !== 0) {
         // TODO start JWT login scenario
-        const response = await fetch("/login", {
+        const response = await fetch(process.env.API_HOSTNAME + "/login", {
           method: "POST",
           // mode: 'no-cors', // no-cors, *cors, same-origin
           redirect: "manual", // manual, *follow, error

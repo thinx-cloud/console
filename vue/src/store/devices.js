@@ -70,7 +70,7 @@ export default {
           accessToken = window.localStorage.getItem("accessToken");
         }
         
-        const response = await fetch("/user/devices", {
+        const response = await fetch( process.env.API_HOSTNAME + "/user/devices", {
           method: "GET",
           credentials: 'include',
           headers: {

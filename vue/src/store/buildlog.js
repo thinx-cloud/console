@@ -44,7 +44,7 @@ export default {
               accessToken = window.localStorage.getItem("accessToken");
           }
 
-          const response = await fetch("/user/logs/build/list", {
+          const response = await fetch( process.env.API_HOSTNAME + "/user/logs/build/list", {
               method: "GET",
               credentials: 'include',
               headers: {

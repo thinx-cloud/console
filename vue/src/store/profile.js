@@ -88,7 +88,7 @@ export default {
           accessToken = window.localStorage.getItem("accessToken");
         }
         
-        const response = await fetch("/user/profile", {
+        const response = await fetch( process.env.API_HOSTNAME + "/user/profile", {
           method: "GET",
           credentials: 'include',
           headers: {
