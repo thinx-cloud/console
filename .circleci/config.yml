@@ -100,9 +100,11 @@ jobs:
           name: Install dependencies and build
           command: |
             cd vue
-            npm install yarn
+            npm install -g yarn
             yarn
             yarn build
+            yarn test:unit:ci
+#            yarn test:e2e:ci
 
       - store_test_results:
                 name: Collect test results
@@ -129,7 +131,8 @@ jobs:
   deploy_vue:
     executor: docker/docker
     steps:
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 19.03.13
       - checkout
       - docker/check:
           registry: registry.thinx.cloud:5000
@@ -149,12 +152,12 @@ jobs:
             --build-arg ENTERPRISE=${ENTERPRISE} \
             --build-arg ENVIRONMENT=${ENVIRONMENT} \
             --build-arg COMMIT_ID=$CIRCLE_SHA1 \
-          tag: 'vue'
+          tag: 'public'
       - docker/push:
           digest-path: /tmp/digest.txt
           image: thinx/console
           registry: registry.thinx.cloud:5000
-          tag: 'vue'
+          tag: 'public'
 
 workflows:
 
