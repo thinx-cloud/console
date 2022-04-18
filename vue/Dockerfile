@@ -30,7 +30,7 @@ ENV NGINX_HOST=${WEB_HOSTNAME}
 ENV NGINX_PORT=80
 ENV CACHEBUST=1
 
-ENV NODE_OPTIONS=--openssl-legacy-provider
+# ENV NODE_OPTIONS=--openssl-legacy-provider
 
 # Create app directory
 WORKDIR /home/node/build
