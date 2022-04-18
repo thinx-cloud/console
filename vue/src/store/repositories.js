@@ -75,7 +75,7 @@ export default {
       },
     },
     getters: {
-        getRepositories(state) {
+        getItems(state) {
           return state.repositories;
         },
         getHeaders(state) {

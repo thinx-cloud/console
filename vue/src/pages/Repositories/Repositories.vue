@@ -49,11 +49,22 @@ export default {
     };
   },
   created() {
-    this.$watch(() => this.$route.params, () => { this.loadData() }, { immediate: true });
+    this.$watch(
+      () => this.$route.params,
+      () => {
+        console.log("TODO itemslength", this.getItems().length);
+        if (this.getItems().length == 0) {
+          this.loadData();
+        } else {
+          this.refreshData();
+        }
+      },
+      { immediate: true }
+    );
   },
   methods: {
     ...mapGetters({
-      getRepositories: "repositories/getRepositories",
+      getItems: "repositories/getItems",
       getHeaders: "repositories/getHeaders",
     }),
     ...mapActions({ fetchRepositories: "repositories/fetchRepositories" }),
@@ -70,10 +81,15 @@ export default {
     loadData() {
       this.loading = true;
       this.fetchRepositories().then((repositories) => {
-        this.repositories = this.getRepositories();
+        this.repositories = this.getItems();
         this.headers = this.getHeaders();
         this.loading = false;
       });
+    },
+    refreshData() {
+      this.loading = false;
+      this.repositories = this.getItems();
+      this.headers = this.getHeaders();
     },
   },
 };

@@ -32,7 +32,7 @@ export default {
     this.$watch(
       () => this.$route.params,
       () => {
-          console.log('itemslength', this.getAuditItems().length);
+        console.log('TODO itemslength', this.getAuditItems().length);
         if (this.getAuditItems().length == 0) {
             this.loadData();
         } else {
@@ -70,7 +70,6 @@ export default {
         this.loading = false;
         this.auditlog = this.getAuditItems();
         this.buildlog = this.getBuildItems();
-
         this.headers = this.getAuditHeaders();
         console.log('TODO refresh data on view enter');
     }

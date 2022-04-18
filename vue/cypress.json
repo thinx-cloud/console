@@ -1,5 +1,15 @@
 {
-  "baseUrl": "http://localhost:5050",
+  "baseUrl": "http://localhost:3000",
+
+  "defaultCommandTimeout": 10000,
+  "execTimeout": 60000,
+  "taskTimeout": 60000,
+  "pageLoadTimeout": 60000,
+  "requestTimeout": 10000,
+  "responseTimeout": 30000,
+  "slowTestThreshold": 10000,
+  "chromeWebSecurity": false,
+
   "component": {
     "componentFolder": "src",
     "testFiles": "./cypress/**/*.spec.{js,ts,jsx,tsx}"

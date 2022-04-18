@@ -1,0 +1,12 @@
+{
+  "username": "test",
+  "password": "tset",
+  "email": "dynamic@example.com",
+  "new": {
+    "first_name": "cypress",
+    "last_name": "test",
+    "owner": "cypresstest",
+    "email": "cypresstest@thinx.cloud"
+  },
+  "serverUrl": ""
+}
