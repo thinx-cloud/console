@@ -167,6 +167,7 @@ workflows:
     jobs:
 
       - test:
+          name: Test legacy console
           context: sonarcloud
 
       - test_vue:
@@ -192,7 +193,7 @@ workflows:
             - thinx-docker-repo
             - sonarcloud
           requires:
-            - test
+            - Test legacy console
           filters:
             branches:
               only:
