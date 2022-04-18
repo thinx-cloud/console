@@ -21,6 +21,7 @@ jobs:
       - run:
           name: Install dependencies and build
           command: |
+            export ENV NODE_OPTIONS=--openssl-legacy-provider
             apt install -y unzip
             cd src
             npm install
