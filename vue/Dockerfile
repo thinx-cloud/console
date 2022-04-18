@@ -1,7 +1,6 @@
 # docker build -t thinx/console .
 
-#FROM thinxcloud/console-build-env
-FROM thinxcloud/base:1.14
+FROM thinxcloud/console-build-env:vue
 
 ARG COMPOSE_PROJECT_NAME
 ARG LANDING_HOSTNAME
@@ -38,8 +37,6 @@ WORKDIR /home/node/build
 COPY package.json ./
 
 COPY . .
-
-RUN npm install yarn
 
 RUN yarn && yarn build
 
