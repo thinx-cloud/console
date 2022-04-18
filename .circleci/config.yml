@@ -104,6 +104,8 @@ jobs:
             npm install -g yarn vite
             yarn
             yarn build
+            pwd
+            ls -la
             yarn test:unit:ci
 #            yarn test:e2e:ci
 
