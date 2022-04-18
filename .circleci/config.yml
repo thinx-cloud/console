@@ -169,6 +169,7 @@ workflows:
           context: sonarcloud
 
       - test_vue:
+          name: Test Vue console
           context: sonarcloud
 
       - ggshield/scan:
@@ -184,6 +185,7 @@ workflows:
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
       - deploy:
+          name: Deploy legacy console
           context:
             - dockerhub
             - thinx-docker-repo
@@ -196,12 +198,13 @@ workflows:
                 - thinx-staging
 
       - deploy_vue:
+          name: Publish Vue console (does not deploy)
           context:
             - dockerhub
             - thinx-docker-repo
             - sonarcloud
-          #requires:
-          #  - test_vue
+          requires:
+            - Test Vue console
           # filters:
           #   branches:
           #     only:
