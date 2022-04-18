@@ -90,7 +90,7 @@ jobs:
     working_directory: /root/project/src
     
     docker:
-      - image: thinxcloud/console-build-env:latest
+      - image: thinxcloud/console-build-env:vue
     
     steps:
       
