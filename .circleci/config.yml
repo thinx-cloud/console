@@ -113,15 +113,15 @@ jobs:
           # or the path of a single file containing all test results.
           # Make sure that your path value is not a hidden folder (example: .my_hidden_directory would be an invalid format).
 
-       - store_artifacts:
-           name: Collect screenshots
-           path: ./vue/cypress/screenshots
-           destination: cypress-screenshots
-      
-       - store_artifacts:
-           name: Collect videos
-           path: ./vue/cypress/videos
-           destination: cypress-videos
+      - store_artifacts:
+          name: Collect screenshots
+          path: ./vue/cypress/screenshots
+          destination: cypress-screenshots
+    
+      - store_artifacts:
+          name: Collect videos
+          path: ./vue/cypress/videos
+          destination: cypress-videos
 
       - sonarcloud/scan
 
