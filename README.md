@@ -28,6 +28,12 @@ You can build your own image using `docker build -t yourname\console` and follow
 
 **Security Notice: Do not push build results to public Docker Hub repository or your envinronment variables might become public. Do not store environment variables in your repo's fork.**
 
+## Testing in Docker
+
+Example:
+    
+    docker run -ti -v $(pwd):/var/work thinxcloud/console-build-env:vue cd /var/work && npm run test:unit
+
 
 ## License
 
