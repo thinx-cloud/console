@@ -11,7 +11,7 @@ set +e
 if [[ ${ENVIRONMENT} == "test" ]]; then
   echo "[thinx-entrypoint] Running in TEST MODE!"
   
-  yarn test:e2e:ci
+  yarn test
 
   # this is broken
   # bash <(curl -Ls https://coverage.codacy.com/get.sh) report --project-token ${CODACY_PROJECT_TOKEN}

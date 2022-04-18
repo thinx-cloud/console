@@ -101,12 +101,8 @@ jobs:
           command: |
             export ENV NODE_OPTIONS=--openssl-legacy-provider
             cd vue
-            npm install -g yarn vite cypress
             yarn
-            yarn build
-            pwd
-            ls -la
-            npm run test:e2e:ci
+            yarn test
 
       - store_test_results:
                 name: Collect test results
