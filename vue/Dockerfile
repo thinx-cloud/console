@@ -1,6 +1,6 @@
 # docker build -t thinx/console .
 
-FROM thinxcloud/console-build-env
+FROM thinxcloud/console-build-env:vue
 
 ARG COMPOSE_PROJECT_NAME
 ARG LANDING_HOSTNAME
