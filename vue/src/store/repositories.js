@@ -57,7 +57,7 @@ export default {
           accessToken = window.localStorage.getItem("accessToken");
         }
         
-        const response = await fetch( process.env.API_HOSTNAME + "/user/sources/list", {
+        const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/user/sources/list", {
           method: "GET",
           credentials: 'include',
           headers: {

@@ -3,21 +3,22 @@
     <b-container>
       <div class="errorContainer mx-auto">
         <h1 class="errorCode">404</h1>
-        <p class="errorInfo">
-            Oops, it seems this page does not exist.
-        </p>
-        <p class="errorHelp mb-3">
-            If you are sure there must be a page, search for it.
-        </p>
+        <p class="errorInfo">Oops, it seems this page does not exist.</p>
+        <p class="errorHelp mb-3">If you are sure there must be a page, search for it.</p>
         <b-form>
           <b-form-group>
-            <b-form-input class="input-transparent" size="lg" type="text" placeholder="Search Pages" />
+            <b-form-input
+              class="input-transparent"
+              size="lg"
+              type="text"
+              placeholder="Search Pages"
+            />
           </b-form-group>
           <router-link to="/app/dashboard" custom v-slot="{ navigate }">
             <a @click="navigate" class="d-block text-center mb-4">
-                <b-button class="errorBtn" type="submit" variant="inverse"> 
-                  Search <i class="fa fa-search ml-xs" />
-                </b-button>
+              <b-button class="errorBtn" type="submit" variant="inverse">
+                Search <i class="fa fa-search ml-xs" />
+              </b-button>
             </a>
           </router-link>
         </b-form>
@@ -31,7 +32,7 @@
 
 <script>
 export default {
-  name: 'ErrorPage',
+  name: "ErrorPage",
 };
 </script>
 

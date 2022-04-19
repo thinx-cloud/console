@@ -59,7 +59,7 @@ export default {
           accessToken = window.localStorage.getItem("accessToken");
         }
         
-        const response = await fetch( process.env.API_HOSTNAME + "/user/rsakey/list", {
+        const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/user/rsakey/list", {
           method: "GET",
           credentials: 'include',
           headers: {

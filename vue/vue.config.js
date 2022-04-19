@@ -5,6 +5,6 @@ module.exports = {
   lintOnSave: process.env.NODE_ENV !== 'production',
   productionSourceMap: false,
   devServer: {
-    proxy: 'https://console.thinx.cloud/api',
+    proxy: 'https://console.thinx.cloud',
   }
 };
