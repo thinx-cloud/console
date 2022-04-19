@@ -11,6 +11,7 @@
           <b-alert class="alert-sm" variant="danger" :show="!!errorMessage">
             {{ errorMessage }}
           </b-alert>
+
           <!--
           <b-form-group label="Email" label-for="email">
             <b-input-group>
@@ -78,6 +79,7 @@
     </b-container>
     <footer class="auth-footer">
       THiNX Console by <a href="https://thinx.cloud" target="_blank">THiNX Cloud</a>
+      <br>{{ env }}
     </footer>
   </div>
 </template>
@@ -92,6 +94,7 @@ export default {
   data() {
     return {
       errorMessage: null,
+      env: process.env,
     };
   },
   methods: {
