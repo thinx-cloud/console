@@ -1,45 +1,15 @@
   export default new class {
 
-    async $get(path, accessToken) {
-        const baseApiUrl = typeof process.env.VUE_APP_API_HOSTNAME !== 'undefined' ? process.env.VUE_APP_API_HOSTNAME : '';
-
-        const response = await fetch(baseApiUrl + path, this.composeOptions('GET', accessToken));
-        const result = await response.json();
-        
-        if (typeof result.success !== 'undefined' && result.success) {
-          let keys = Object.keys(result).filter( key => key !== 'success' );
-          if (keys.length > 2) {
-            console.log('WARN unusual response', result);
-          };
-          console.log('DEBUG keys', keys);
-          return {
-            'success': result.success,
-            'data': result[keys[0]]
-          };
-        } else {
-           console.log('WARN unusual response', result);
-          return result;
-        }
-    }
-
-    async $post(path, accessToken, body) {
-      const response = await fetch(baseApiUrl + path, this.composeOptions('POST', accessToken, body));
-      const result = await response.json();
-
-      if (typeof result.success !== 'undefined' && result.success) {
-        let keys = Object.keys(result).filter( key => key !== 'success' );
-        if (keys.length > 2) {
-          console.log('WARN unusual response', result);
-        };
-        console.log('DEBUG keys', keys);
-        return {
-          'success': result.success,
-          'data': result[keys[0]]
-        };
-      } else {
-         console.log('WARN unusual response', result);
-        return result;
+    composeOptions(method, accessToken, body) {
+      let options = {
+        method: method,
+        credentials: 'include',
+        headers: this.composeHeaders(accessToken),
+      };
+      if (typeof body !== 'undefined') {
+        options['body'] = body;
       }
+      return options;
     }
 
     composeHeaders(accessToken) {
@@ -51,15 +21,32 @@
       }
     }
 
-    composeOptions(method, accessToken, body) {
-      let options = {
-        method: method,
-        credentials: 'include',
-        headers: this.composeHeaders(accessToken),
-      };
-      if (typeof body !== 'undefined') {
-        options['body'] = body;
+    parseResult(result) {
+      if (typeof result.success !== 'undefined' && result.success) {
+        let keys = Object.keys(result).filter( key => key !== 'success' );
+        if (keys.length > 2) {
+          console.log('WARN unusual response', result);
+        }
+        console.log('DEBUG keys', keys);
+        return {
+          'success': result.success,
+          'data': result[keys[0]]
+        };
+      } else {
+         console.log('WARN unusual response', result);
+        return result;
       }
-      return options;
+    }
+
+    async $get(path, accessToken) {
+        const response = await fetch(baseApiUrl + path, this.composeOptions('GET', accessToken));
+        const result = await response.json();
+        return parseResult(result);
+    }
+
+    async $post(path, accessToken, body) {
+        const response = await fetch(baseApiUrl + path, this.composeOptions('POST', accessToken, body));
+        const result = await response.json();
+        return parseResult(result);
     }
   }
