@@ -33,7 +33,7 @@ export default {
     },
     actions: {
       async fetchItems({ state, commit, rootState }) {
-        const result = await api.$get('/mesh/list', rootState.auth.accessToken);                
+        const result = await api.$get('/mesh/list', rootState.auth.accessToken);
         if (result.success) {
           commit('saveItems', { items: result.data });
         }
