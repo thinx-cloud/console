@@ -1,3 +1,5 @@
+import api from '../core/api';
+
 export default {
     namespaced: true,
     state: {
@@ -44,26 +46,10 @@ export default {
     },
     actions: {
       async fetchAuditlog({ state, commit, rootState }) {
-
-        let accessToken = rootState.auth.accessToken;
-        if (typeof rootState.auth.accessToken !== 'undefined') {
-            accessToken = window.localStorage.getItem("accessToken");
+        const result = await api.$get('/user/logs/audit', rootState.auth.accessToken);                
+        if (result.success) {
+          commit('saveAuditItems', { items: result.data });
         }
-
-        const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/user/logs/audit", {
-            method: "GET",
-            credentials: 'include',
-            headers: {
-                "Content-Type": "application/json",
-                'Authorization': 'Bearer ' + accessToken,
-                'Access-Control-Allow-Origin': 'http://localhost:3080',
-            },
-        });
-        const { success, logs } = await response.json();
-        if (success) {
-            commit('saveAuditItems', { items: logs });
-        }
-
         return state.items;
       },
     },

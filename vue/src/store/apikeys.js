@@ -1,3 +1,5 @@
+import api from '../core/api';
+
 export default {
     namespaced: true,
     state: {
@@ -45,25 +47,9 @@ export default {
     },
     actions: {
       async fetchItems({ state, commit, rootState }) {
-
-        let accessToken = rootState.auth.accessToken;
-        if (typeof rootState.auth.accessToken !== 'undefined') {
-          accessToken = window.localStorage.getItem("accessToken");
-        }
-        
-        const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/user/apikey/list", {
-          method: "GET",
-          credentials: 'include',
-          headers: {
-            "Content-Type": "application/json",
-            'Authorization': 'Bearer ' + accessToken,
-            'Access-Control-Allow-Origin': 'http://localhost:3080',
-          },
-        });
-        const { success, api_keys } = await response.json();
-        
-        if (success) {
-          commit('saveItems', { items: api_keys });
+        const result = await api.$get('/user/apikey/list', rootState.auth.accessToken);                
+        if (result.success) {
+          commit('saveItems', { items: result.data });
         }
         return state.items;
       },

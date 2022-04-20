@@ -127,7 +127,6 @@ export default {
           this.setAccessToken(access_token);
           window.localStorage.setItem("accessToken", access_token);
           window.localStorage.setItem("authenticated", true);
-
           this.fetchProfile().then(() => {
             this.setUser(this.getProfile());
             this.$router.push("/app/dashboard");

@@ -1,3 +1,5 @@
+import api from '../core/api';
+
 export default {
     namespaced: true,
     state: {
@@ -31,25 +33,9 @@ export default {
     },
     actions: {
       async fetchItems({ state, commit, rootState }) {
-
-        let accessToken = rootState.auth.accessToken;
-        if (typeof rootState.auth.accessToken !== 'undefined') {
-          accessToken = window.localStorage.getItem("accessToken");
-        }
-        
-        const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/mesh/list", {
-          method: "GET",
-          credentials: 'include',
-          headers: {
-            "Content-Type": "application/json",
-            'Authorization': 'Bearer ' + accessToken,
-            'Access-Control-Allow-Origin': 'http://localhost:3080',
-          },
-        });
-        const { success, mesh_ids } = await response.json();
-        
-        if (success) {
-          commit('saveItems', { items: mesh_ids });
+        const result = await api.$get('/mesh/list', rootState.auth.accessToken);                
+        if (result.success) {
+          commit('saveItems', { items: result.data });
         }
         return state.items;
       },

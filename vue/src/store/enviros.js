@@ -1,3 +1,5 @@
+import api from '../core/api';
+
 export default {
     namespaced: true,
     state: {
@@ -65,26 +67,10 @@ export default {
     },
     actions: {
       async fetchItems({ state, commit, rootState }) {
-
-        let accessToken = rootState.auth.accessToken;
-        if (typeof rootState.auth.accessToken !== 'undefined') {
-          accessToken = window.localStorage.getItem("accessToken");
+        const result = await api.$get('/user/env/list', rootState.auth.accessToken);                
+        if (result.success) {
+          commit('saveSimpleArray', { items: result.data });
         }
-
-        const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/user/env/list", {
-          method: "GET",
-          credentials: 'include',
-          headers: {
-            "Content-Type": "application/json",
-            'Authorization': 'Bearer ' + accessToken,
-            'Access-Control-Allow-Origin': 'http://localhost:3080',
-          },
-        });
-        const { env_vars } = await response.json();
-        
-        //if (success) {
-          commit('saveSimpleArray', { items: env_vars });
-        //}
         return state.items;
       },
     },

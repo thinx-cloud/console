@@ -1,3 +1,5 @@
+import api from '../core/api';
+
 export default {
     namespaced: true,
     state: {
@@ -49,29 +51,13 @@ export default {
           flatItems.push({id: id, ...data.items[id]});
         }
         state.items = flatItems;
-      } 
+      },
     },
     actions: {
       async fetchItems({ state, commit, rootState }) {
-
-        let accessToken = rootState.auth.accessToken;
-        if (typeof rootState.auth.accessToken !== 'undefined') {
-          accessToken = window.localStorage.getItem("accessToken");
-        }
-        
-        const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/user/rsakey/list", {
-          method: "GET",
-          credentials: 'include',
-          headers: {
-            "Content-Type": "application/json",
-            'Authorization': 'Bearer ' + accessToken,
-            'Access-Control-Allow-Origin': 'http://localhost:3080',
-          },
-        });
-        const { success, rsa_keys } = await response.json();
-        
-        if (success) {
-          commit('saveItems', { items: rsa_keys });
+        const result = await api.$get('/user/rsakey/list', rootState.auth.accessToken);                
+        if (result.success) {
+          commit('saveItems', { items: result.data });
         }
         return state.items;
       },

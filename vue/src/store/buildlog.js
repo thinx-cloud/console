@@ -1,3 +1,5 @@
+import api from '../core/api';
+
 export default {
     namespaced: true,
     state: {
@@ -38,24 +40,9 @@ export default {
     },
     actions: {
         async fetchBuildLog({ state, commit, rootState }) {
-
-          let accessToken = rootState.auth.accessToken;
-          if (typeof rootState.auth.accessToken !== 'undefined') {
-              accessToken = window.localStorage.getItem("accessToken");
-          }
-
-          const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/user/logs/build/list", {
-              method: "GET",
-              credentials: 'include',
-              headers: {
-                  "Content-Type": "application/json",
-                  'Authorization': 'Bearer ' + accessToken,
-                  'Access-Control-Allow-Origin': 'http://localhost:3080',
-              },
-          });
-          const { success, builds } = await response.json();
-          if (success) {
-              commit('saveBuildItems', { items: builds });
+          const result = await api.$get('/user/logs/build/list', rootState.auth.accessToken);                
+          if (result.success) {
+            commit('saveBuildItems', { items: result.data });
           }
           return state.items;
         },
