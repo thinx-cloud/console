@@ -200,7 +200,7 @@ export default {
       }
     },
     logout() {
-      window.localStorage.setItem("authenticated", false);
+      window.localStorage.removeItem("authenticated");
       this.setUser(undefined);
       this.setAccessToken(undefined);
       this.$router.push("/login");
