@@ -6,6 +6,8 @@ FROM ubuntu:impish
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+ENV NODE_OPTIONS=--openssl-legacy-provider
+
 #USER root
 
 # Install, build, protect (dependencies for Cypress, NodeJS/NPM and eslint)
