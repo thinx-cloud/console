@@ -3,24 +3,27 @@
 </template>
 
 <script>
-import { mapGetters } from "vuex";
+import { mapGetters, mapMutations } from 'vuex';
 
 export default {
   name: "App",
   methods: {
-    ...mapGetters(["isLoggedIn"]),
+    ...mapMutations({ setAccessToken: 'auth/setAccessToken' }),
+    ...mapGetters(['isLoggedIn']),
   },
   created() {
     const currentPath = this.$router.history.current.path;
+    const authenticated = window.localStorage.getItem('authenticated');
 
-    // || !this.isLoggedIn()
-    if (
-      window.localStorage.getItem("authenticated") === "false" &&
-      currentPath !== "/login"
-    ) {
-      this.$router.push("/login");
+    if (authenticated === 'false' && currentPath !== '/login') {
+      this.$router.push('/login');
     } else {
-      if (currentPath === "/" || currentPath === "/app") {
+      // retrieve accessToken from localstorage, if present
+      // TODO unwrap and check validity of this JWT token
+      if (authenticated === 'true') {
+        this.setAccessToken(window.localStorage.getItem('accessToken'));
+      }
+      if (currentPath === '/' || currentPath === '/app') {
         this.$router.push("/app/dashboard");
       }
     }

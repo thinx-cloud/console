@@ -106,13 +106,12 @@ export default {
       if (username.length !== 0 && password.length !== 0) {
         // TODO start JWT login scenario
         const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/login", {
-          method: "POST",
+          method: 'POST',
           // mode: 'no-cors', // no-cors, *cors, same-origin
-          redirect: "manual", // manual, *follow, error
-          credentials: "include",
-          // credentials: 'include',
+          redirect: 'manual', // manual, *follow, error
+          credentials: 'include',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
             // 'Access-Control-Allow-Origin': '*',
           },
           body: JSON.stringify({
@@ -125,22 +124,24 @@ export default {
 
         if (success) {
           this.setAccessToken(access_token);
-          window.localStorage.setItem("accessToken", access_token);
-          window.localStorage.setItem("authenticated", true);
+          window.localStorage.setItem('accessToken', access_token);
+          window.localStorage.setItem('authenticated', true);
           this.fetchProfile().then(() => {
             this.setUser(this.getProfile());
-            this.$router.push("/app/dashboard");
+            this.$router.push('/app/dashboard');
           });
         } else {
-          this.errorMessage = "Invalid username or password";
+          this.errorMessage = 'Invalid username or password';
         }
       }
     },
   },
   created() {
     // TTODO validate
-    //if (this.isLoggedIn()) {
-    if (window.localStorage.getItem("authenticated") === "true") {
+    const accessToken = window.localStorage.getItem('accessToken');
+    const authenticated = window.localStorage.getItem('authenticated');
+    if (authenticated === 'true' && typeof accessToken !== 'undefined') {
+      this.setAccessToken(accessToken);
       this.$router.push("/app/dashboard");
     }
   },
