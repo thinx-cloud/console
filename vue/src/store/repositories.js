@@ -1,7 +1,9 @@
+import api from '../core/api';
+
 export default {
     namespaced: true,
     state: {
-        repositories: [
+        items: [
           /*
           {
             "id":"7038e0500a8690a8bf70d8470f46365458798011e8f46ff012f12cbcf898b2f4",
@@ -41,42 +43,26 @@ export default {
         ]
     },
     mutations: {
-      saveRepositories(state, data) { 
-        let flatRepositories = [];
-        for (let id of Object.keys(data.repositories)) {
-          flatRepositories.push({id: id, ...data.repositories[id]});
+      saveItems(state, data) { 
+        let flatItems = [];
+        for (let id of Object.keys(data.items)) {
+          flatItems.push({id: id, ...data.items[id]});
         }
-        state.repositories = flatRepositories;
-      } 
+        state.items = flatItems;
+      },
     },
     actions: {
       async fetchRepositories({ state, commit, rootState }) {
-
-        let accessToken = rootState.auth.accessToken;
-        if (typeof rootState.auth.accessToken !== 'undefined') {
-          accessToken = window.localStorage.getItem("accessToken");
+        const result = await api.$get('/user/sources/list', rootState.auth.accessToken);        
+        if (result.success) {
+          commit('saveItems', { items: result.data });
         }
-        
-        const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/user/sources/list", {
-          method: "GET",
-          credentials: 'include',
-          headers: {
-            "Content-Type": "application/json",
-            'Authorization': 'Bearer ' + accessToken,
-            'Access-Control-Allow-Origin': 'http://localhost:3080',
-          },
-        });
-        const { success, sources } = await response.json();
-        
-        if (success) {
-          commit('saveRepositories', { repositories: sources });
-        }
-        return state.repositories;
+        return state.items;
       },
     },
     getters: {
         getItems(state) {
-          return state.repositories;
+          return state.items;
         },
         getHeaders(state) {
           return state.headers;

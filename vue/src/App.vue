@@ -11,9 +11,6 @@ export default {
     ...mapGetters(["isLoggedIn"]),
   },
   created() {
-
-    console.log(process.env);
-
     const currentPath = this.$router.history.current.path;
 
     // || !this.isLoggedIn()

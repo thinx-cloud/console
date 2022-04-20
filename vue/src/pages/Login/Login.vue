@@ -79,7 +79,6 @@
     </b-container>
     <footer class="auth-footer">
       THiNX Console by <a href="https://thinx.cloud" target="_blank">THiNX Cloud</a>
-      <br>{{ env }}
     </footer>
   </div>
 </template>

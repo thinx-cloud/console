@@ -1,3 +1,5 @@
+import api from '../core/api';
+
 export default {
     namespaced: true,
     state: {
@@ -82,25 +84,9 @@ export default {
     },
     actions: {
       async fetchProfile({ state, commit, rootState }) {
-
-        let accessToken = rootState.auth.accessToken;
-        if (typeof rootState.auth.accessToken !== 'undefined') {
-          accessToken = window.localStorage.getItem("accessToken");
-        }
-        
-        const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/user/profile", {
-          method: "GET",
-          credentials: 'include',
-          headers: {
-            "Content-Type": "application/json",
-            'Authorization': 'Bearer ' + accessToken,
-            'Access-Control-Allow-Origin': 'http://localhost:3080',
-          },
-        });
-        const { success, profile } = await response.json();
-        
-        if (success) {
-          commit('saveProfile', { items: profile });
+        const result = await api.$get('/user/profile', rootState.auth.accessToken);
+        if (result.success) {
+          commit('saveProfile', { items: result.data });
         }
         return state.profile;
       },
