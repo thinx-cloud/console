@@ -21,6 +21,11 @@
       }
     }
 
+    composePath(path) {
+      const baseApiUrl = typeof process.env.VUE_APP_API_HOSTNAME !== 'undefined' ? process.env.VUE_APP_API_HOSTNAME : '';
+      return baseApiUrl + path;
+    }
+
     parseResult(result) {
       if (typeof result.success !== 'undefined' && result.success) {
         let keys = Object.keys(result).filter( key => key !== 'success' );
@@ -39,14 +44,14 @@
     }
 
     async $get(path, accessToken) {
-        const response = await fetch(baseApiUrl + path, this.composeOptions('GET', accessToken));
+        const response = await fetch(this.composePath(path), this.composeOptions('GET', accessToken));
         const result = await response.json();
-        return parseResult(result);
+        return this.parseResult(result);
     }
 
     async $post(path, accessToken, body) {
-        const response = await fetch(baseApiUrl + path, this.composeOptions('POST', accessToken, body));
+        const response = await fetch(this.composePath(path), this.composeOptions('POST', accessToken, body));
         const result = await response.json();
-        return parseResult(result);
+        return this.parseResult(result);
     }
   }
