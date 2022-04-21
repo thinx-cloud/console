@@ -66,7 +66,7 @@ export default {
     },
     actions: {
       async fetchItems({ state, commit, rootState }) {
-        const result = await api.$get('/user/devices', rootState.auth.accessToken);
+        const result = await api.$get('/device', rootState.auth.accessToken);
         if (result.success) {
           commit('saveDevices', { items: result.data });
         }

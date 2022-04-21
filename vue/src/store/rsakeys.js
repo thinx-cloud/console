@@ -55,7 +55,7 @@ export default {
     },
     actions: {
       async fetchItems({ state, commit, rootState }) {
-        const result = await api.$get('/user/rsakey/list', rootState.auth.accessToken);
+        const result = await api.$get('/rsakey', rootState.auth.accessToken);
         if (result.success) {
           commit('saveItems', { items: result.data });
         }

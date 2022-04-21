@@ -67,7 +67,7 @@ export default {
     },
     actions: {
       async fetchItems({ state, commit, rootState }) {
-        const result = await api.$get('/user/env/list', rootState.auth.accessToken);
+        const result = await api.$get('/env', rootState.auth.accessToken);
         if (result.success) {
           commit('saveSimpleArray', { items: result.data });
         }

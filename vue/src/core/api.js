@@ -23,7 +23,7 @@
 
     composePath(path) {
       const baseApiUrl = typeof process.env.VUE_APP_API_HOSTNAME !== 'undefined' ? process.env.VUE_APP_API_HOSTNAME : '';
-      return baseApiUrl + path;
+      return baseApiUrl + '/v2' + path;
     }
 
     parseResult(result) {
