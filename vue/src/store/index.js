@@ -15,6 +15,8 @@ import transformers from './transformers';
 import buildlog from './buildlog';
 import auditlog from './auditlog.js';
 
+import stats from './stats.js';
+
 const loggerPlugin = Vuex.createLogger();
 
 Vue.use(Vuex);
@@ -36,6 +38,8 @@ export default new Vuex.Store({
 
     buildlog,
     auditlog,
+
+    stats
   },
   plugins: [ loggerPlugin ]
 

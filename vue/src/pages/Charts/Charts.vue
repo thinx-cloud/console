@@ -122,6 +122,8 @@ exportData(Highcharts);
 import { Chart } from 'highcharts-vue';
 import Sparklines from '../../components/Sparklines/Sparklines'
 
+import { mapGetters, mapActions } from "vuex";
+
 export default {
   name: "Charts",
   components: { Widget, echart: ECharts, highcharts: Chart, Sparklines },
@@ -131,7 +133,9 @@ export default {
       ld: liveChart,
       initEchartsOptions: {
         renderer: 'canvas'
-      }
+      },
+      stats: null,
+      loading: true,
     };
   },
   computed: {
@@ -157,9 +161,6 @@ export default {
       }
     }
   },
-  beforeDestroy() {
-    clearInterval(liveChartInterval);
-  }
 };
 </script>
 

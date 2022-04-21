@@ -46,14 +46,15 @@ export default {
       items: [],
       headers: [],
       loading: true,
+      stats: undefined,
     };
   },
   created() {
     this.$watch(() => this.$route.params, () => { this.loadData() }, { immediate: true });
   },
   methods: {
-    ...mapGetters({ getItems: 'devices/getItems', getHeaders: 'devices/getHeaders' }),
-    ...mapActions({ fetchItems: 'devices/fetchItems' }),
+    ...mapGetters({ getItems: 'devices/getItems', getHeaders: 'devices/getHeaders', getStats: 'stats/getStats' }),
+    ...mapActions({ fetchItems: 'devices/fetchItems', fetchStats: 'stats/fetchStats' }),
     create() {
       // TODO implement
     },
@@ -70,6 +71,10 @@ export default {
         this.items = this.getItems();
         this.headers = this.getHeaders();
         this.loading = false;
+
+        this.fetchStats().then((stats) => {
+          this.stats = this.getStats();
+        });
       });
     },
   },
