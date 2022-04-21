@@ -97,7 +97,7 @@ export default {
     };
   },
   methods: {
-    ...mapMutations({ setAccessToken: "auth/setAccessToken", setUser: "auth/setUser" }),
+    ...mapMutations({ setAccessToken: "auth/setAccessToken", setRefreshToken: "auth/setRefreshToken", setUser: "auth/setUser" }),
     ...mapActions({ fetchProfile: "profile/fetchProfile" }),
     ...mapGetters({ isLoggedIn: "auth/isLoggedIn", getProfile: "profile/getProfile" }),
     async login(e) {
@@ -120,11 +120,14 @@ export default {
           }),
         });
 
-        const { status, success, access_token, redirectURL, g } = await response.json();
+        const { status, success, access_token, refresh_token, redirectURL, g } = await response.json();
 
         if (success) {
           this.setAccessToken(access_token);
           window.localStorage.setItem('accessToken', access_token);
+          this.setRefreshToken(access_token);
+          window.localStorage.setItem('refreshToken', refresh_token);
+
           window.localStorage.setItem('authenticated', true);
           this.fetchProfile().then(() => {
             this.setUser(this.getProfile());
@@ -139,9 +142,11 @@ export default {
   created() {
     // TTODO validate
     const accessToken = window.localStorage.getItem('accessToken');
+    const refreshToken = window.localStorage.getItem('refreshToken');
     const authenticated = window.localStorage.getItem('authenticated');
     if (authenticated === 'true' && typeof accessToken !== 'undefined') {
       this.setAccessToken(accessToken);
+      this.setRefreshToken(refreshToken);
       this.$router.push("/app/dashboard");
     }
   },

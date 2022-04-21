@@ -8,7 +8,7 @@ import { mapGetters, mapMutations } from 'vuex';
 export default {
   name: "App",
   methods: {
-    ...mapMutations({ setAccessToken: 'auth/setAccessToken' }),
+    ...mapMutations({ setAccessToken: 'auth/setAccessToken', setRefreshToken: 'auth/setRefreshToken' }),
     ...mapGetters(['isLoggedIn']),
   },
   created() {
@@ -22,6 +22,7 @@ export default {
       // TODO unwrap and check validity of this JWT token
       if (authenticated === 'true') {
         this.setAccessToken(window.localStorage.getItem('accessToken'));
+        this.setRefreshToken(window.localStorage.getItem('refreshToken'));
       }
       if (currentPath === '/' || currentPath === '/app') {
         this.$router.push("/app/dashboard");

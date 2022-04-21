@@ -185,8 +185,14 @@ export default {
       fetchProfile: "profile/fetchProfile",
       switchSidebar: "layout/switchSidebar",
       changeSidebarActive: "layout/changeSidebarActive",
+      removeAccessToken: "auth/removeAccessToken",
+      removeRefreshToken: "auth/removeRefreshToken",
     }),
-    ...mapMutations({ setAccessToken: "auth/setAccessToken", setUser: "auth/setUser" }),
+    ...mapMutations({ 
+      setAccessToken: "auth/setAccessToken", 
+      setRefreshToken: "auth/setRefreshToken", 
+      setUser: "auth/setUser" 
+    }),
     ...mapGetters({ getProfile: "profile/getProfile" }),
     switchSidebarMethod() {
       if (!this.sidebarClose) {
@@ -201,8 +207,9 @@ export default {
     },
     logout() {
       window.localStorage.removeItem("authenticated");
-      this.setUser(undefined);
-      this.setAccessToken(undefined);
+      this.setUser(null);
+      this.removeAccessToken();
+      this.removeRefreshToken();
       this.$router.push("/login");
     },
   },
