@@ -78,7 +78,7 @@
       </Widget>
     </b-container>
     <footer class="auth-footer">
-      THiNX Console by <a href="https://thinx.cloud" target="_blank">THiNX Cloud</a>
+      <a :href="env.VUE_APP_CONSOLE_HOSTNAME" target="_blank">THiNX Console</a> by <a :href="env.VUE_APP_LANDING_HOSTNAME" target="_blank">THiNX Cloud</a>
     </footer>
   </div>
 </template>

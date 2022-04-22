@@ -12,7 +12,7 @@ export default {
       },
     actions: {
         async fetchStats({ state, commit, rootState }) {
-            const result = await api.$get('/v2/stats', rootState.auth.accessToken);
+            const result = await api.$get('/stats', rootState.auth.accessToken);
             if (result.success) {
                 commit('saveStats', { data: result.data });
             }

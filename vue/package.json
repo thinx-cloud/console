@@ -15,6 +15,7 @@
   "dependencies": {
     "@amcharts/amcharts4": "^4.10.13",
     "@amcharts/amcharts4-geodata": "^4.1.19",
+    "@dansmaculotte/vue-crisp-chat": "^0.1.0",
     "animate.css": "^4.1.1",
     "animated-number-vue": "^1.0.0",
     "apexcharts": "^3.24.0",
@@ -38,6 +39,7 @@
     "vue-chartjs": "^3.5.1",
     "vue-echarts": "^4.1.0",
     "vue-jwt-decode": "^0.1.0",
+    "vue-rollbar": "^1.0.0",
     "vue-router": "^3.5.1",
     "vue-toasted": "^1.1.28",
     "vue2-google-maps": "0.10.7",
