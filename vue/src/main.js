@@ -14,6 +14,7 @@ import layoutMixin from './mixins/layout';
 
 import Rollbar from 'vue-rollbar';
 import CrispChat from '@dansmaculotte/vue-crisp-chat'
+import Moment from 'vue-moment'
 
 Vue.use(CrispChat, {
   websiteId: process.env.VUE_APP_CRISP_WEBSITE_ID,
@@ -29,6 +30,8 @@ Vue.use(Rollbar, {
   }
 });
 Vue.rollbar.debug('Vue console started!');
+
+Vue.use(Moment);
 
 Vue.use(BootstrapVue);
 Vue.use(VCalendar, {
