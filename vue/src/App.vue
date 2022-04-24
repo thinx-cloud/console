@@ -3,30 +3,48 @@
 </template>
 
 <script>
-import { mapGetters, mapMutations } from 'vuex';
+import { mapGetters, mapMutations, mapActions } from "vuex";
 
 export default {
   name: "App",
   methods: {
-    ...mapMutations({ setAccessToken: 'auth/setAccessToken', setRefreshToken: 'auth/setRefreshToken' }),
-    ...mapGetters(['isLoggedIn']),
+    ...mapMutations({
+      setAccessToken: "auth/setAccessToken",
+      setRefreshToken: "auth/setRefreshToken",
+    }),
+    ...mapGetters({ isAuthenticated: "auth/isAuthenticated" }),
+    ...mapActions({ isTokenValid: "auth/isTokenValid" }),
   },
-  created() {
+  async created() {
     const currentPath = this.$router.history.current.path;
-    const authenticated = window.localStorage.getItem('authenticated');
+    const authenticated = this.isAuthenticated();// (window.localStorage.getItem("authenticated") === 'true');
 
-    if (authenticated === 'false' && currentPath !== '/login') {
-      this.$router.push('/login');
-    } else {
-      // retrieve accessToken from localstorage, if present
-      // TODO unwrap and check validity of this JWT token
-      if (authenticated === 'true') {
-        this.setAccessToken(window.localStorage.getItem('accessToken'));
-        this.setRefreshToken(window.localStorage.getItem('refreshToken'));
+    if (!authenticated) {
+      if (currentPath !== "/login") {
+        this.$router.push("/login");
       }
-      if (currentPath === '/' || currentPath === '/app') {
+    }
+
+    if (authenticated) {
+      // init auth in vuex
+
+      let storedAccessToken = window.localStorage.getItem("accessToken");
+      let storedRefreshToken = window.localStorage.getItem("refreshToken");
+
+      if (await this.isTokenValid(storedAccessToken) && await this.isTokenValid(storedRefreshToken)) {
+        this.setAccessToken(storedAccessToken);
+        this.setRefreshToken(storedRefreshToken);
+      }
+
+      // concat default paths
+      if (currentPath === "/" || currentPath === "/app") {
         this.$router.push("/app/dashboard");
       }
+
+      /*
+        TODO unwrap and check validity of this JWT token
+        retrieve accessToken from localstorage, if present
+      */
     }
   },
 };

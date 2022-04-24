@@ -78,7 +78,8 @@
       </Widget>
     </b-container>
     <footer class="auth-footer">
-      <a :href="env.VUE_APP_CONSOLE_HOSTNAME" target="_blank">THiNX Console</a> by <a :href="env.VUE_APP_LANDING_HOSTNAME" target="_blank">THiNX Cloud</a>
+      <a :href="env.VUE_APP_CONSOLE_HOSTNAME" target="_blank">THiNX Console</a> by
+      <a :href="env.VUE_APP_LANDING_HOSTNAME" target="_blank">THiNX Cloud</a>
     </footer>
   </div>
 </template>
@@ -98,8 +99,8 @@ export default {
   },
   methods: {
     ...mapMutations({ setAccessToken: "auth/setAccessToken", setRefreshToken: "auth/setRefreshToken", setUser: "auth/setUser" }),
-    ...mapActions({ fetchProfile: "profile/fetchProfile" }),
-    ...mapGetters({ isLoggedIn: "auth/isLoggedIn", getProfile: "profile/getProfile" }),
+    ...mapActions({ fetchProfile: "profile/fetchProfile", isTokenValid: "auth/isTokenValid" }),
+    ...mapGetters({ isAuthenticated: "auth/isAuthenticated", getProfile: "profile/getProfile" }),
     async login(e) {
       e.preventDefault();
 
@@ -123,16 +124,27 @@ export default {
         const { status, success, access_token, refresh_token, redirectURL, g } = await response.json();
 
         if (success) {
-          this.setAccessToken(access_token);
-          window.localStorage.setItem('accessToken', access_token);
-          this.setRefreshToken(access_token);
-          window.localStorage.setItem('refreshToken', refresh_token);
 
-          window.localStorage.setItem('authenticated', true);
-          this.fetchProfile().then(() => {
-            this.setUser(this.getProfile());
-            this.$router.push('/app/dashboard');
-          });
+          console.log('VAL ACC', await this.isTokenValid(access_token));
+          console.log('VAL REF', await this.isTokenValid(refresh_token), refresh_token);
+
+          if (await this.isTokenValid(access_token) && await this.isTokenValid(refresh_token)) {
+            this.setAccessToken(access_token);
+            this.setRefreshToken(refresh_token);
+          }
+          
+          if (this.isAuthenticated()) {
+            window.localStorage.setItem('accessToken', access_token);
+            window.localStorage.setItem('refreshToken', refresh_token);
+            window.localStorage.setItem('authenticated', true);
+
+            this.fetchProfile().then(() => {
+              this.setUser(this.getProfile());
+              this.$router.push('/app/dashboard');
+            });
+          } else {
+            this.errorMessage = 'Token expired';
+          }
         } else {
           this.errorMessage = 'Invalid username or password';
         }
@@ -141,10 +153,11 @@ export default {
   },
   created() {
     // TTODO validate
+    const authenticated = (window.localStorage.getItem("authenticated") === 'true');
     const accessToken = window.localStorage.getItem('accessToken');
     const refreshToken = window.localStorage.getItem('refreshToken');
-    const authenticated = window.localStorage.getItem('authenticated');
-    if (authenticated === 'true' && typeof accessToken !== 'undefined') {
+
+    if (authenticated && accessToken) {
       this.setAccessToken(accessToken);
       this.setRefreshToken(refreshToken);
       this.$router.push("/app/dashboard");
