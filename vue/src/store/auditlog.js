@@ -46,9 +46,9 @@ export default {
     },
     actions: {
       async fetchAuditlog({ state, commit, rootState }) {
-        const result = await api.$get('/logs/audit', rootState.auth.accessToken);
+        const response = await api.$get('/logs/audit', rootState.auth.accessToken);
         if (result.success) {
-          commit('saveAuditItems', { items: result.data });
+          commit('saveAuditItems', { items: response.result });
         }
         return state.items;
       },

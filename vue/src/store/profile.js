@@ -84,9 +84,9 @@ export default {
     },
     actions: {
       async fetchProfile({ state, commit, rootState }) {
-        const result = await api.$get('/profile', rootState.auth.accessToken);
+        const response = await api.$get('/profile', rootState.auth.accessToken);
         if (result.success) {
-          commit('saveProfile', { items: result.data });
+          commit('saveProfile', { items: response.result });
         }
         return state.profile;
       },

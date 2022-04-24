@@ -53,9 +53,9 @@ export default {
     },
     actions: {
       async fetchRepositories({ state, commit, rootState }) {
-        const result = await api.$get('/source', rootState.auth.accessToken);        
+        const response = await api.$get('/source', rootState.auth.accessToken);        
         if (result.success) {
-          commit('saveItems', { items: result.data });
+          commit('saveItems', { items: response.result });
         }
         return state.items;
       },

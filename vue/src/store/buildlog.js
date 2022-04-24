@@ -40,9 +40,9 @@ export default {
     },
     actions: {
         async fetchBuildLog({ state, commit, rootState }) {
-          const result = await api.$get('/logs/build', rootState.auth.accessToken);
+          const response = await api.$get('/logs/build', rootState.auth.accessToken);
           if (result.success) {
-            commit('saveBuildItems', { items: result.data });
+            commit('saveBuildItems', { items: response.result });
           }
           return state.items;
         },
