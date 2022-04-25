@@ -89,7 +89,7 @@ var PasswordReset = ( function() {
             if ( typeof( response ) !== "undefined" ) {
               if ( response.success ) {
 
-                if ( response.status == "password_reset_successful" ) {
+                if ( response.status == "password_reset_request_accepted" ) {
                   $( ".msg-error", $( ".reset-form" ) ).hide();
                   $( ".reset-form" ).hide();
                   $( ".msg-success" ).show();
