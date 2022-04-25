@@ -31,9 +31,9 @@ export default {
     },
     actions: {
       async fetchItems({ state, commit, rootState }) {
-        const result = await api.$get('/profile', rootState.auth.accessToken);
+        const response = await api.$get('/profile', rootState.auth.accessToken);
         if (result.success) {
-          commit('saveItems', { items: result.data.info.transformers });
+          commit('saveItems', { items: response.result.info.transformers });
         }
         return state.items;
       },

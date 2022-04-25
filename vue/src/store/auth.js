@@ -12,23 +12,11 @@ export default {
           state.user = user;
         },
         setAccessToken(state, token) {
-          try {
-            const nowUnixtime = Date.now() / 1000;
-            let decoded = VueJwtDecode.decode(token);
-            console.log('TOKEN', decoded.exp <= nowUnixtime ? 'EXPIRED' : 'VALID');
-          } catch (error) {
-            console.log(error, 'error from decoding token')
-          }
+          // TODO use validation
           state.accessToken = token;
         },
         setRefreshToken(state, token) {
-          try {
-            const nowUnixtime = Date.now() / 1000;
-            let decoded = VueJwtDecode.decode(token);
-            console.log('TOKEN', decoded.exp <= nowUnixtime ? 'EXPIRED' : 'VALID');
-          } catch (error) {
-            console.log(error, 'error from decoding token')
-          }
+          // TODO use validation
           state.refreshToken = token;
         },
       },
@@ -41,9 +29,20 @@ export default {
         window.localStorage.removeItem('refreshToken');
         state.refreshToken = undefined;
       },
+      isTokenValid({ state }, token) {
+        try {
+            const nowUnixtime = Math.floor(Date.now() / 1000);
+            let decoded = VueJwtDecode.decode(token);
+            console.log('TOKEN', decoded.exp <= nowUnixtime ? 'EXPIRED' : 'VALID');
+            return decoded.exp <= nowUnixtime ? false : true;
+        } catch (error) {
+            console.log(error, 'error from decoding token')
+            return false
+        }
+      }
     },
     getters: {
-        isLoggedIn(state) {
+        isAuthenticated(state) {
             return !!state.accessToken;
         },
         getAccessToken(state) {
