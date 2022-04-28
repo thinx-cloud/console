@@ -190,32 +190,34 @@ function init($rootScope, $scope) {
   }
 
   function updateSources(response) {
-    if (typeof (response.success) !== "undefined" && response.success) {
-      $rootScope.sources = [];
-      $.each(response.response, function (sourceId, value) {
-        value.sourceId = sourceId;
-        if (typeof (value.platform) === "undefined") {
-          value.platform = "unknown";
-        }
-        if (typeof (value.is_private) === "undefined") {
-          value.is_private = false;
-        }
-        value.base_platform = value.platform.split(":")[0];
-        $rootScope.sources.push(value);
-      });
-
-      console.log("/////// sources:");
-      $rootScope.$apply();
-
-      // save user-spcific goal achievement
-      if ($rootScope.profile.info.goals.length > 0) {
-        if (!$rootScope.profile.info.goals.includes("source") && Object.keys($rootScope.sources).length > 0) {
-          $rootScope.profile.info.goals.push("source");
-          $scope.$emit("saveProfileChanges", ["goals"]);
-        }
-      }
-    } else {
+    
+    if (typeof (response.success) === "undefined" || !response.success) {
       console.log("Sources fetch error.");
+      return;
+    }
+
+    $rootScope.sources = [];
+    $.each(response.response, function (sourceId, value) {
+      value.sourceId = sourceId;
+      if (typeof (value.platform) === "undefined") {
+        value.platform = "unknown";
+      }
+      if (typeof (value.is_private) === "undefined") {
+        value.is_private = false;
+      }
+      value.base_platform = value.platform.split(":")[0];
+      $rootScope.sources.push(value);
+    });
+
+    console.log("/////// sources:");
+    $rootScope.$apply();
+
+    // save user-spcific goal achievement
+    if ($rootScope.profile.info.goals.length > 0) {
+      if (!$rootScope.profile.info.goals.includes("source") && Object.keys($rootScope.sources).length > 0) {
+        $rootScope.profile.info.goals.push("source");
+        $scope.$emit("saveProfileChanges", ["goals"]);
+      }
     }
   }
 
