@@ -190,7 +190,7 @@ function init($rootScope, $scope) {
   }
 
   function updateSources(response) {
-    
+
     if (typeof (response.success) === "undefined" || !response.success) {
       console.log("Sources fetch error.");
       return;
@@ -320,10 +320,9 @@ function init($rootScope, $scope) {
 
   function updateDevices(response) {
     $rootScope.devices = [];
-    var devices = response;
-    for (var d in devices.devices) {
-      devices.devices[d].base_platform = devices.devices[d].platform.split(":")[0];
-      $rootScope.devices.push(devices.devices[d]);
+    for (var d in response.devices) {
+      response.devices[d].base_platform = response.devices[d].platform.split(":")[0];
+      $rootScope.devices.push(response.devices[d]);
     }
     updateTags();
 
