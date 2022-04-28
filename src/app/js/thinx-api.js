@@ -190,8 +190,6 @@ function init($rootScope, $scope) {
   }
 
   function updateSources(response) {
-    console.log("Running updateApikeys with data", response.response);
-
     if (typeof (response.success) !== "undefined" && response.success) {
       $rootScope.sources = [];
       $.each(response.response, function (sourceId, value) {
@@ -229,9 +227,7 @@ function init($rootScope, $scope) {
   }
 
   function updateApikeys(response) {
-    console.log("Running updateApikeys with data", response.response);
     $rootScope.apikeys = response.response;
-
     console.log("//////// apikeys:");
     $rootScope.$apply();
   }
@@ -243,8 +239,7 @@ function init($rootScope, $scope) {
     });
   }
 
-  function updateRsakeys(data) {
-    var response = JSON.parse(data);
+  function updateRsakeys(response) {
     $rootScope.rsakeys = response.response;
     $scope.$apply();
     console.log("//////// rsakeys:");
@@ -269,7 +264,6 @@ function init($rootScope, $scope) {
   }
 
   function updateDeploykeys(data) {
-    console.log("Running updateDeploykeys with data", data.response);
     $rootScope.deploykeys = data.response;
     $scope.$apply();
     console.log("//////// deploykeys:");
@@ -293,9 +287,7 @@ function init($rootScope, $scope) {
     });
   }
 
-  function updateChannels(data) {
-    var response = JSON.parse(data);
-
+  function updateChannels(response) {
     if (typeof (response.response) === "undefined") {
       console.log("ERROR: Invalid channel data...");
       return;
@@ -324,9 +316,9 @@ function init($rootScope, $scope) {
     });
   }
 
-  function updateDevices(data) {
+  function updateDevices(response) {
     $rootScope.devices = [];
-    var devices = JSON.parse(data);
+    var devices = response;
     for (var d in devices.devices) {
       devices.devices[d].base_platform = devices.devices[d].platform.split(":")[0];
       $rootScope.devices.push(devices.devices[d]);
@@ -493,48 +485,45 @@ function init($rootScope, $scope) {
     updateProfile(data);
   });
 
-  function updateProfile(data) {
-    if (typeof (data) !== "undefined") {
-      var response = JSON.parse(data);
+  function updateProfile(response) {
+    if ((typeof (response) === "undefined") || (typeof (response.success) === "undefined")) return;
+    
+    console.log("/////// Profile response:");
 
-      console.log("/////// Profile response:");
-
-      // validate response and refresh view
-      if (typeof (response) !== "undefined" && typeof (response.success) !== "undefined") {
-        if (response.success) {
-          var profile = response.response;
-
-          // set default avatar if one's missing
-          if (typeof (profile.avatar) === "undefined" || profile.avatar.length == 0) {
-            console.log("- avatar not defined, falling back to default -");
-            profile.avatar = "/assets/thinx/img/default_avatar_sm.png";
-          }
-          if (typeof (profile.info.goals) === "undefined") {
-            console.log("- goals not defined, retaining current -");
-            profile.info["goals"] = $rootScope.profile.info.goals;
-          }
-          if (typeof (profile.info.tags) === "undefined") {
-            console.log("- tags not defined, creating -");
-            profile.info["tags"] = $rootScope.profile.info.tags;
-          }
-          if (typeof (profile.info.transformers) === "undefined") {
-            console.log("- transformers not defined, creating -");
-            profile.info["transformers"] = $rootScope.profile.info.transformers;
-          }
-          $rootScope.profile = profile;
-
-          updateRawTransformers($rootScope.profile.info.transformers);
-
-          $scope.$apply();
-
-          console.log("Emitting initWebsocket with owner_id", profile.owner);
-
-          $scope.$emit("initWebsocket", profile.owner);
-        } else {
-          console.log("error", response);
-        }
-      }
+    // validate response and refresh view
+    
+    if (!response.success) {
+      console.log("error", response);
+      return;
     }
+
+    var profile = response.response;
+
+    // set default avatar if one's missing
+    if (typeof (profile.avatar) === "undefined" || profile.avatar.length == 0) {
+      console.log("- avatar not defined, falling back to default -");
+      profile.avatar = "/assets/thinx/img/default_avatar_sm.png";
+    }
+    if (typeof (profile.info.goals) === "undefined") {
+      console.log("- goals not defined, retaining current -");
+      profile.info["goals"] = $rootScope.profile.info.goals;
+    }
+    if (typeof (profile.info.tags) === "undefined") {
+      console.log("- tags not defined, creating -");
+      profile.info["tags"] = $rootScope.profile.info.tags;
+    }
+    if (typeof (profile.info.transformers) === "undefined") {
+      console.log("- transformers not defined, creating -");
+      profile.info["transformers"] = $rootScope.profile.info.transformers;
+    }
+    $rootScope.profile = profile;
+
+    updateRawTransformers($rootScope.profile.info.transformers);
+
+    $scope.$apply();
+
+    console.log("Emitting initWebsocket with owner_id", profile.owner);
+    $scope.$emit("initWebsocket", profile.owner);
   }
 
   $scope.$on("updateRawTransformers", function (event, transformers) {
@@ -633,12 +622,9 @@ function init($rootScope, $scope) {
     updateStats(data);
   });
 
-  function updateStats(data) {
+  function updateStats(response) {
     // sparkline stats defaults
-    var response = JSON.parse(data);
-
     console.log("/////// stats data:");
-
     if (response.success) {
       var days = response.response;
       for (var prop in days) {
