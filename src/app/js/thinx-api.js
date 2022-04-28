@@ -189,9 +189,8 @@ function init($rootScope, $scope) {
     });
   }
 
-  function updateSources(data) {
-    console.log("Running updateApikeys with data", data);
-    var response = JSON.parse(data);
+  function updateSources(response) {
+    console.log("Running updateApikeys with data", response.response);
 
     if (typeof (response.success) !== "undefined" && response.success) {
       $rootScope.sources = [];
@@ -229,9 +228,8 @@ function init($rootScope, $scope) {
     });
   }
 
-  function updateApikeys(data) {
-    console.log("Running updateApikeys with data", data);
-    var response = JSON.parse(data);
+  function updateApikeys(response) {
+    console.log("Running updateApikeys with data", response.response);
     $rootScope.apikeys = response.response;
 
     console.log("//////// apikeys:");
@@ -271,9 +269,8 @@ function init($rootScope, $scope) {
   }
 
   function updateDeploykeys(data) {
-    console.log("Running updateDeploykeys with data", data);
-    var response = JSON.parse(data);
-    $rootScope.deploykeys = response.response;
+    console.log("Running updateDeploykeys with data", data.response);
+    $rootScope.deploykeys = data.response;
     $scope.$apply();
     console.log("//////// deploykeys:");
 
