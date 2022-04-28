@@ -30,7 +30,7 @@ angular.module( "RTM" ).controller( "EnviroController", [ "$rootScope", "$scope"
   function updateEnviros( data ) {
     var keys = data;
 
-    $rootScope.enviros = keys.env_vars;
+    $rootScope.enviros = keys.response;
     $scope.$apply();
 
     console.log( "enviros:" );
