@@ -76,7 +76,7 @@ RTM.factory( "settings", [ "$rootScope", function( $rootScope ) {
   }
 
   $rootScope.meta.version = {
-    ui: "1.0.8 (beta)"
+    ui: "1.1.0"
   };
 
   // dashboard stats defaults
