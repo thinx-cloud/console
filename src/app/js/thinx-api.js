@@ -190,6 +190,7 @@ function init($rootScope, $scope) {
   }
 
   function updateSources(data) {
+    console.log("Running updateApikeys with data", data);
     var response = JSON.parse(data);
 
     if (typeof (response.success) !== "undefined" && response.success) {
@@ -229,6 +230,7 @@ function init($rootScope, $scope) {
   }
 
   function updateApikeys(data) {
+    console.log("Running updateApikeys with data", data);
     var response = JSON.parse(data);
     $rootScope.apikeys = response.response;
 
@@ -269,8 +271,8 @@ function init($rootScope, $scope) {
   }
 
   function updateDeploykeys(data) {
+    console.log("Running updateDeploykeys with data", data);
     var response = JSON.parse(data);
-    // TODO: hack must be refined
     $rootScope.deploykeys = response.response;
     $scope.$apply();
     console.log("//////// deploykeys:");
