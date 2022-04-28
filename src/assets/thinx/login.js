@@ -71,13 +71,13 @@ var Login = ( function() {
                 window.location = response.redirectURL;
               } else {
                 console.log( "-- Error!" );
-                if ( response.status == "password_mismatch" ) {
+                if ( response.response == "password_mismatch" ) {
                   $( "#login-error" ).text( "Username or password does not match" );
-                } else if ( response.status == "user_not_found" ) {
+                } else if ( response.response == "user_not_found" ) {
                   $( "#login-error" ).text( "User not found." );
-                } else if ( response.status == "activated_user_not_found" ) {
+                } else if ( response.response == "activated_user_not_found" ) {
                   $( "#login-error" ).text( "Activated User not found." );
-                } else if ( response.status == "user_account_deactivated" ) {
+                } else if ( response.response == "user_account_deactivated" ) {
                   $( "#login-error" ).text( "User account deactivated." );
                 } else {
                   $( "#login-error" ).text( "Unknown Error: " + response.status );
@@ -89,13 +89,13 @@ var Login = ( function() {
           error: function( xdata, status, xhr ) {
             console.log( "--login or server failure--", xdata );
             var response = xdata.responseJSON;
-            if ( response.status == "unauthorized" ) {
+            if ( response.response == "unauthorized" ) {
               $( "#login-error" ).text( "Username or password does not match" );
-            } else if ( response.status == "user_not_found" ) {
+            } else if ( response.response == "user_not_found" ) {
               $( "#login-error" ).text( "User not found." );
-            } else if ( response.status == "activated_user_not_found" ) {
+            } else if ( response.response == "activated_user_not_found" ) {
               $( "#login-error" ).text( "Activated User not found." );
-            } else if ( response.status == "user_account_deactivated" ) {
+            } else if ( response.response == "user_account_deactivated" ) {
               $( "#login-error" ).text( "User account deactivated." );
             } else {
               $( "#login-error" ).text( "Connection failed" );
@@ -176,13 +176,13 @@ var Login = ( function() {
             if ( typeof( response ) !== "undefined" ) {
               console.log( response );
               if ( response.success ) {
-                if ( response.status == "email_sent" ) {
+                if ( response.response == "email_sent" ) {
                   $( ".msg-error", $( ".forget-form" ) ).hide();
                   $( ".forget-form" ).hide();
                   $( ".msg-reset-success" ).show();
                 }
               } else {
-                if ( response.status == "email_not_found" ) {
+                if ( response.response == "email_not_found" ) {
                   $( ".msg-error", $( ".forget-form" ) ).text( "Email not found." );
                   $( ".msg-error", $( ".forget-form" ) ).show();
                 }
@@ -307,7 +307,7 @@ var Login = ( function() {
             if ( typeof( response ) !== "undefined" ) {
 
               if ( response.success ) {
-                if ( response.status == "email_sent" ) {
+                if ( response.response == "email_sent" ) {
                   $( ".msg-error", $( ".register-form" ) ).hide();
                   $( ".register-form" ).hide();
 
@@ -315,15 +315,15 @@ var Login = ( function() {
                   $( ".msg-success" ).show();
                 }
               } else {
-                if ( response.status == "activation_failed" ) {
+                if ( response.response == "activation_failed" ) {
                   $( ".msg-error", $( ".register-form" ) ).text( "Registration failed." );
                   $( ".msg-error", $( ".register-form" ) ).show();
                 }
-                if ( response.status == "email_already_exists" ) {
+                if ( response.response == "email_already_exists" ) {
                   $( ".msg-error", $( ".register-form" ) ).text( "Email already exists." );
                   $( ".msg-error", $( ".register-form" ) ).show();
                 }
-                if ( response.status == "username_already_exists" ) {
+                if ( response.response == "username_already_exists" ) {
                   $( ".msg-error", $( ".register-form" ) ).text( "Username already exists." );
                   $( ".msg-error", $( ".register-form" ) ).show();
                 }

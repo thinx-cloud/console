@@ -89,7 +89,7 @@ var PasswordReset = ( function() {
             if ( typeof( response ) !== "undefined" ) {
               if ( response.success ) {
 
-                if ( response.status == "password_reset_request_accepted" ) {
+                if ( response.response == "password_reset_request_accepted" ) {
                   $( ".msg-error", $( ".reset-form" ) ).hide();
                   $( ".reset-form" ).hide();
                   $( ".msg-success" ).show();
@@ -99,11 +99,11 @@ var PasswordReset = ( function() {
                 }
               } else {
                 console.log( response.status );
-                if ( response.status == "user_not_found" ) {
+                if ( response.response == "user_not_found" ) {
                   $( ".msg-error", $( ".reset-form" ) ).text( "User not found." );
                   $( ".msg-error", $( ".reset-form" ) ).show();
                 }
-                if ( response.status == "activated_user_not_found" ) {
+                if ( response.response == "activated_user_not_found" ) {
                   $( ".msg-error", $( ".reset-form" ) ).text( "Activated User not found." );
                   $( ".msg-error", $( ".reset-form" ) ).show();
                 }

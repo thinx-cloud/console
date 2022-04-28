@@ -46,7 +46,7 @@ Cypress.Commands.add("createOwner", (ownerData, url) => {
           body: ownerData,
       }).then(
           (response) => {
-              if (response.status === 200) { 
+              if (response.response === 200) { 
                   expect(response.body).to.have.property('access_token');
               }
               cy.wrap(response.body).as('createResponse');

@@ -194,7 +194,7 @@ function init( $rootScope, $scope ) {
 
     if ( typeof( response.success ) !== "undefined" && response.success ) {
       $rootScope.sources = [];
-      $.each( response.sources, function( sourceId, value ) {
+      $.each( response.response, function( sourceId, value ) {
         value.sourceId = sourceId;
         if ( typeof( value.platform ) === "undefined" ) {
           value.platform = "unknown";
@@ -230,7 +230,7 @@ function init( $rootScope, $scope ) {
 
   function updateApikeys( data ) {
     var response = JSON.parse( data );
-    $rootScope.apikeys = response.api_keys;
+    $rootScope.apikeys = response.response;
 
     console.log( "//////// apikeys:" );
     $rootScope.$apply();
@@ -245,7 +245,7 @@ function init( $rootScope, $scope ) {
 
   function updateRsakeys( data ) {
     var response = JSON.parse( data );
-    $rootScope.rsakeys = response.rsa_keys;
+    $rootScope.rsakeys = response.response;
     $scope.$apply();
     console.log( "//////// rsakeys:" );
 
@@ -271,7 +271,7 @@ function init( $rootScope, $scope ) {
   function updateDeploykeys( data ) {
     var response = JSON.parse( data );
     // TODO: hack must be refined
-    $rootScope.deploykeys = response.rsa_keys;
+    $rootScope.deploykeys = response.response;
     $scope.$apply();
     console.log( "//////// deploykeys:" );
 
@@ -297,12 +297,12 @@ function init( $rootScope, $scope ) {
   function updateChannels( data ) {
     var response = JSON.parse( data );
 
-    if ( typeof( response.mesh_ids ) === "undefined" ) {
+    if ( typeof( response.response ) === "undefined" ) {
       console.log( "ERROR: Invalid channel data..." );
       return;
     }
 
-    $rootScope.channels = response.mesh_ids;
+    $rootScope.channels = response.response;
     $scope.$apply();
     console.log( "//////// channels:" );
 
@@ -503,7 +503,7 @@ function init( $rootScope, $scope ) {
       // validate response and refresh view
       if ( typeof( response ) !== "undefined" && typeof( response.success ) !== "undefined" ) {
         if ( response.success ) {
-          var profile = response.profile;
+          var profile = response.response;
 
           // set default avatar if one's missing
           if ( typeof( profile.avatar ) === "undefined" || profile.avatar.length == 0 ) {
@@ -573,7 +573,7 @@ function init( $rootScope, $scope ) {
     console.log( "/////// auditHistory response:" );
 
     if ( typeof( response.success ) !== "undefined" && response.success ) {
-      $rootScope.auditlog = response.logs;
+      $rootScope.auditlog = response.response;
       console.log( "refreshing view..." );
       if ( typeof( $scope.chartRange ) !== "undefined" ) {
         $scope.chart.computing = true;
@@ -641,7 +641,7 @@ function init( $rootScope, $scope ) {
     console.log( "/////// stats data:" );
 
     if ( response.success ) {
-      var days = response.stats;
+      var days = response.response;
       for ( var prop in days ) {
         var propTotal = 0;
         for ( var i = 0; i < days[ prop ].length; i++ ) {
@@ -670,30 +670,30 @@ function init( $rootScope, $scope ) {
 
   function updateBuildHistory( response ) {
     if ( typeof( response.success ) !== "undefined" && response.success ) {
-      console.log( "buildHistory list length:", response.builds.length );
-      $rootScope.buildHistory = response.builds;
+      console.log( "buildHistory list length:", response.response.length );
+      $rootScope.buildHistory = response.response;
 
       $rootScope.meta.builds = [];
       $rootScope.meta.deviceBuilds = {};
 
       console.log( "Grouping Build Entries..." );
-      for ( let index in response.builds ) {
+      for ( let index in response.response ) {
         // reset device build history
-        if ( typeof( $rootScope.meta.deviceBuilds[ response.builds[ index ].udid ] ) == "undefined" ) {
-          $rootScope.meta.deviceBuilds[ response.builds[ index ].udid ] = [];
+        if ( typeof( $rootScope.meta.deviceBuilds[ response.response[ index ].udid ] ) == "undefined" ) {
+          $rootScope.meta.deviceBuilds[ response.response[ index ].udid ] = [];
         }
-        $rootScope.meta.deviceBuilds[ response.builds[ index ].udid ].push( {
-          "build_id": response.builds[ index ].build_id,
-          "last_update": response.builds[ index ].last_update,
-          "timestamp": response.builds[ index ].timestamp,
-          "start_time": response.builds[ index ].start_time,
-          "state": response.builds[ index ].state
+        $rootScope.meta.deviceBuilds[ response.response[ index ].udid ].push( {
+          "build_id": response.response[ index ].build_id,
+          "last_update": response.response[ index ].last_update,
+          "timestamp": response.response[ index ].timestamp,
+          "start_time": response.response[ index ].start_time,
+          "state": response.response[ index ].state
         } );
 
-        if ( typeof( $rootScope.meta.builds[ response.builds[ index ].build_id ] ) == "undefined" ) {
-          $rootScope.meta.builds[ response.builds[ index ].build_id ] = [];
+        if ( typeof( $rootScope.meta.builds[ response.response[ index ].build_id ] ) == "undefined" ) {
+          $rootScope.meta.builds[ response.response[ index ].build_id ] = [];
         }
-        $rootScope.meta.builds[ response.builds[ index ].build_id ].push( response.builds[ index ] );
+        $rootScope.meta.builds[ response.response[ index ].build_id ].push( response.response[ index ] );
       }
 
       // sort device build entries by date

@@ -70,7 +70,7 @@ angular.module( "RTM" ).controller( "EnviroController", [ "$rootScope", "$scope"
 
         } else {
           console.log( response.status );
-          if ( response.status == "already_exists" ) {
+          if ( response.response == "already_exists" ) {
             toastr.error( "Variable already exists.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
           } else {
             toastr.error( "Error.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
