@@ -28,7 +28,7 @@ angular.module( "RTM" ).controller( "EnviroController", [ "$rootScope", "$scope"
   $scope.searchText = "";
 
   function updateEnviros( data ) {
-    var keys = JSON.parse( data );
+    var keys = data;
 
     $rootScope.enviros = keys.env_vars;
     $scope.$apply();
