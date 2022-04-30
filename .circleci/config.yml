@@ -3,7 +3,7 @@ version: 2.1
 orbs: 
   docker: circleci/docker@2.0.3
   ggshield: gitguardian/ggshield@1.1.0
-  sonarcloud: sonarsource/sonarcloud@1.0.1
+  sonarcloud: sonarsource/sonarcloud@1.0.3
 
 jobs:
 
