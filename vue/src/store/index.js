@@ -41,6 +41,5 @@ export default new Vuex.Store({
 
     stats
   },
-  plugins: [ loggerPlugin ]
-
+  plugins: [ loggerPlugin ],
 });

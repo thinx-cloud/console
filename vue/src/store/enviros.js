@@ -1,4 +1,3 @@
-import api from '../core/api';
 
 export default {
     namespaced: true,
@@ -66,10 +65,10 @@ export default {
       }
     },
     actions: {
-      async fetchItems({ state, commit, rootState }) {
-        const response = await api.$get('/env', rootState.auth.accessToken);
+      async fetchItems({ state, commit }) {
+        const result = await this.$api.$get('/env');
         if (result.success) {
-          commit('saveSimpleArray', { items: response.result });
+          commit('saveSimpleArray', { items: result.response });
         }
         return state.items;
       },

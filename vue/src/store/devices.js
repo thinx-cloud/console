@@ -1,4 +1,3 @@
-import api from '../core/api';
 
 export default {
     namespaced: true,
@@ -65,10 +64,10 @@ export default {
       }
     },
     actions: {
-      async fetchItems({ state, commit, rootState }) {
-        const response = await api.$get('/device', rootState.auth.accessToken);
+      async fetchItems({ state, commit }) {
+        const result = await this.$api.$get('/device');
         if (result.success) {
-          commit('saveDevices', { items: response.result });
+          commit('saveDevices', { items: result.response });
         }
         return state.items;
       },

@@ -1,4 +1,3 @@
-import api from '../core/api';
 
 export default {
     namespaced: true,
@@ -32,10 +31,10 @@ export default {
       } 
     },
     actions: {
-      async fetchItems({ state, commit, rootState }) {
-        const response = await api.$get('/mesh', rootState.auth.accessToken);
+      async fetchItems({ state, commit }) {
+        const result = await this.$api.$get('/mesh');
         if (result.success) {
-          commit('saveItems', { items: response.result });
+          commit('saveItems', { items: result.result });
         }
         return state.items;
       },

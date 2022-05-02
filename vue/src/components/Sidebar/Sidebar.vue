@@ -56,7 +56,7 @@
             { header: 'Mesh Channels', link: '/app/channels' },
           ]"
         />
-        <!--
+        
         <NavLink
           header="Typography"
           link="/app/typography"
@@ -89,7 +89,7 @@
             { header: 'Maps', link: '/app/components/maps' },
           ]"
         />
--->
+
       </ul>
       <h5 class="navTitle d-sm-down-none">LABELS</h5>
       <ul class="sidebarLabels d-sm-down-none">

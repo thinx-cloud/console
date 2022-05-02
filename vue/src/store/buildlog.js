@@ -1,4 +1,3 @@
-import api from '../core/api';
 
 export default {
     namespaced: true,
@@ -39,10 +38,10 @@ export default {
       },
     },
     actions: {
-        async fetchBuildLog({ state, commit, rootState }) {
-          const response = await api.$get('/logs/build', rootState.auth.accessToken);
+        async fetchBuildLog({ state, commit }) {
+          const result = await this.$api.$get('/logs/build');
           if (result.success) {
-            commit('saveBuildItems', { items: response.result });
+            commit('saveBuildItems', { items: result.response });
           }
           return state.items;
         },

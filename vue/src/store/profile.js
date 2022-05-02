@@ -1,4 +1,3 @@
-import api from '../core/api';
 
 export default {
     namespaced: true,
@@ -79,14 +78,14 @@ export default {
     },
     mutations: {
       saveProfile(state, data) { 
-        state.profile = data.items;
+        state.profile = data;
       }
     },
     actions: {
-      async fetchProfile({ state, commit, rootState }) {
-        const response = await api.$get('/profile', rootState.auth.accessToken);
+      async fetchProfile({ state, commit }) {
+        const result = await this.$api.$get('/profile');
         if (result.success) {
-          commit('saveProfile', { items: response.result });
+          commit('saveProfile', { items: result.response });
         }
         return state.profile;
       },

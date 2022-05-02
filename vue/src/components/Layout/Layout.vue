@@ -9,7 +9,7 @@
     </transition>
   </div>
   <footer class="contentFooter">
-    <a :href="env.VUE_APP_CONSOLE_HOSTNAME" target="_blank">THiNX Console</a> by <a :href="env.VUE_APP_LANDING_HOSTNAME" target="_blank">THiNX Cloud</a>
+    <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by <a :href="this.$hostnames.LANDING" target="_blank">THiNX Cloud</a>
   </footer>
 </div>
 </template>
@@ -26,14 +26,6 @@ import './Layout.scss';
 export default {
   name: 'Layout',
   components: { Sidebar, Header, Helper },
-  data() {
-    return {
-      env: {
-        VUE_APP_CONSOLE_HOSTNAME: process.env.VUE_APP_CONSOLE_HOSTNAME,
-        VUE_APP_LANDING_HOSTNAME: process.env.VUE_APP_LANDING_HOSTNAME,
-      }
-    };
-  },
   methods: {
     ...mapActions(
       'layout', ['switchSidebar', 'changeSidebarActive'],

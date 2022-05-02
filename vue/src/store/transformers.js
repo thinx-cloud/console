@@ -1,4 +1,3 @@
-import api from '../core/api';
 
 export default {
     namespaced: true,
@@ -30,10 +29,10 @@ export default {
       } 
     },
     actions: {
-      async fetchItems({ state, commit, rootState }) {
-        const response = await api.$get('/profile', rootState.auth.accessToken);
+      async fetchItems({ state, commit }) {
+        const result = await this.$api.$get('/profile');
         if (result.success) {
-          commit('saveItems', { items: response.result.info.transformers });
+          commit('saveItems', { items: result.response.info.transformers });
         }
         return state.items;
       },

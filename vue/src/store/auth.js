@@ -14,10 +14,12 @@ export default {
         setAccessToken(state, token) {
           // TODO use validation
           state.accessToken = token;
+          this.$api.setAccessToken(state.accessToken);
         },
         setRefreshToken(state, token) {
           // TODO use validation
           state.refreshToken = token;
+          this.$api.setRefreshToken(state.refreshToken);
         },
       },
     actions: {

@@ -1,4 +1,3 @@
-import api from '../core/api';
 
 export default {
     namespaced: true,
@@ -11,10 +10,10 @@ export default {
         },
       },
     actions: {
-        async fetchStats({ state, commit, rootState }) {
-            const response = await api.$get('/../user/stats', rootState.auth.accessToken);
+        async fetchStats({ state, commit }) {
+            const result = await this.$api.$get('/../user/stats');
             if (result.success) {
-                commit('saveStats', { data: response.result });
+                commit('saveStats', { data: result.response });
             }
             return state.stats;
         },

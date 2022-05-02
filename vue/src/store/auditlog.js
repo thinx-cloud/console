@@ -1,4 +1,3 @@
-import api from '../core/api';
 
 export default {
     namespaced: true,
@@ -45,10 +44,10 @@ export default {
       }, 
     },
     actions: {
-      async fetchAuditlog({ state, commit, rootState }) {
-        const response = await api.$get('/logs/audit', rootState.auth.accessToken);
+      async fetchAuditlog({ state, commit }) {
+        const result = await this.$api.$get('/logs/audit');
         if (result.success) {
-          commit('saveAuditItems', { items: response.result });
+          commit('saveAuditItems', { items: result.response });
         }
         return state.items;
       },

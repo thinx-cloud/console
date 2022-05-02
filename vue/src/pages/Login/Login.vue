@@ -78,8 +78,8 @@
       </Widget>
     </b-container>
     <footer class="auth-footer">
-      <a :href="env.VUE_APP_CONSOLE_HOSTNAME" target="_blank">THiNX Console</a> by
-      <a :href="env.VUE_APP_LANDING_HOSTNAME" target="_blank">THiNX Cloud</a>
+      <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by
+      <a :href="this.$hostnames.LANDING" target="_blank">THiNX Cloud</a>
     </footer>
   </div>
 </template>
@@ -87,32 +87,42 @@
 <script>
 import Widget from "@/components/Widget/Widget";
 import { mapMutations, mapGetters, mapActions } from "vuex";
+import hostnameMixin from '@/mixins/hostnames';
 
 export default {
   name: "LoginPage",
   components: { Widget },
+  mixins: [hostnameMixin],
   data() {
     return {
       errorMessage: null,
-      env: process.env,
     };
   },
   methods: {
-    ...mapMutations({ setAccessToken: "auth/setAccessToken", setRefreshToken: "auth/setRefreshToken", setUser: "auth/setUser" }),
-    ...mapActions({ fetchProfile: "profile/fetchProfile", isTokenValid: "auth/isTokenValid" }),
-    ...mapGetters({ isAuthenticated: "auth/isAuthenticated", getProfile: "profile/getProfile" }),
+    ...mapMutations({
+      setAccessToken: "auth/setAccessToken",
+      setRefreshToken: "auth/setRefreshToken",
+      setUser: "auth/setUser",
+    }),
+    ...mapActions({
+      fetchProfile: "profile/fetchProfile",
+      isTokenValid: "auth/isTokenValid",
+    }),
+    ...mapGetters({
+      isAuthenticated: "auth/isAuthenticated",
+      getProfile: "profile/getProfile",
+    }),
     async login(e) {
       e.preventDefault();
-
       if (username.length !== 0 && password.length !== 0) {
         // TODO start JWT login scenario
-        const response = await fetch(process.env.VUE_APP_API_HOSTNAME + "/v2/login", {
-          method: 'POST',
+        const response = await fetch(this.$hostnames.API + "/v2/login", {
+          method: "POST",
           // mode: 'no-cors', // no-cors, *cors, same-origin
-          redirect: 'manual', // manual, *follow, error
-          credentials: 'include',
+          redirect: "manual", // manual, *follow, error
+          credentials: "include",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             // 'Access-Control-Allow-Origin': '*',
           },
           body: JSON.stringify({
@@ -121,41 +131,50 @@ export default {
           }),
         });
 
-        const { status, success, access_token, refresh_token, redirectURL, g } = await response.json();
+        const {
+          status,
+          success,
+          access_token,
+          refresh_token,
+          redirectURL,
+          g,
+        } = await response.json();
 
         if (success) {
+          console.log("VAL ACC", await this.isTokenValid(access_token));
+          console.log("VAL REF", await this.isTokenValid(refresh_token), refresh_token);
 
-          console.log('VAL ACC', await this.isTokenValid(access_token));
-          console.log('VAL REF', await this.isTokenValid(refresh_token), refresh_token);
-
-          if (await this.isTokenValid(access_token) && await this.isTokenValid(refresh_token)) {
+          if (
+            (await this.isTokenValid(access_token)) &&
+            (await this.isTokenValid(refresh_token))
+          ) {
             this.setAccessToken(access_token);
             this.setRefreshToken(refresh_token);
           }
-          
+
           if (this.isAuthenticated()) {
-            window.localStorage.setItem('accessToken', access_token);
-            window.localStorage.setItem('refreshToken', refresh_token);
-            window.localStorage.setItem('authenticated', true);
+            window.localStorage.setItem("accessToken", access_token);
+            window.localStorage.setItem("refreshToken", refresh_token);
+            window.localStorage.setItem("authenticated", true);
 
             this.fetchProfile().then(() => {
               this.setUser(this.getProfile());
-              this.$router.push('/app/dashboard');
+              this.$router.push("/app/dashboard");
             });
           } else {
-            this.errorMessage = 'Token expired';
+            this.errorMessage = "Token expired";
           }
         } else {
-          this.errorMessage = 'Invalid username or password';
+          this.errorMessage = "Invalid username or password";
         }
       }
     },
   },
   created() {
     // TTODO validate
-    const authenticated = (window.localStorage.getItem("authenticated") === 'true');
-    const accessToken = window.localStorage.getItem('accessToken');
-    const refreshToken = window.localStorage.getItem('refreshToken');
+    const authenticated = window.localStorage.getItem("authenticated") === "true";
+    const accessToken = window.localStorage.getItem("accessToken");
+    const refreshToken = window.localStorage.getItem("refreshToken");
 
     if (authenticated && accessToken) {
       this.setAccessToken(accessToken);
