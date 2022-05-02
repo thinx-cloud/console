@@ -1,4 +1,5 @@
 {
+  "viewport": [1600, 1200],
   "username": "test",
   "password": "tset",
   "email": "dynamic@example.com",

@@ -1,4 +1,3 @@
-const data = require('../fixtures/thinx')
 
 describe('Login feature', function() {
 
@@ -8,11 +7,7 @@ describe('Login feature', function() {
   });
 
   it.only('Should log in with static test account', function() {
-    
-    cy.get('#username').type(data.username);
-    cy.get('#password').type(data.password);
-    cy.get('button').contains('login', { matchCase: false }).click();
-    cy.wait(2000);
+    cy.login();
     cy.get('.page-title').should('contain', 'Dashboard', { matchCase: false });
     // TODO check invalid name
     // TODO check invalid password
