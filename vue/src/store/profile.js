@@ -77,15 +77,15 @@ export default {
           */
     },
     mutations: {
-      saveProfile(state, data) { 
-        state.profile = data;
+      saveProfile(state, profile) { 
+        state.profile = profile;
       }
     },
     actions: {
       async fetchProfile({ state, commit }) {
         const result = await this.$api.$get('/profile');
         if (result.success) {
-          commit('saveProfile', { items: result.response });
+          commit('saveProfile', result.response);
         }
         return state.profile;
       },
