@@ -119,11 +119,11 @@ export default {
         const response = await fetch(this.$hostnames.API + "/v2/login", {
           method: "POST",
           // mode: 'no-cors', // no-cors, *cors, same-origin
-          redirect: "manual", // manual, *follow, error
+          redirect: "manual",
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
-            // 'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': 'http://localhost:3080 ' + this.$hostnames.API,
           },
           body: JSON.stringify({
             username: this.$refs.username.value,
