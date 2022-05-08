@@ -2,7 +2,7 @@ export default {
     data: () => {
       return {
         hostnames: {
-          API: process.env.VUE_APP_API_HOSTNAME + '/api/v2',
+          API: process.env.VUE_APP_API_HOSTNAME.replace(/\/$/, "") + '/api/v2',
           CONSOLE: process.env.VUE_APP_CONSOLE_HOSTNAME,
           LANDING: process.env.VUE_APP_LANDING_HOSTNAME,
         }
