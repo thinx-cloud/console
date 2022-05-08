@@ -2,14 +2,14 @@ export default {
     data: () => {
       return {
         hostnames: {
-          API: process.env.VUE_APP_API_HOSTNAME,
+          API: process.env.VUE_APP_API_HOSTNAME + '/api/v2',
           CONSOLE: process.env.VUE_APP_CONSOLE_HOSTNAME,
           LANDING: process.env.VUE_APP_LANDING_HOSTNAME,
         }
       }
     },
     methods: {
-      fixUrl(url) { 
+      fixUrlProtocol(url) { 
         return url.indexOf('://') > -1 ? url : 'https://' + url 
       },
     },
@@ -18,7 +18,7 @@ export default {
         if (key === 'API' && process.env.NODE_ENV === 'development') {
             continue;
         }
-        this.hostnames[key] = this.fixUrl(this.hostnames[key])
+        this.hostnames[key] = this.fixUrlProtocol(this.hostnames[key]);
       }
       this.$hostnames = this.hostnames;
       console.log('global hostnames', this.$hostnames);

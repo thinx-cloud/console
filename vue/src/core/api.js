@@ -5,6 +5,7 @@ export default class Api {
     this.baseApiUrl = hostname;
     this.accessToken = null;
     this.refreshToken = null;
+    this.apiPath = '/api/v2';
   }
 
   composeOptions(method, body) {
@@ -28,8 +29,7 @@ export default class Api {
   }
 
   composePath(path) {
-    const baseApiUrl = this.baseApiUrl;
-    return baseApiUrl + '/v2' + path;
+    return this.baseApiUrl + this.apiPath + path;
   }
 
   parseResult(result) {
