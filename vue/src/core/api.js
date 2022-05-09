@@ -2,9 +2,10 @@ export default class Api {
 
   constructor(hostname) {
     //this.baseApiUrl = hostname.indexOf("http://") == -1 && hostname.indexOf("https://") === -1 ? 'https://' + hostname : hostname;
-    this.baseApiUrl = hostname;
+    this.baseApiUrl = hostname.replace(/\/$/, ""); // remove trailing slash
     this.accessToken = null;
     this.refreshToken = null;
+    this.apiPath = '/api/v2';
   }
 
   composeOptions(method, body) {
@@ -28,8 +29,7 @@ export default class Api {
   }
 
   composePath(path) {
-    const baseApiUrl = this.baseApiUrl;
-    return baseApiUrl + '/v2' + path;
+    return this.baseApiUrl + this.apiPath + path;
   }
 
   parseResult(result) {
