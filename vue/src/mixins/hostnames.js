@@ -10,7 +10,7 @@ export default {
     },
     methods: {
       fixUrlProtocol(url) { 
-        return url.indexOf('://') > -1 ? url : 'https://' + url 
+        return url.indexOf('://') > -1 || url[0] == '/' ? url : 'https://' + url 
       },
     },
     created: function () {

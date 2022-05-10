@@ -64,11 +64,19 @@
               >Create an Account</router-link
             >
             <div class="social-buttons">
-              <b-button variant="success" class="social-button">
+              <b-button
+                variant="success"
+                class="social-button"
+                :href="this.$hostnames.API + '/oauth/github'"
+              >
                 <i class="social-icon social-github"></i>
                 <p class="social-text">GitHub</p>
               </b-button>
-              <b-button variant="primary" class="social-button">
+              <b-button
+                variant="primary"
+                class="social-button"
+                :href="this.$hostnames.API + '/oauth/google'"
+              >
                 <i class="social-icon social-google"></i>
                 <p class="social-text">Google</p>
               </b-button>
@@ -87,7 +95,7 @@
 <script>
 import Widget from "@/components/Widget/Widget";
 import { mapMutations, mapGetters, mapActions } from "vuex";
-import hostnameMixin from '@/mixins/hostnames';
+import hostnameMixin from "@/mixins/hostnames";
 
 export default {
   name: "LoginPage",
@@ -123,7 +131,7 @@ export default {
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
-            'Access-Control-Allow-Origin': 'http://localhost:3080 ' + this.$hostnames.API,
+            "Access-Control-Allow-Origin": "http://localhost:3080 " + this.$hostnames.API,
           },
           body: JSON.stringify({
             username: this.$refs.username.value,
