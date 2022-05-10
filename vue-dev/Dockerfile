@@ -2,7 +2,7 @@
 
 # docker build -t thinxcloud/console-build-env:vue .
 
-FROM ubuntu:impish
+FROM debian:bullseye-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -24,14 +24,3 @@ RUN apt-get install -y nodejs
 
 ## Install Node dependencies
 RUN npm install -g npm yarn eslint node-gyp
-
-#FROM alpine:latest
-
-#RUN apk update
-#RUN apk add --update nodejs npm curl yarn
-#RUN apk add xvfb xauth
-
-# install latest yarn
-#RUN curl --compressed -o- -L https://yarnpkg.com/install.sh | sh
-
-#RUN npm install cypress -g
