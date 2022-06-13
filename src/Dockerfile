@@ -52,7 +52,7 @@ RUN npm install -g npm \
 #
 
 # needs to include gulp
-FROM nginx:1.21
+FROM nginx:1.21.6-alpine
 
 WORKDIR /usr/share/nginx/html
 COPY --from=0 /home/node/build/html .
