@@ -67,3 +67,8 @@ COPY default.conf /etc/nginx/conf.d/default.conf
 
 # Expose port (HOST:CONTAINER; nginx, may be configured from outside with docker-compose)
 EXPOSE 7440:80
+
+LABEL "com.datadoghq.ad.check_names"='["nginx"]'
+LABEL "com.datadoghq.ad.init_configs"='[{}]'
+LABEL "com.datadoghq.ad.instances"='[{"nginx_status_url": "http://%%host%%:%%port%%/nginx_status"}]'
+LABEL "com.datadoghq.ad.logs"='[{"source": "nginx", "service": "webapp"}]'

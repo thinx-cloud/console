@@ -183,7 +183,7 @@ workflows:
           filters:
             branches:
               only:
-                - main
+                - mainx
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
       - deploy:
