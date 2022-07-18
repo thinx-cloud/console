@@ -52,14 +52,12 @@ RUN npm install -g npm \
 #
 
 # needs to include gulp
-FROM nginx:1.21
+FROM nginx:1.22.0-alpine
 
 WORKDIR /usr/share/nginx/html
 COPY --from=0 /home/node/build/html .
 
 COPY default.conf /etc/nginx/conf.d/default.conf
-
-RUN apt-get update && apt-get upgrade -y
 
 # Only for Alpine, but the nginx is somewhere else then?
 #COPY harden.sh .
