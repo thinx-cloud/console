@@ -65,14 +65,12 @@ RUN yarn build
 #
 
 # needs to include gulp
-FROM nginx:1.21
+FROM nginx:1.22.0-alpine
 
 WORKDIR /usr/share/nginx/html
 COPY --from=0 /home/node/build/dist .
 
 COPY default.conf /etc/nginx/conf.d/default.conf
-
-RUN apt-get update && apt-get upgrade -y
 
 # Expose port (HOST:CONTAINER; nginx, may be configured from outside with docker-compose)
 EXPOSE 7440:80
