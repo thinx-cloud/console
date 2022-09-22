@@ -20,12 +20,14 @@
 
         </b-col>
         <b-col xs="12" lg="5">
+          <!--
           <Widget
               title="<h5>Echarts <span class='fw-semi-bold'>Line Chart</span></h5>"
               close collapse customHeader
           >
             <echart :options="cd.echarts.line" :init-options="initEchartsOptions" style="height: 370px"></echart>
           </Widget>
+          -->
         </b-col>
         <b-col xs='12' lg='5'>
           <Widget
@@ -105,12 +107,14 @@
 import Widget from "@/components/Widget/Widget";
 import {chartData, liveChart, liveChartInterval} from './mock';
 
+/*
 import ECharts from 'vue-echarts/components/ECharts';
 import 'echarts/lib/chart/line';
 import 'echarts/lib/chart/themeRiver';
 import 'echarts/lib/chart/pie';
 import 'echarts/lib/component/tooltip';
 import 'echarts/lib/component/legend';
+*/
 
 import Highcharts from 'highcharts';
 import exporting from 'highcharts/modules/exporting';
