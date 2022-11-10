@@ -39,7 +39,7 @@ COPY package.json ./
 COPY . .
 
 RUN npm install . \
-    && npm install -g npm@8.5.0 \
+    && npm install -g npm \
     && npm audit fix --force \
     && npm run build
 
@@ -48,14 +48,12 @@ RUN npm install . \
 #
 
 # needs to include gulp
-FROM nginx:latest
+FROM nginx:1.23.2-alpine
 
 WORKDIR /usr/share/nginx/html
 COPY --from=0 /home/node/build/html .
 
 COPY default.conf /etc/nginx/conf.d/default.conf
-
-RUN apt-get update && apt-get upgrade -y
 
 # Only for Alpine, but the nginx is somewhere else then?
 #COPY harden.sh .
