@@ -78,6 +78,7 @@ jobs:
             --build-arg ENTERPRISE=${ENTERPRISE} \
             --build-arg ENVIRONMENT=${ENVIRONMENT} \
             --build-arg COMMIT_ID=$CIRCLE_SHA1 \
+            --build-arg VERSION_CODE=$(git rev-parse --short HEAD) \
           tag: 'swarm'
       - docker/push:
           digest-path: /tmp/digest.txt
