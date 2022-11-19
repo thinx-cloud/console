@@ -27,14 +27,15 @@
     "negotiator": "0.6.3",
     "qs": "6.10.3"
   },
-  "resolutions": {
+  "overrides": {
     "negotiator": "0.6.3",
     "lodash": "4.17.21",
     "lodash.template": "4.5.0",
     "postcss": "8.2.13",
     "uuid": "8.3.2",
     "minimatch": "3.0.4",
-    "glob-parent": "5.1.2"
+    "glob-parent": "5.1.2",
+    "graceful-fs": "4.2.10"
   },
   "devDependencies": {
     "@cypress/code-coverage": "^3.9.12",
