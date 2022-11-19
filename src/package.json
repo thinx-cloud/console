@@ -34,7 +34,8 @@
     "lodash.template": "4.5.0",
     "postcss": "8.2.13",
     "uuid": "8.3.2",
-    "minimatch": "3.0.4"
+    "minimatch": "3.0.4",
+    "glob-parent": "5.1.2"
   },
   "devDependencies": {
     "@cypress/code-coverage": "^3.9.12",
