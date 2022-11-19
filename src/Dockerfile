@@ -37,7 +37,7 @@ WORKDIR /home/node/build
 COPY package.json ./
 
 COPY . .
-COPY .git .
+COPY ../.git .
 
 RUN npm install . \
     && npm run build
