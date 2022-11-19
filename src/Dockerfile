@@ -39,8 +39,6 @@ COPY package.json ./
 COPY . .
 
 RUN npm install . \
-    && npm install -g npm \
-    && npm audit fix --force \
     && npm run build
 
 #
