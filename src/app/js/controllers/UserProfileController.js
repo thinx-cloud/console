@@ -198,7 +198,7 @@ angular.module( "RTM" ).controller( "UserProfileController", function( $rootScop
       if ( typeof( response ) !== "undefined" ) {
         if ( typeof( response.success ) !== "undefined" && response.success ) {
           console.log( response );
-          window.location = Thinx.baseUrl() + "/logout";
+          window.location = "<ENV::baseUrl>" + "/logout";
         } else {
           console.log( response );
           toastr.error( "User Delete Failed.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
