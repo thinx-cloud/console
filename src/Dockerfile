@@ -41,7 +41,8 @@ COPY package.json ./
 COPY . .
 
 RUN npm install . \
-    && echo $VERSION_CODE > version_code \
+    && echo "$VERSION_CODE" > version_code \
+    && cat version_code \
     && npm run build
 
 RUN rm -rf .git
