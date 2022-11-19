@@ -4,7 +4,7 @@
   "description": "THiNX Console",
   "main": "gulpfile.js",
   "scripts": {
-    "preinstall": "npm install --package-lock-only --ignore-scripts --no-audit)",
+    "preinstall": "npm install --ignore-scripts --no-audit)",
     "test": "protractor test/conf.js",
     "coverage": "npm test; nyc report --reporter=text-lcov | coveralls",
     "build": "VERSION_CODE=$(git rev-parse --short HEAD) ./node_modules/.bin/gulp dev",
