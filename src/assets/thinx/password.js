@@ -89,6 +89,8 @@ var PasswordReset = ( function() {
             if ( typeof( response ) !== "undefined" ) {
               if ( response.success ) {
 
+                // should receive JSON with { success: true, response: "password_reset_request_accepted" }
+
                 if ( response.response == "password_reset_request_accepted" ) {
                   $( ".msg-error", $( ".reset-form" ) ).hide();
                   $( ".reset-form" ).hide();
