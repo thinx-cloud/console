@@ -7,7 +7,7 @@
     "preinstall": "npm install --ignore-scripts --no-audit",
     "test": "protractor test/conf.js",
     "coverage": "npm test; nyc report --reporter=text-lcov | coveralls",
-    "build": "VERSION_CODE=$(git rev-parse --short HEAD) ./node_modules/.bin/gulp dev",
+    "build": "VERSION_CODE=$(git rev-parse --short HEAD || 0) ./node_modules/.bin/gulp dev",
     "build:test": "VERSION_CODE=$(git rev-parse --short HEAD) COMPOSE_PROJECT_NAME=test LANDING_HOSTNAME=https://thinx.cloud API_BASEURL=https://rtm.thinx.cloud API_HOSTNAME=https://rtm.thinx.cloud/api WEB_HOSTNAME=https://rtm.thinx.cloud ./node_modules/.bin/gulp dev",
     "buildAll": "./node_modules/.bin/gulp prod",
     "lint": "./node_modules/.bin/eslint --ignore-path .eslintignore ./",
