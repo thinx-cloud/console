@@ -296,29 +296,26 @@ var Login = ( function() {
           success: function( data ) {
             console.log( "--user create response--" );
 
-            if ( typeof( response ) !== "undefined" ) {
+            if ( typeof(response.success) !== 'undefined' && response.success ) {
+              if ( response.response == "email_sent" ) {
+                $( ".msg-error", $( ".register-form" ) ).hide();
+                $( ".register-form" ).hide();
 
-              if ( response.success ) {
-                if ( response.response == "email_sent" ) {
-                  $( ".msg-error", $( ".register-form" ) ).hide();
-                  $( ".register-form" ).hide();
-
-                  $( ".msg-success .form-subtitle" ).text( "Check your email or spam folder for activation link." );
-                  $( ".msg-success" ).show();
-                }
-              } else {
-                if ( response.response == "activation_failed" ) {
-                  $( ".msg-error", $( ".register-form" ) ).text( "Registration failed." );
-                  $( ".msg-error", $( ".register-form" ) ).show();
-                }
-                if ( response.response == "email_already_exists" ) {
-                  $( ".msg-error", $( ".register-form" ) ).text( "Email already exists." );
-                  $( ".msg-error", $( ".register-form" ) ).show();
-                }
-                if ( response.response == "username_already_exists" ) {
-                  $( ".msg-error", $( ".register-form" ) ).text( "Username already exists." );
-                  $( ".msg-error", $( ".register-form" ) ).show();
-                }
+                $( ".msg-success .form-subtitle" ).text( "Check your email or spam folder for activation link." );
+                $( ".msg-success" ).show();
+              }
+            } else {
+              if ( response.response == "activation_failed" ) {
+                $( ".msg-error", $( ".register-form" ) ).text( "Registration failed." );
+                $( ".msg-error", $( ".register-form" ) ).show();
+              }
+              if ( response.response == "email_already_exists" ) {
+                $( ".msg-error", $( ".register-form" ) ).text( "Email already exists." );
+                $( ".msg-error", $( ".register-form" ) ).show();
+              }
+              if ( response.response == "username_already_exists" ) {
+                $( ".msg-error", $( ".register-form" ) ).text( "Username already exists." );
+                $( ".msg-error", $( ".register-form" ) ).show();
               }
             }
 
