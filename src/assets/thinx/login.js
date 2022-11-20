@@ -296,14 +296,6 @@ var Login = ( function() {
           success: function( data ) {
             console.log( "--user create response--" );
 
-            try {
-              var response = JSON.parse( data );
-              console.log( "response", response );
-            } catch ( e ) {
-              console.log( "error", e );
-              console.log( "data", data );
-            }
-
             if ( typeof( response ) !== "undefined" ) {
 
               if ( response.success ) {
