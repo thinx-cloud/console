@@ -167,8 +167,9 @@ var Login = ( function() {
           success: function( data ) {
             console.log( "--password reset request success--" );
 
+            var response = data;
             try {
-              var response = JSON.parse( data );
+              response = JSON.parse( data );
             } catch ( e ) {
               console.log( e );
             }

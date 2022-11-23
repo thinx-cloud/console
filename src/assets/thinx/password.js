@@ -79,8 +79,9 @@ var PasswordReset = ( function() {
           success: function( data ) {
             console.log( "--password set request success--" );
 
+            var response = data;
             try {
-              var response = JSON.parse( data );
+              response = JSON.parse( data );
               console.log( data );
             } catch ( e ) {
               console.log( e );

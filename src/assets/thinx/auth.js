@@ -60,8 +60,9 @@ var Auth = ( function() {
             success: function( data ) {
               console.log( "--gdpr accept request success--" );
 
+              var response = data;
               try {
-                var response = JSON.parse( data );
+                response = JSON.parse( data );
                 console.log( data );
               } catch ( e ) {
                 console.log( e );
@@ -120,8 +121,9 @@ var Auth = ( function() {
         success: function( data ) {
           console.log( "--gdpr reject request success--" );
 
+          var response = data;
           try {
-            var response = JSON.parse( data );
+            response = JSON.parse( data );
             console.log( data );
           } catch ( e ) {
             console.log( e );
