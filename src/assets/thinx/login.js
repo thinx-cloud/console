@@ -168,6 +168,7 @@ var Login = ( function() {
             console.log( "--password reset request success--" );
 
             var response = data;
+            
             try {
               response = JSON.parse( data );
             } catch ( e ) {
@@ -294,7 +295,7 @@ var Login = ( function() {
 
           type: "POST",
           dataType: "json",
-          success: function( data ) {
+          success: function( response ) {
             console.log( "--user create response--" );
 
             if ( typeof(response.success) !== 'undefined' && response.success ) {
