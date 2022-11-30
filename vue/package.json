@@ -45,7 +45,7 @@
     "vue-toasted": "^1.1.28",
     "vue2-google-maps": "0.10.7",
     "vuex": "^3.6.2",
-    "webpack-cli": "^3.3.12"
+    "webpack-cli": "^5.0.0"
   },
   "overrides": {
     "moment": "2.29.4",
