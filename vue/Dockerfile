@@ -65,7 +65,7 @@ RUN yarn build
 #
 
 # needs to include gulp
-FROM nginx:1.23.2-alpine
+FROM nginx:1.23.3-alpine
 
 WORKDIR /usr/share/nginx/html
 COPY --from=0 /home/node/build/dist .
