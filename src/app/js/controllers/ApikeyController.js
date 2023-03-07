@@ -51,7 +51,7 @@ angular.module( "RTM" ).controller( "ApikeyController", [ "$rootScope", "$scope"
     .done( function( response ) {
       if ( typeof( response ) !== "undefined" ) {
         if ( response.success ) {
-          console.log( response.api_key );
+          console.log( response );
           $scope.createButtonVisible = false;
           $scope.newApikey = response.api_key;
           $( "#pageModal .msg-warning" ).show();
