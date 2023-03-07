@@ -48,12 +48,12 @@ angular.module( "RTM" ).controller( "ApikeyController", [ "$rootScope", "$scope"
     console.log( "-- asking for new apikey with alias: " + apikeyAlias + " --" );
 
     Thinx.createApikey( apikeyAlias )
-    .done( function( response ) {
-      if ( typeof( response ) !== "undefined" ) {
-        if ( response.success ) {
+    .done( function( data ) {
+      if ( typeof( data ) !== "undefined" ) {
+        if ( data.success ) {
           console.log( response );
           $scope.createButtonVisible = false;
-          $scope.newApikey = response.api_key;
+          $scope.newApikey = data.response.api_key;
           $( "#pageModal .msg-warning" ).show();
 
           Thinx.apikeyList()
@@ -72,13 +72,13 @@ angular.module( "RTM" ).controller( "ApikeyController", [ "$rootScope", "$scope"
 
           $scope.$apply();
         } else {
-          console.log( response );
-          $( ".msg-warning" ).text( response.status );
+          console.log( data );
+          $( ".msg-warning" ).text( data.status );
           $( ".msg-warning" ).show();
         }
       } else {
         console.log( "error" );
-        console.log( response );
+        console.log( data );
         toastr.error( "Apikey creation failed.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
       }
     } )
