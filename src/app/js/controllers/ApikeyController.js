@@ -51,7 +51,7 @@ angular.module( "RTM" ).controller( "ApikeyController", [ "$rootScope", "$scope"
     .done( function( data ) {
       if ( typeof( data ) !== "undefined" ) {
         if ( data.success ) {
-          console.log( response );
+          console.log( data );
           $scope.createButtonVisible = false;
           $scope.newApikey = data.response.api_key;
           $( "#pageModal .msg-warning" ).show();
@@ -73,12 +73,11 @@ angular.module( "RTM" ).controller( "ApikeyController", [ "$rootScope", "$scope"
           $scope.$apply();
         } else {
           console.log( data );
-          $( ".msg-warning" ).text( data.status );
+          $( ".msg-warning" ).text( data.status ); // ? || data.response 
           $( ".msg-warning" ).show();
         }
       } else {
         console.log( "error" );
-        console.log( data );
         toastr.error( "Apikey creation failed.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
       }
     } )
