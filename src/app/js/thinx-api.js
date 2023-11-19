@@ -320,7 +320,7 @@ function init($rootScope, $scope) {
 
   function updateDevices(response) {
     $rootScope.devices = [];
-    let devices = JSON.parse(response).response;
+    let devices = response.response;
     console.log("updateDevices with data", devices);
     for (var d in devices) {
       devices[d].base_platform = devices[d].platform.split(":")[0];
