@@ -53,7 +53,8 @@ jobs:
       #     path: ./src/cypress/videos
       #     destination: cypress-videos
 
-      - sonarcloud/scan
+      # Disabled - failing since project does not exist anymore on sonarcloud.io
+      # - sonarcloud/scan
 
   deploy:
     executor: docker/docker
