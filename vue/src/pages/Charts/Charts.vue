@@ -107,14 +107,14 @@
 import Widget from "@/components/Widget/Widget";
 import {chartData, liveChart, liveChartInterval} from './mock';
 
-/*
+
 import ECharts from 'vue-echarts/components/ECharts';
 import 'echarts/lib/chart/line';
 import 'echarts/lib/chart/themeRiver';
 import 'echarts/lib/chart/pie';
 import 'echarts/lib/component/tooltip';
 import 'echarts/lib/component/legend';
-*/
+
 
 import Highcharts from 'highcharts';
 import exporting from 'highcharts/modules/exporting';
