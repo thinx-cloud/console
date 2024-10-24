@@ -107,16 +107,6 @@
 import Widget from "@/components/Widget/Widget";
 import {chartData, liveChart, liveChartInterval} from './mock';
 
-import ECharts from 'vue-echarts/components/ECharts';
-import 'echarts/lib/chart/line';
-import 'echarts/lib/chart/themeRiver';
-import 'echarts/lib/chart/pie';
-import 'echarts/lib/component/tooltip';
-import 'echarts/lib/component/legend';
-
-/* import "echarts" */
-
-
 import Highcharts from 'highcharts';
 import exporting from 'highcharts/modules/exporting';
 import exportData from 'highcharts/modules/export-data';
@@ -131,7 +121,7 @@ import { mapGetters, mapActions } from "vuex";
 
 export default {
   name: "Charts",
-  components: { Widget, echart: ECharts, highcharts: Chart, Sparklines },
+  components: { Widget, highcharts: Chart, Sparklines },
   data() {
     return {
       cd: chartData,
