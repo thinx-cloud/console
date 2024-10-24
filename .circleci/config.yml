@@ -80,7 +80,6 @@ jobs:
             --build-arg ENVIRONMENT=${ENVIRONMENT} \
             --build-arg COMMIT_ID=$CIRCLE_SHA1 \
             --build-arg VERSION_CODE=$(echo $CIRCLE_SHA1 | cut -c -7) \
-            --progress plain
           tag: 'swarm'
       - docker/push:
           digest-path: /tmp/digest.txt
