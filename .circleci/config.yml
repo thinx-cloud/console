@@ -56,7 +56,7 @@ jobs:
       # Disabled - failing since project does not exist anymore on
       - sonarcloud/scan
 
-  deploy:
+  deploy_legacy:
     executor: docker/docker
     steps:
       - setup_remote_docker
@@ -188,7 +188,7 @@ workflows:
                 - mainx
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
-      - deploy:
+      - deploy_legacy:
           name: Deploy legacy console
           context:
             - dockerhub
