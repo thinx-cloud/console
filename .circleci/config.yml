@@ -194,6 +194,7 @@ workflows:
             - dockerhub
             - thinx-docker-repo
             - sonarcloud
+            - console
           requires:
             - Test legacy console
           filters:
