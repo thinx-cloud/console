@@ -8,5 +8,5 @@
     "owner": "cypresstest",
     "email": "cypresstest@thinx.cloud"
   },
-  "serverUrl": ""
+  "serverUrl": "https://rtm.thinx.cloud"
 }
