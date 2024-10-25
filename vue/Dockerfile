@@ -67,7 +67,7 @@ RUN yarn build
 # needs to include gulp
 FROM nginx:1.27.2-alpine
 
-RUN apt-get update && apt-get -y install procps
+RUN apk add procps
 
 WORKDIR /usr/share/nginx/html
 COPY --from=0 /home/node/build/dist .
