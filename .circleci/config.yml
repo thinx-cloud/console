@@ -56,7 +56,7 @@ jobs:
       # Disabled - failing since project does not exist anymore on
       - sonarcloud/scan
 
-  deploy:
+  legacy:
     executor: docker/docker
     steps:
       - setup_remote_docker
@@ -127,11 +127,10 @@ jobs:
 
       - sonarcloud/scan
 
-  deploy_vue:
+  vue:
     executor: docker/docker
     steps:
-      - setup_remote_docker:
-          version: 19.03.13
+      - setup_remote_docker
       - checkout
       - docker/check:
           registry: registry.thinx.cloud:5000
@@ -188,12 +187,13 @@ workflows:
                 - mainx
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
-      - deploy:
+      - legacy:
           name: Deploy legacy console
           context:
             - dockerhub
             - thinx-docker-repo
             - sonarcloud
+            - console
           requires:
             - Test legacy console
           filters:
@@ -201,7 +201,7 @@ workflows:
               only:
                 - thinx-staging
 
-      - deploy_vue:
+      - vue:
           name: Publish Vue console (does not deploy)
           context:
             - dockerhub

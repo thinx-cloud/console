@@ -52,7 +52,10 @@ RUN rm -rf .git
 #
 
 # needs to include gulp
-FROM nginx:1.24.0-alpine
+
+FROM nginx:1.27.2-alpine
+
+RUN apk add procps
 
 WORKDIR /usr/share/nginx/html
 COPY --from=0 /home/node/build/html .
