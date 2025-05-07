@@ -53,7 +53,7 @@ RUN rm -rf .git
 
 # needs to include gulp
 
-FROM nginx:1.27.2-alpine
+FROM nginx:1.28.0-alpine
 
 RUN apk add procps
 

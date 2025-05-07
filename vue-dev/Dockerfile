@@ -2,7 +2,7 @@
 
 # docker build -t thinxcloud/console-build-env:vue .
 
-FROM debian:bookworm-20240926-slim
+FROM debian:bookworm-20250428-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
