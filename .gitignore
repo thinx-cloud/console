@@ -10,3 +10,4 @@ src/cypress/screenshots
 src/cypress/videos
 yarn.lock
 .dccache
+settings.json
