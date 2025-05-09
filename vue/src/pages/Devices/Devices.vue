@@ -67,14 +67,16 @@ export default {
     },
     loadData() {
       this.loading = true;
-      this.fetchItems().then((items) => {
+      this.fetchItems().then(() => {
+        // Removed unused 'items' parameter
         this.items = this.getItems();
         this.headers = this.getHeaders();
         this.loading = false;
 
         this.updateTimeline();
 
-        this.fetchStats().then((stats) => {
+        this.fetchStats().then(() => {
+          // Removed unused 'stats' parameter
           this.stats = this.getStats();
         });
       });

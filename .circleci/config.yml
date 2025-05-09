@@ -3,7 +3,6 @@ version: 2.1
 orbs: 
   docker: circleci/docker@2.0.3
   ggshield: gitguardian/ggshield@1.1.4
-  sonarcloud: sonarsource/sonarcloud@2.0.0
 
 jobs:
 
@@ -52,9 +51,6 @@ jobs:
       #     name: Collect videos
       #     path: ./src/cypress/videos
       #     destination: cypress-videos
-
-      # Disabled - failing since project does not exist anymore on
-      - sonarcloud/scan
 
   legacy:
     executor: docker/docker
@@ -125,8 +121,6 @@ jobs:
           path: ./vue/cypress/videos
           destination: cypress-videos
 
-      - sonarcloud/scan
-
   vue:
     executor: docker/docker
     steps:
@@ -188,7 +182,7 @@ workflows:
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
       - legacy:
-          name: Deploy legacy console
+          name: Release legacy console
           context:
             - dockerhub
             - thinx-docker-repo
@@ -202,7 +196,7 @@ workflows:
                 - thinx-staging
 
       - vue:
-          name: Publish Vue console (does not deploy)
+          name: Publish Vue console
           context:
             - dockerhub
             - thinx-docker-repo

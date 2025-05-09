@@ -56,10 +56,12 @@ export default {
     loadData() {
       this.loading = true;
       this.headers = this.getAuditHeaders();
-      this.fetchBuildlog().then((items) => {
+      this.fetchBuildlog().then(() => {
+        // Removed unused 'items' parameter
         console.log("# fetchBuildlog");
         this.buildlog = this.getBuildItems();
-        this.fetchAuditlog().then((items) => {
+        this.fetchAuditlog().then(() => {
+            // Removed unused 'items' parameter
             console.log("# fetchAuditlog");
             this.auditlog = this.getAuditItems();
             this.loading = false;

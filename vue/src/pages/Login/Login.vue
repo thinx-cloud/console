@@ -122,7 +122,10 @@ export default {
     }),
     async login(e) {
       e.preventDefault();
-      if (username.length !== 0 && password.length !== 0) {
+      const usernameValue = this.$refs.username.value;
+      const passwordValue = this.$refs.password.value;
+      
+      if (usernameValue.length !== 0 && passwordValue.length !== 0) {
         // TODO start JWT login scenario
         const response = await fetch(this.$hostnames.API + "/login", {
           method: "POST",
@@ -140,12 +143,12 @@ export default {
         });
 
         const {
-          status,
+          // status, // Unused variable
           success,
           access_token,
           refresh_token,
-          redirectURL,
-          g,
+          // redirectURL, // Unused variable
+          // g, // Unused variable
         } = await response.json();
 
         if (success) {

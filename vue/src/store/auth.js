@@ -31,7 +31,7 @@ export default {
         window.localStorage.removeItem('refreshToken');
         state.refreshToken = undefined;
       },
-      isTokenValid({ state }, token) {
+      isTokenValid(_, token) {
         try {
             const nowUnixtime = Math.floor(Date.now() / 1000);
             let decoded = VueJwtDecode.decode(token);

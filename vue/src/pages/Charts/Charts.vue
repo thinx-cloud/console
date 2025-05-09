@@ -105,7 +105,8 @@
 --.
 <script>
 import Widget from "@/components/Widget/Widget";
-import {chartData, liveChart, liveChartInterval} from './mock';
+import {chartData, liveChart} from './mock';
+// liveChartInterval removed from import as it's unused
 
 import Highcharts from 'highcharts';
 import exporting from 'highcharts/modules/exporting';
@@ -117,7 +118,7 @@ exportData(Highcharts);
 import { Chart } from 'highcharts-vue';
 import Sparklines from '../../components/Sparklines/Sparklines'
 
-import { mapGetters, mapActions } from "vuex";
+// Removed unused vuex imports
 
 export default {
   name: "Charts",

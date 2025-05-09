@@ -1,6 +1,10 @@
 export default class Api {
 
   constructor(hostname) {
+    // Handle cases where hostname is undefined or null
+    if (!hostname) {
+      hostname = window.location.origin || 'http://localhost:3000';
+    }
     //this.baseApiUrl = hostname.indexOf("http://") == -1 && hostname.indexOf("https://") === -1 ? 'https://' + hostname : hostname;
     this.baseApiUrl = hostname.replace(/\/$/, ""); // remove trailing slash
     this.accessToken = null;

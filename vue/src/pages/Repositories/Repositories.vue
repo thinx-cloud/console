@@ -80,7 +80,8 @@ export default {
     },
     loadData() {
       this.loading = true;
-      this.fetchRepositories().then((repositories) => {
+      this.fetchRepositories().then(() => {
+        // Removed unused 'repositories' parameter
         this.repositories = this.getItems();
         this.headers = this.getHeaders();
         this.loading = false;

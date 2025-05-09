@@ -133,5 +133,5 @@ export default new Router({
       name: 'RootError',
       component: ErrorPage,
     }
-  ],
+  ]
 });
