@@ -6,5 +6,5 @@ const app = express();
 app.use(serveStatic(__dirname + "/dist"));
 app.use(helmet());
 
-var port = process.env.PORT || 5000;
+var port = process.env.PORT || 7440;
 app.listen(port);
