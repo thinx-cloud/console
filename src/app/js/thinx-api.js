@@ -1232,7 +1232,6 @@ function profileDownload() {
 function getAuditHistory() {
   return $.ajax({
     url: urlBase + "/user/logs/audit",
-    dataType: "json",
     type: "GET"
   });
 }
@@ -1240,7 +1239,6 @@ function getAuditHistory() {
 function getBuildHistory() {
   return $.ajax({
     url: urlBase + "/user/logs/build/list",
-    dataType: "json",
     type: "GET"
   });
 }
