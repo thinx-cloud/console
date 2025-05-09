@@ -1,10 +1,14 @@
 export default {
     data: () => {
+      const apiHostname = process.env.VUE_APP_API_HOSTNAME || window.location.origin;
+      const consoleHostname = process.env.VUE_APP_CONSOLE_HOSTNAME || window.location.origin;
+      const landingHostname = process.env.VUE_APP_LANDING_HOSTNAME || window.location.origin;
+      
       return {
         hostnames: {
-          API: process.env.VUE_APP_API_HOSTNAME.replace(/\/$/, "") + '/api/v2',
-          CONSOLE: process.env.VUE_APP_CONSOLE_HOSTNAME,
-          LANDING: process.env.VUE_APP_LANDING_HOSTNAME,
+          API: (apiHostname || '').replace(/\/$/, "") + '/api/v2',
+          CONSOLE: consoleHostname,
+          LANDING: landingHostname,
         }
       }
     },
