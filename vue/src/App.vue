@@ -7,17 +7,21 @@ import { mapGetters, mapMutations, mapActions } from "vuex";
 
 export default {
   name: "App",
+  computed: {
+    ...mapGetters({
+      isAuthenticated: "auth/isAuthenticated"
+    })
+  },
   methods: {
     ...mapMutations({
       setAccessToken: "auth/setAccessToken",
       setRefreshToken: "auth/setRefreshToken",
     }),
-    ...mapGetters({ isAuthenticated: "auth/isAuthenticated" }),
     ...mapActions({ isTokenValid: "auth/isTokenValid" }),
   },
   async created() {
     const currentPath = this.$router.history.current.path;
-    const authenticated = this.isAuthenticated();// (window.localStorage.getItem("authenticated") === 'true');
+    const authenticated = this.isAuthenticated;// (window.localStorage.getItem("authenticated") === 'true');
 
     if (!authenticated) {
       if (currentPath !== "/login") {
