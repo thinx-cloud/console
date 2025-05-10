@@ -70,7 +70,7 @@ RUN bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/insta
 RUN bash -c 'whoami && uname -a'
 
 ## . ~/.nvm/nvm.sh && fails
-RUN bash -c 'ls -la /root && find / -name "nvm.sh" && nvm use 22 && yarn && yarn build'
+RUN bash -c 'ls -la /root/.nvm && chmod +x /root/.nvm/nvm.sh && find /root -name "nvm.sh" && nvm use 22 && yarn && yarn build'
 
 #
 # Deployment Image
