@@ -124,7 +124,8 @@ jobs:
   vue:
     executor: docker/docker
     steps:
-      - setup_remote_docker
+      - setup_remote_docker:
+          docker_layer_caching: true
       - checkout
       - docker/check:
           registry: registry.thinx.cloud:5000
@@ -134,11 +135,11 @@ jobs:
           image: thinxcloud/console-build-env
           dockerfile: vue-dev/Dockerfile
           tag: 'vue'
-      - docker/push:
-          digest-path: /tmp/digest.txt
-          image: thinxcloud/console-build-env
-          registry: registry.thinx.cloud:5000
-          tag: 'vue'
+      # - docker/push:
+      #     digest-path: /tmp/digest.txt
+      #     image: thinxcloud/console-build-env
+      #     registry: registry.thinx.cloud:5000
+      #     tag: 'vue'
       - docker/build:
           registry: registry.thinx.cloud:5000
           docker-context: vue
@@ -155,6 +156,7 @@ jobs:
             --build-arg ENTERPRISE=${ENTERPRISE} \
             --build-arg ENVIRONMENT=${ENVIRONMENT} \
             --build-arg COMMIT_ID=$CIRCLE_SHA1 \
+            --progress=plain \
           tag: 'latest'
       - docker/push:
           digest-path: /tmp/digest.txt
