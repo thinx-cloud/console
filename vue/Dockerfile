@@ -60,7 +60,7 @@ COPY package.json ./
 COPY . .
 
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
-    bash -c 'export NVM_DIR=/root/.nvm/ export NODE_VERSION="22.15" && export && . "$NVM_DIR/nvm.sh" && \
+    bash -c 'export NVM_DIR=/root/.nvm && export NODE_VERSION="22.15" && export && . "$NVM_DIR/nvm.sh" && \
     nvm install $NODE_VERSION && \
     nvm use $NODE_VERSION && \
     nvm alias default $NODE_VERSION && \
