@@ -59,10 +59,10 @@ COPY package.json ./
 
 COPY . .
 
-RUN which nvm
+RUN bash -c 'whoami && uname -a && which nvm'
 
 ## . ~/.nvm/nvm.sh && 
-RUN bash -c 'whoami && uname -a && ls -la /root && find / -name "nvm.sh" && nvm use 22 && yarn && yarn build'
+RUN bash -c 'ls -la /root && find / -name "nvm.sh" && nvm use 22 && yarn && yarn build'
 
 #
 # Deployment Image
