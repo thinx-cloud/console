@@ -70,7 +70,8 @@ RUN bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/insta
     nvm alias default $NODE_VERSION && \
     chmod +x /root/.nvm/nvm.sh && \
     nvm use 22 && \
-    npm install -g npm yarn eslint node-gyp && \
+    npm install -g npm yarn eslint node-gyp @vue/cli-service && \
+    npm install . && \
     yarn && \
     yarn build'
 
