@@ -135,11 +135,6 @@ jobs:
           image: thinxcloud/console-build-env
           dockerfile: vue-dev/Dockerfile
           tag: 'vue'
-      # - docker/push:
-      #     digest-path: /tmp/digest.txt
-      #     image: thinxcloud/console-build-env
-      #     registry: registry.thinx.cloud:5000
-      #     tag: 'vue'
       - docker/build:
           registry: registry.thinx.cloud:5000
           docker-context: vue
@@ -163,6 +158,11 @@ jobs:
           image: thinx/console
           registry: registry.thinx.cloud:5000
           tag: 'latest'
+      - docker/push:
+          digest-path: /tmp/digest.txt
+          image: thinxcloud/console-build-env
+          registry: registry.thinx.cloud:5000
+          tag: 'vue'
 
 workflows:
 
@@ -209,7 +209,7 @@ workflows:
       #           - thinx-staging
 
       - vue:
-          name: Publish Vue console
+          name: Build and Publish Vue console
           context:
             - dockerhub
             - thinx-docker-repo
