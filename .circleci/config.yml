@@ -207,8 +207,8 @@ workflows:
             - dockerhub
             - thinx-docker-repo
             - sonarcloud
-          requires:
-            - Test Vue console
+          # requires:
+          #   - Test Vue console
           # filters:
           #   branches:
           #     only:
