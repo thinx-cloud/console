@@ -214,6 +214,7 @@ workflows:
             - dockerhub
             - thinx-docker-repo
             - sonarcloud
+            - console
           # requires:
           #   - Test Vue console
           # filters:
