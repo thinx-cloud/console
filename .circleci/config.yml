@@ -131,15 +131,16 @@ jobs:
       - docker/build:
           registry: registry.thinx.cloud:5000
           docker-context: vue-dev
-          image: thinx/console-build-env
+          image: thinxcloud/console-build-env
           dockerfile: vue-dev/Dockerfile
           tag: 'vue'
       - docker/push:
           digest-path: /tmp/digest.txt
-          image: thinx/console-build-env
+          image: thinxcloud/console-build-env
           registry: registry.thinx.cloud:5000
           tag: 'vue'
       - docker/build:
+          name: Build Vue Console using console-build-env:vue image
           registry: registry.thinx.cloud:5000
           docker-context: vue
           image: thinx/console
@@ -155,12 +156,12 @@ jobs:
             --build-arg ENTERPRISE=${ENTERPRISE} \
             --build-arg ENVIRONMENT=${ENVIRONMENT} \
             --build-arg COMMIT_ID=$CIRCLE_SHA1 \
-          tag: 'public'
+          tag: 'latest'
       - docker/push:
           digest-path: /tmp/digest.txt
           image: thinx/console
           registry: registry.thinx.cloud:5000
-          tag: 'public'
+          tag: 'latest'
 
 workflows:
 
