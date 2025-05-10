@@ -64,13 +64,8 @@ RUN bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/insta
     nvm install $NODE_VERSION && \
     nvm use $NODE_VERSION && \
     nvm alias default $NODE_VERSION && \
-    npm install -g npm yarn eslint node-gyp'
-
-#  && which nvm fails
-RUN bash -c 'whoami && uname -a'
-
-## . ~/.nvm/nvm.sh && fails
-RUN bash -c 'ls -la /root/.nvm && chmod +x /root/.nvm/nvm.sh && find /root -name "nvm.sh" && nvm use 22 && yarn && yarn build'
+    npm install -g npm yarn eslint node-gyp && \
+    ls -la /root/.nvm && chmod +x /root/.nvm/nvm.sh && nvm use 22 && yarn && yarn build'
 
 #
 # Deployment Image
