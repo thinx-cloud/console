@@ -34,10 +34,6 @@ ENV ROLLBAR_ACCESS_TOKEN=${ROLLBAR_ACCESS_TOKEN}
 ENV CRISP_WEBSITE_ID=${CRISP_WEBSITE_ID}
 ENV GOOGLE_MAPS_APIKEY=${GOOGLE_MAPS_APIKEY}
 
-ENV NGINX_HOST=${WEB_HOSTNAME}
-ENV NGINX_PORT=80
-ENV CACHEBUST=1
-
 ENV VUE_APP_CRISP_WEBSITE_ID=${VUE_APP_CRISP_WEBSITE_ID}
 ENV VUE_APP_API_HOSTNAME=${VUE_APP_API_HOSTNAME}
 ENV VUE_APP_ROLLBAR_ACCESS_TOKEN=${VUE_APP_ROLLBAR_ACCESS_TOKEN}
@@ -45,6 +41,10 @@ ENV VUE_APP_LANDING_HOSTNAME=${VUE_APP_LANDING_HOSTNAME}
 ENV VUE_APP_GOOGLE_ANALYTICS_ID=${VUE_APP_GOOGLE_ANALYTICS_ID}
 ENV VUE_APP_GOOGLE_MAPS_APIKEY=${VUE_APP_GOOGLE_MAPS_APIKEY}
 ENV VUE_APP_CONSOLE_HOSTNAME=${VUE_APP_CONSOLE_HOSTNAME}
+
+ENV NGINX_HOST=${WEB_HOSTNAME}
+ENV NGINX_PORT=80
+ENV CACHEBUST=1
 
 ENV NODE_OPTIONS=--openssl-legacy-provider
 ENV NODE_ENV=production
@@ -59,8 +59,8 @@ COPY package.json ./
 
 COPY . .
 
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
-    bash -c 'export NVM_DIR=/root/.nvm && export NODE_VERSION="22.15" && export && . "$NVM_DIR/nvm.sh" && \
+RUN bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
+    export NVM_DIR=/root/.nvm && export NODE_VERSION="22.15" && export && . "$NVM_DIR/nvm.sh" && \
     nvm install $NODE_VERSION && \
     nvm use $NODE_VERSION && \
     nvm alias default $NODE_VERSION && \
