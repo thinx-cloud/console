@@ -47,7 +47,7 @@ ENV NGINX_PORT=80
 ENV CACHEBUST=1
 
 ENV NODE_OPTIONS=--openssl-legacy-provider
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 
 USER root
 
