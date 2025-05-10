@@ -57,9 +57,10 @@ COPY package.json ./
 
 COPY . .
 
-RUN yarn
-
-RUN yarn build
+RUN . ~/.nvm/nvm.sh && \
+    nvm use 22 && \
+    yarn && \
+    yarn build
 
 #
 # Deployment Image
