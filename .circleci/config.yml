@@ -140,7 +140,6 @@ jobs:
           registry: registry.thinx.cloud:5000
           tag: 'vue'
       - docker/build:
-          name: Build Vue Console using console-build-env:vue image
           registry: registry.thinx.cloud:5000
           docker-context: vue
           image: thinx/console
