@@ -59,9 +59,21 @@ COPY package.json ./
 
 COPY . .
 
-RUN bash -c 'whoami && uname -a && which nvm'
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
+    . "$NVM_DIR/nvm.sh" && \
+    nvm install $NODE_VERSION && \
+    nvm use $NODE_VERSION && \
+    nvm alias default $NODE_VERSION && \
+    # Make node/npm available globally
+    ln -s $NVM_DIR/versions/node/v$NODE_VERSION/bin/node /usr/bin/node && \
+    ln -s $NVM_DIR/versions/node/v$NODE_VERSION/bin/npm /usr/bin/npm && \
+    ln -s $NVM_DIR/versions/node/v$NODE_VERSION/bin/npx /usr/bin/npx && \
+    npm install -g npm yarn eslint node-gyp
 
-## . ~/.nvm/nvm.sh && 
+#  && which nvm fails
+RUN bash -c 'whoami && uname -a'
+
+## . ~/.nvm/nvm.sh && fails
 RUN bash -c 'ls -la /root && find / -name "nvm.sh" && nvm use 22 && yarn && yarn build'
 
 #
