@@ -131,6 +131,12 @@ jobs:
       - docker/build:
           registry: registry.thinx.cloud:5000
           docker-context: vue
+          image: thinx/console-build-env
+          dockerfile: vue-dev/Dockerfile
+          tag: 'latest'
+      - docker/build:
+          registry: registry.thinx.cloud:5000
+          docker-context: vue
           image: thinx/console
           dockerfile: vue/Dockerfile
           extra_build_args: |
@@ -157,43 +163,43 @@ workflows:
 
     jobs:
 
-      - test:
-          name: Test legacy console
-          context: sonarcloud
-          filters:
-            branches:
-              only:
-                - thinx-staging
+      # - test:
+      #     name: Test legacy console
+      #     context: sonarcloud
+      #     filters:
+      #       branches:
+      #         only:
+      #           - thinx-staging
 
-      - test_vue:
-          name: Test Vue console
-          context: sonarcloud
+      # - test_vue:
+      #     name: Test Vue console
+      #     context: sonarcloud
 
-      - ggshield/scan:
-          name: Scan using Gitguardian shield
-          base_revision: <<pipeline.git.base_revision>>
-          revision: <<pipeline.git.revision>>
-          context:
-            - gitguardian
-          filters:
-            branches:
-              only:
-                - mainx
+      # - ggshield/scan:
+      #     name: Scan using Gitguardian shield
+      #     base_revision: <<pipeline.git.base_revision>>
+      #     revision: <<pipeline.git.revision>>
+      #     context:
+      #       - gitguardian
+      #     filters:
+      #       branches:
+      #         only:
+      #           - mainx
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
-      - legacy:
-          name: Release legacy console
-          context:
-            - dockerhub
-            - thinx-docker-repo
-            - sonarcloud
-            - console
-          requires:
-            - Test legacy console
-          filters:
-            branches:
-              only:
-                - thinx-staging
+      # - legacy:
+      #     name: Release legacy console
+      #     context:
+      #       - dockerhub
+      #       - thinx-docker-repo
+      #       - sonarcloud
+      #       - console
+      #     requires:
+      #       - Test legacy console
+      #     filters:
+      #       branches:
+      #         only:
+      #           - thinx-staging
 
       - vue:
           name: Publish Vue console

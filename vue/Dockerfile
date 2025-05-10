@@ -47,6 +47,7 @@ ENV VUE_APP_GOOGLE_MAPS_APIKEY=${VUE_APP_GOOGLE_MAPS_APIKEY}
 ENV VUE_APP_CONSOLE_HOSTNAME=${VUE_APP_CONSOLE_HOSTNAME}
 
 ENV NODE_OPTIONS=--openssl-legacy-provider
+ENV NODE_ENV=production
 
 # Create app directory
 WORKDIR /home/node/build
