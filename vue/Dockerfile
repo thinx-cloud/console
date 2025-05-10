@@ -59,8 +59,12 @@ COPY package.json ./
 
 COPY . .
 
+ENV NVM_DIR=/root/.nvm
+ENV NODE_VERSION="22.15"
+
 RUN bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
-    export NVM_DIR=/root/.nvm && export NODE_VERSION="22.15" && export && . "$NVM_DIR/nvm.sh" && \
+    echo $NVM_DIR && \
+    source $NVM_DIR/nvm.sh && \
     nvm install $NODE_VERSION && \
     nvm use $NODE_VERSION && \
     nvm alias default $NODE_VERSION && \
