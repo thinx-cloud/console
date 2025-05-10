@@ -49,6 +49,8 @@ ENV VUE_APP_CONSOLE_HOSTNAME=${VUE_APP_CONSOLE_HOSTNAME}
 ENV NODE_OPTIONS=--openssl-legacy-provider
 ENV NODE_ENV=production
 
+USER root
+
 # Create app directory
 WORKDIR /home/node/build
 
