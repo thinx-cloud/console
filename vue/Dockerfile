@@ -79,7 +79,7 @@ RUN bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/insta
 #
 
 # needs to include gulp
-FROM nginx:1.28.0-alpine
+FROM nginx:1.29.3-alpine
 
 RUN apk add procps
 
