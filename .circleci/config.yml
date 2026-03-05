@@ -202,7 +202,7 @@ workflows:
             - sonarcloud
             - console
           requires:
-            - Test legacy console
+            - test
           filters:
             branches:
               only:
@@ -216,7 +216,7 @@ workflows:
       #       - sonarcloud
       #       - console
           # requires:
-          #   - Test Vue console
+          #   - test_vue
           # filters:
           #   branches:
           #     only:
