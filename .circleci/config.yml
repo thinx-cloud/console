@@ -201,8 +201,6 @@ workflows:
             - thinx-docker-repo
             - sonarcloud
             - console
-          requires:
-            - test
           filters:
             branches:
               only:
