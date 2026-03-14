@@ -59,9 +59,6 @@ RTM.factory( "settings", [ "$rootScope", function( $rootScope ) {
 
   $rootScope.settings = settings;
 
-  console.log( " === ROOT === " );
-  console.log( $rootScope );
-
   // UI temporary data, might be saved to localstorage
   if ( typeof( $rootScope.meta ) === "undefined" ) {
     $rootScope.meta = {};
@@ -380,13 +377,23 @@ angular.module( "RTM" ).filter( "propsFilter", function() {
         var itemMatches = false;
         for ( var i = 0; i < keys.length; i++ ) {
           var prop = keys[ i ];
-          var text = props[ prop ].toLowerCase();
+          var text = props[ prop ];
+          var value;
 
-          if ( typeof( prop ) === "undefined" || typeof( item ) === "undefined" || typeof( item[ prop ] ) === "undefined" ) {
-            console.log( "Parser ERROR on prop:", prop, item );
+          if ( typeof( text ) === "undefined" || text === null || text === "" ) {
+            continue;
           }
 
-          if ( item[ prop ].toString().toLowerCase().indexOf( text ) !== -1 ) {
+          if ( typeof( item ) === "undefined" || item === null ) {
+            continue;
+          }
+
+          value = item[ prop ];
+          if ( typeof( value ) === "undefined" || value === null ) {
+            continue;
+          }
+
+          if ( value.toString().toLowerCase().indexOf( text.toString().toLowerCase() ) !== -1 ) {
             itemMatches = true;
             break;
           }
@@ -419,10 +426,6 @@ RTM.filter( "removeControlChars", function() {
 /* Main Controller */
 RTM.controller( "AppController", [ "$scope", "$rootScope", "webNotification", "Rollbar", function( $scope, $rootScope, $webNotification, Rollbar ) {
   $scope.$on( "$viewContentLoaded", function() {
-    console.log( "checking user credentials..." );
-    console.log(
-      document.cookie
-    );
   } );
 } ] );
 

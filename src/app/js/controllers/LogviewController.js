@@ -1,17 +1,11 @@
 /* Setup blank page controller */
 angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope", "settings", function( $rootScope, $scope, settings ) {
   $scope.$on( "$viewContentLoaded", function() {
-    console.log( "#### Build Log Overlay init" );
-
     // Open websocket to for log & notifications transfer
     // User profile has to be initialised first
     if ( typeof( $rootScope.profile.owner ) !== "undefined" ) {
-      console.log( "##### websocket init" );
       openSocket( "log" );
-    } else {
-      console.log( "##### websocket not initalised - missing owner profile" );
     }
-
   } );
 
   // not implemented yet
@@ -20,7 +14,6 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
   if ( typeof( $rootScope.initWebsocketListener ) === "undefined" ) {
     $rootScope.initWebsocketListener = $rootScope.$on( "initWebsocket", function( event, owner_id ) {
       event.stopPropagation();
-      console.log( "DEBUG owner_id initWebsocketListener", owner_id );
       openSocket( "log" );
     } );
   }
@@ -29,12 +22,9 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
     if ( "WebSocket" in window ) {
       if ( typeof( $rootScope.wss ) === "undefined" ) {
         // open websocket
-        console.log( "## Opening websocket with credentials ##" );
         $rootScope.wss = new WebSocket( "<ENV::wssUrl>/" + $rootScope.profile.owner );
 
         $rootScope.wss.onopen = function() {
-          console.log( "## Websocket connection estabilished ##" );
-
           if ( typeof( $rootScope.modalBuildId ) !== "undefined" ) {
             $rootScope.wsstailLog( $rootScope.modalBuildId );
           } else {
@@ -63,14 +53,11 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
             // $rootScope.logdata.buffer = $rootScope.logdata.buffer + "\n" + adapted_data.join("\n");
           }
         };
-        $rootScope.wss.onclose = function() {
-          console.log( "## Websocket connection is closed... ##" );
-        };
+        $rootScope.wss.onclose = function() {};
 
         $rootScope.wsslog = new WebSocket( "<ENV::wssUrl>/" + $rootScope.profile.owner + "/" + new Date().getTime() );
 
         $rootScope.wsslog.onopen = function() {
-          console.log( "## Websocket connection estabilished ##" );
           $rootScope.wsstailLog( $rootScope.modalBuildId );
         };
         $rootScope.wsslog.onmessage = function( message ) {
@@ -93,12 +80,7 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
           // $rootScope.logdata.buffer = $rootScope.logdata.buffer + "\n" + adapted_data.join("\n");
 
         };
-        $rootScope.wsslog.onclose = function() {
-          console.log( "## Log Websocket connection is closed... ##" );
-        };
-      } else {
-        // websocket already open
-        console.log( "## Websocket status:", $rootScope.wss.readyState, " ##" );
+        $rootScope.wsslog.onclose = function() {};
       }
     } else {
       // The browser doesn't support WebSocket
@@ -114,7 +96,6 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
   }
 
   $rootScope.wsstailLog = function( build_id ) {
-    console.log( "-- refreshing log: ", build_id );
     var message = {
       logtail: {
         owner_id: $rootScope.profile.owner,
@@ -128,7 +109,6 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
   };
 
   $rootScope.wssinit = function() {
-    console.log( "-- initializing websocket " );
     var message = {
       init: $rootScope.profile.owner
     };
@@ -136,39 +116,29 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
   };
 
   $rootScope.hideLogOverlay = function( build_id ) {
-    console.log( "--- hiding log overlay --- " );
     $( ".log-view-overlay-conatiner" ).fadeOut();
-    console.log( $rootScope.logdata.watchers[ build_id ] );
     clearInterval( $rootScope.logdata.watchers[ build_id ] );
   };
 
 
   $rootScope.showLog = function( build_id ) {
-    console.log( "--[ logdata ]-- " );
-    console.log( $rootScope.logdata );
-    console.log( "--- opening log for build_id: " + build_id, " ---" );
     $( ".log-view-overlay-conatiner" ).fadeIn();
 
     // start auto refresh
-    console.log( "--- starting refresh timer --- " );
     $rootScope.logdata.watchers[ build_id ] = setInterval( function() {
-      console.log( "Refreshing log view..." );
       $rootScope.$digest();
     }, 500 );
 
     $rootScope.modalBuildId = build_id;
 
     if ( typeof( $rootScope.wss ) !== "undefined" ) {
-      console.log( "Socket ready, tailing log..." );
       $rootScope.wsstailLog( build_id );
     } else {
-      console.log( "Socket not ready, trying to open it..." );
       openSocket( "notification" );
     }
   };
 
   $rootScope.switchWrap = function() {
-    console.log( "--- toggle word-wrap --- " );
     $( ".log-view-body" ).toggleClass( "force-word-wrap" );
     $( ".icon-frame" ).toggleClass( "overlay-highlight" );
   };
@@ -204,9 +174,6 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
 
     // perform device build notification updates
     if ( typeof( msg.udid ) !== "undefined" ) {
-        console.log( "------------ GOT NOTIFICATION FOR DEVICE" );
-        console.log( msg );
-
         if (
             msg.body == "Pulling repository" ||
             msg.body == "Building..." ||
@@ -359,9 +326,7 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
       }
 
     } else {
-
-      console.log( "Skipping undefined message type..." );
-
+      return;
     }
   }
 
