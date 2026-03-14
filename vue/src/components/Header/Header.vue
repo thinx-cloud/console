@@ -40,52 +40,6 @@
         </template>
         <notifications />
       </b-nav-item-dropdown>
-      <b-nav-item-dropdown
-        class="d-md-down-none"
-        no-caret
-        right
-        menu-class="dropdown-menu-messages"
-      >
-        <template slot="button-content">
-          <i class="fi flaticon-message-circle px-2" />
-        </template>
-        <b-dropdown-item>
-          <span class="avatar thumb-sm mr-3">
-            <img class="rounded-circle" src="../../assets/people/a1.jpg" alt="..." />
-          </span>
-          <div>
-            <h6>Jane <span class="fw-semi-bold">Hew</span></h6>
-            <span class="fs-sm text-muted fw-thin">Hey, John! How is it going? ...</span>
-          </div>
-        </b-dropdown-item>
-        <b-dropdown-item>
-          <span class="avatar thumb-sm mr-3">
-            <img class="rounded-circle" src="../../assets/people/a2.jpg" alt="..." />
-          </span>
-          <div>
-            <h6>Alies <span class="fw-semi-bold">Rumiancaŭ</span></h6>
-            <span class="fs-sm text-muted fw-thin"
-              >I will definitely buy this template</span
-            >
-          </div>
-        </b-dropdown-item>
-        <b-dropdown-item>
-          <span class="avatar thumb-sm mr-3">
-            <img class="rounded-circle" src="../../assets/people/a3.jpg" alt="..." />
-          </span>
-          <div>
-            <h6>Alexey <span class="fw-semi-bold">Kamandzirau</span></h6>
-            <span class="fs-sm text-muted fw-thin"
-              >I will definitely buy this template</span
-            >
-          </div>
-        </b-dropdown-item>
-        <b-dropdown-item-button class="text-center">
-          <span class="mx-auto"
-            >See all messages <i class="fa fa-arrow-right ml-1"></i
-          ></span>
-        </b-dropdown-item-button>
-      </b-nav-item-dropdown>
       <b-nav-item class="divider d-md-down-none"></b-nav-item>
       <b-nav-item-dropdown
         no-caret
@@ -98,7 +52,6 @@
         </template>
         <b-dropdown-item><i class="la la-user" /> My Account</b-dropdown-item>
         <b-dropdown-divider />
-        <b-dropdown-item>Calendar</b-dropdown-item>
         <b-dropdown-item>
           Inbox &nbsp;&nbsp;<b-badge
             variant="danger"
