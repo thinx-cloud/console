@@ -14,7 +14,6 @@ export default {
     },
     changeSidebarActive(state, index) {
       state.sidebarActiveElement = index;
-      console.log(state.sidebarActiveElement);
     },
   },
   actions: {

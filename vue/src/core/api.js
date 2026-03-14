@@ -37,19 +37,14 @@ export default class Api {
   }
 
   parseResult(result) {
-    if (typeof result.success !== 'undefined' && result.success) {
+    if (result && typeof result.success !== 'undefined' && result.success) {
       let keys = Object.keys(result).filter( key => key !== 'success' );
-      if (keys.length > 2) {
-        console.log('WARN unusual response', result);
-      }
       return {
         'success': result.success,
         'response': result[keys[0]]
       };
-    } else {
-      console.log('WARN unusual response', result);
-      return result;
     }
+    return result || { success: false };
   }
 
   setAccessToken(token) {
@@ -60,28 +55,51 @@ export default class Api {
     this.accessToken = token;
   }
 
+  async request(method, path, body) {
+      const response = await fetch(this.composePath(path), this.composeOptions(method, body));
+      const text = await response.text();
+
+      if (!text) {
+        return {
+          success: false,
+          status: response.status,
+          response: null,
+        };
+      }
+
+      try {
+        const result = JSON.parse(text);
+        if (!response.ok && typeof result.success === 'undefined') {
+          return {
+            success: false,
+            status: response.status,
+            response: result,
+          };
+        }
+        return this.parseResult(result);
+      } catch (error) {
+        return {
+          success: false,
+          status: response.status,
+          response: text,
+        };
+      }
+  }
+
   async $get(path) {
-      const response = await fetch(this.composePath(path), this.composeOptions('GET'));
-      const result = await response.json();
-      return this.parseResult(result);
+      return this.request('GET', path);
   }
 
   async $post(path, body) {
-      const response = await fetch(this.composePath(path), this.composeOptions('POST', body));
-      const result = await response.json();
-      return this.parseResult(result);
+      return this.request('POST', path, body);
   }
 
   async $put(path, body) {
-      const response = await fetch(this.composePath(path), this.composeOptions('PUT', body));
-      const result = await response.json();
-      return this.parseResult(result);
+      return this.request('PUT', path, body);
   }
 
   async $delete(path, body) {
-      const response = await fetch(this.composePath(path), this.composeOptions('DELETE', body));
-      const result = await response.json();
-      return this.parseResult(result);
+      return this.request('DELETE', path, body);
   }
 
 }

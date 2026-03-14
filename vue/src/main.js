@@ -27,14 +27,16 @@ Vue.use(CrispChat, {
   disabled: true, // TODO in production should be disabled to comply with GDPR
   hideOnLoad: true
 });
-Vue.use(Rollbar, {
-  accessToken: process.env.VUE_APP_ROLLBAR_ACCESS_TOKEN,
-  captureUncaught: true,
-  payload: {
-    environment: process.env.NODE_ENV,
-  }
-});
-Vue.rollbar.debug('Vue console started!');
+const rollbarAccessToken = process.env.VUE_APP_ROLLBAR_ACCESS_TOKEN;
+if (/^[0-9a-f]{32}$/i.test(rollbarAccessToken || '')) {
+  Vue.use(Rollbar, {
+    accessToken: rollbarAccessToken,
+    captureUncaught: true,
+    payload: {
+      environment: process.env.NODE_ENV,
+    }
+  });
+}
 Vue.use(Moment);
 Vue.use(BootstrapVue);
 Vue.use(VCalendar, {

@@ -39,7 +39,6 @@ export default {
         state.items = flatItems;
       },
       saveAuditItems(state, data) {
-        console.log('saveAuditItems', data); 
         state.items = data.items;
       }, 
     },

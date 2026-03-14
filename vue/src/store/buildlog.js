@@ -33,7 +33,6 @@ export default {
         state.items = flatItems;
       },
       saveBuildItems(state, data) { 
-        console.log('saveBuildItems', data);
         state.items = data.items;
       },
     },

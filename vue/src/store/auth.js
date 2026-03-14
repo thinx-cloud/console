@@ -35,10 +35,8 @@ export default {
         try {
             const nowUnixtime = Math.floor(Date.now() / 1000);
             let decoded = VueJwtDecode.decode(token);
-            console.log('TOKEN', decoded.exp <= nowUnixtime ? 'EXPIRED' : 'VALID');
             return decoded.exp <= nowUnixtime ? false : true;
         } catch (error) {
-            console.log(error, 'error from decoding token')
             return false
         }
       }

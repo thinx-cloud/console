@@ -143,7 +143,6 @@ export default {
     //this.profile = this.getProfile();
     this.fetchProfile().then(() => {
       this.profile = this.getProfile();
-      console.log("--- PROFILE DEBUG ---", this.profile);
     });
   },
 };
