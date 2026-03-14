@@ -26,17 +26,49 @@ let isProduction = typeof(process.env.ENVIRONMENT) == 'undefined' || process.env
 let isEnterprise = typeof(process.env.ENTERPRISE) == 'undefined' || process.env.ENTERPRISE !== 'true' ? false : true;
 let makeBundle;
 
+function parseUrl(input, fallbackProtocol) {
+  if (typeof input !== "string" || input.length === 0) {
+    return null;
+  }
+
+  try {
+    if (input.indexOf("://") === -1) {
+      return new URL(fallbackProtocol + "//" + input.replace(/^\/+/, ""));
+    }
+    return new URL(input);
+  } catch (error) {
+    return null;
+  }
+}
+
+function toWebSocketOrigin(url) {
+  if (!url) {
+    return null;
+  }
+
+  return url.origin.replace(/^http/, "ws");
+}
+
+const apiBaseUrl = process.env.API_BASEURL || "";
+const apiBase = parseUrl(apiBaseUrl, "https:");
+const apiHost = parseUrl(process.env.API_HOSTNAME || "", "https:");
+const webHost = parseUrl(process.env.WEB_HOSTNAME || "", "https:");
+
+const apiDirectUrl = apiBase ? apiBase.origin : (apiHost ? apiHost.origin : "");
+const websocketUrl = toWebSocketOrigin(apiBase || apiHost) || "";
+const webBaseUrl = webHost ? webHost.origin : "";
+
 const env = {
   environment: isProduction ? 'production' : 'development',
   enterprise: isEnterprise,
   projectName: process.env.COMPOSE_PROJECT_NAME,
   loginPageTitle: 'THiNX Console',
   landingHostName: process.env.LANDING_HOSTNAME,
-  apiBaseUrl: process.env.API_BASEURL, // + '/api' /* removed because proxy adds this from path */
-  apiDirectUrl: 'https://' + process.env.API_HOSTNAME,
+  apiBaseUrl: apiBaseUrl, // + '/api' /* removed because proxy adds this from path */
+  apiDirectUrl: apiDirectUrl,
   slackClientId: '233115403974.233317554391',
-  wssUrl: 'wss://' + process.env.API_HOSTNAME, // moved to https server + ':7445' is expectedly exposed TCP/SSL service
-  baseUrl: 'https://' + process.env.WEB_HOSTNAME,
+  wssUrl: websocketUrl,
+  baseUrl: webBaseUrl,
   googleTrackingCode: process.env.GOOGLE_ANALYTICS_ID,
   rollbarAccessToken: process.env.ROLLBAR_ACCESS_TOKEN,
   crispWebsiteId: process.env.CRISP_WEBSITE_ID,
