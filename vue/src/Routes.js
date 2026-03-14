@@ -13,6 +13,7 @@ import RsakeyManager from '@/pages/Rsakeys/Rsakeys';
 import EnviroManager from '@/pages/Enviros/Enviros';
 import ChannelManager from '@/pages/Channels/Channels';
 import DeviceManager from '@/pages/Devices/Devices';
+import DeviceDetail from '@/pages/Devices/DeviceDetail';
 import TransformerManager from '@/pages/Transformers/Transformers';
 import TransformerEditor from '@/pages/Transformers/TransformerEditor';
 
@@ -47,7 +48,12 @@ export default new Router({
         {
           path: 'devices',
           name: 'Devices',
-          component: DeviceManager, // Devices,
+          component: DeviceManager,
+        },
+        {
+          path: 'device/:udid',
+          name: 'DeviceDetail',
+          component: DeviceDetail,
         },
         {
           path: 'apikeys',

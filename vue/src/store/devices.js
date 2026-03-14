@@ -2,38 +2,7 @@
 export default {
     namespaced: true,
     state: {
-        items: [
-          /*
-            {
-                "alias": "esp32",
-                "auto_update": false,
-                "category": "grey-mint",
-                "checksum": null,
-                "commit": "unknown",
-                "description": "new device",
-                "environment": {},
-                "firmware": "thinx-lib-esp32-arduino:2.3.180",
-                "icon": "01",
-                "keyhash": "81b4b0b31d2f1efa3c6d7ae2dea701af4a3d28f7f97ce82818d30c39b4438e6b",
-                "lastupdate": "2020-04-21T16:15:42.440Z",
-                "lat": "0.00",
-                "lon": "0.00",
-                "mac": "5C:CF:7F:2C:40:A2",
-                "mesh_ids": [],
-                "owner": "cedc16bb6bb06daaa3ff6d30666d91aacd6e3efbf9abbc151b4dcade59af7c12",
-                "platform": "arduino",
-                "rssi": "-54",
-                "snr": null,
-                "source": "7038e0500a8690a8bf70d8470f46365458798011e8f46ff012f12cbcf898b2f3",
-                "station": null,
-                "status": "Registered",
-                "tags": [],
-                "transformers": [],
-                "udid": "facbc110-6108-11e8-ac2f-05fc63c7a9bf",
-                "version": "2.3.180"
-            }
-          */
-        ],
+        items: [],
         headers: [
           {
             title: 'alias',
@@ -41,24 +10,27 @@ export default {
             pos: 0,
           },
           {
-            title: 'mac',
-            prop: 'mac',
+            title: 'platform',
+            prop: 'platform',
             pos: 1,
+          },
+          {
+            title: 'firmware',
+            prop: 'firmware',
+            pos: 2,
+          },
+          {
+            title: 'status',
+            prop: 'status',
+            pos: 3,
           },
         ]
     },
     mutations: {
-      saveItems(state, data) { 
-        let flatItems = [];
-        for (let id of Object.keys(data.items)) {
-          flatItems.push({id: id, ...data.items[id]});
-        }
-        state.items = flatItems;
-      },
-      saveDevices(state, data) { 
+      saveDevices(state, data) {
         let flatItems = [];
         for (let item of data.items) {
-          flatItems.push(item);
+          flatItems.push({ ...item, id: item.udid });
         }
         state.items = flatItems;
       }
@@ -71,6 +43,27 @@ export default {
         }
         return state.items;
       },
+      async revokeDevices({ dispatch }, udids) {
+        const result = await this.$api.$delete('/device', JSON.stringify({ udids }));
+        if (result.success) await dispatch('fetchItems');
+        return result;
+      },
+      async pushConfiguration({ dispatch }, { udids, enviros, reset_devices }) {
+        const result = await this.$api.$post('/device/configuration', JSON.stringify({ udids, enviros, reset_devices }));
+        return result;
+      },
+      async buildFirmware({ dispatch }, udid) {
+        const result = await this.$api.$post('/build', JSON.stringify({ build: { udid } }));
+        return result;
+      },
+      async transferDevices({ dispatch }, { udids, to, mig_sources, mig_apikeys }) {
+        const result = await this.$api.$post('/transfer/request', JSON.stringify({ udids, to, mig_sources, mig_apikeys }));
+        return result;
+      },
+      async updateDevice({ dispatch }, { udid, changes }) {
+        const result = await this.$api.$post('/device', JSON.stringify({ udid, changes }));
+        return result;
+      },
     },
     getters: {
         getItems(state) {
@@ -78,6 +71,9 @@ export default {
         },
         getHeaders(state) {
           return state.headers;
-        }
+        },
+        getByUdid: (state) => (udid) => {
+          return state.items.find(d => d.udid === udid);
+        },
     },
   };

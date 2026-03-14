@@ -89,6 +89,14 @@ export default {
         }
         return state.profile;
       },
+      async updateProfile({ dispatch }, info) {
+        const result = await this.$api.$post('/profile', JSON.stringify({ info }));
+        if (result.success) await dispatch('fetchProfile');
+        return result;
+      },
+      async deleteAccount() {
+        return await this.$api.$delete('/user', JSON.stringify({}));
+      },
     },
     getters: {
         getProfile(state) {
