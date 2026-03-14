@@ -78,7 +78,8 @@
           <div class="col-xs-6 text-right">
             <span class="input-icon right xtop-list-search">
               <i class="icon-magnifier"></i>
-              <input type="text" class="form-control form-control-solid" ng-model="searchText" placeholder="Search...">
+              <label class="sr-only" for="deploykey-search">Search deploy keys</label>
+              <input type="text" class="form-control form-control-solid" id="deploykey-search" name="deploykeySearch" ng-model="searchText" placeholder="Search..." aria-label="Search deploy keys">
             </span>
           </div>
         </div>

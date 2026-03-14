@@ -19,7 +19,8 @@
     <!-- DOC: Apply "search-form-expanded" right after the "search-form" class to have half expanded search box -->
     <form class="search-form hidden" method="GET">
       <div class="input-group">
-        <input type="text" class="form-control input-sm" placeholder="Search..." name="query">
+        <label class="sr-only" for="header-query">Global search</label>
+        <input type="text" class="form-control input-sm" placeholder="Search..." id="header-query" name="query" aria-label="Global search">
         <span class="input-group-btn">
           <span class="btn header-search-btn">
             <i class="icon-magnifier"></i>

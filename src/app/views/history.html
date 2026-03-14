@@ -38,7 +38,8 @@
           <div class="portlet-input" style="margin-bottom: 10px">
             <div class="input-icon right">
               <i class="icon-magnifier"></i>
-              <input type="text" class="form-control form-control-solid" ng-model="list.searchText" placeholder="Search...">
+              <label class="sr-only" for="history-search">Search history</label>
+              <input type="text" class="form-control form-control-solid" id="history-search" name="historySearch" ng-model="list.searchText" placeholder="Search..." aria-label="Search history">
             </div>
           </div>
 

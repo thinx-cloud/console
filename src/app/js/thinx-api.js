@@ -165,8 +165,6 @@ var Thinx = {
 
 function init($rootScope, $scope) {
 
-  console.log("THiNX API INIT");
-
   if (typeof ($rootScope.xhrFailedListener) === "undefined") {
     $rootScope.xhrFailedListener = $rootScope.$on("xhrFailed", function (event, error) {
       event.stopPropagation();
@@ -175,9 +173,7 @@ function init($rootScope, $scope) {
   }
 
   function xhrFailed(error) {
-    console.log("## xhr failed: ", error);
     if (error.status == 401) {
-      console.log("Error 401: Unauthorized Access");
       window.location = "/";
     }
   }
@@ -192,7 +188,6 @@ function init($rootScope, $scope) {
   function updateSources(response) {
 
     if (typeof (response.success) === "undefined" || !response.success) {
-      console.log("Sources fetch error.");
       return;
     }
 
@@ -208,8 +203,6 @@ function init($rootScope, $scope) {
       value.base_platform = value.platform.split(":")[0];
       $rootScope.sources.push(value);
     });
-
-    console.log("/////// sources:");
     $rootScope.$apply();
 
     // save user-spcific goal achievement
@@ -230,7 +223,6 @@ function init($rootScope, $scope) {
 
   function updateApikeys(response) {
     $rootScope.apikeys = response.response;
-    console.log("//////// apikeys:");
     $rootScope.$apply();
   }
 
@@ -244,7 +236,6 @@ function init($rootScope, $scope) {
   function updateRsakeys(response) {
     $rootScope.rsakeys = response.response;
     $scope.$apply();
-    console.log("//////// rsakeys:");
 
     // save user-spcific goal achievement
     if ($rootScope.profile.info.goals.length > 0) {
@@ -253,8 +244,6 @@ function init($rootScope, $scope) {
         $scope.$emit("saveProfileChanges", ["goals"]);
       }
     }
-
-    console.log("refreshing view...");
     $rootScope.$apply();
   }
 
@@ -268,7 +257,6 @@ function init($rootScope, $scope) {
   function updateDeploykeys(data) {
     $rootScope.deploykeys = data.response;
     $scope.$apply();
-    console.log("//////// deploykeys:");
 
     // save user-spcific goal achievement
     if ($rootScope.profile.info.goals.length > 0) {
@@ -277,8 +265,6 @@ function init($rootScope, $scope) {
         $scope.$emit("saveProfileChanges", ["goals"]);
       }
     }
-
-    console.log("refreshing view...");
     $rootScope.$apply();
   }
 
@@ -291,13 +277,11 @@ function init($rootScope, $scope) {
 
   function updateChannels(response) {
     if (typeof (response.response) === "undefined") {
-      console.log("ERROR: Invalid channel data...");
       return;
     }
 
     $rootScope.channels = response.response;
     $scope.$apply();
-    console.log("//////// channels:");
 
     // save user-spcific goal achievement
     if ($rootScope.profile.info.goals.length > 0) {
@@ -306,8 +290,6 @@ function init($rootScope, $scope) {
         $scope.$emit("saveProfileChanges", ["goals"]);
       }
     }
-
-    console.log("refreshing view...");
     $rootScope.$apply();
   }
 
@@ -321,14 +303,11 @@ function init($rootScope, $scope) {
   function updateDevices(response) {
     $rootScope.devices = [];
     let devices = response.response;
-    console.log("updateDevices with data", devices);
     for (var d in devices) {
       devices[d].base_platform = devices[d].platform.split(":")[0];
       $rootScope.devices.push(devices[d]);
     }
     updateTags();
-
-    console.log("//////// devices:");
 
     $rootScope.meta.apikeys = {};
     $rootScope.meta.sources = {};
@@ -401,8 +380,6 @@ function init($rootScope, $scope) {
       // to get a value that is either negative, positive, or zero.
       return new Date(b.date) - new Date(a.date);
     });
-    console.log("//////// deviceTimeline");
-
     $rootScope.stats.timeline.MIN = deviceTimeline[0]["date"];
     $rootScope.stats.timeline.MAX = deviceTimeline[deviceTimeline.length - 1]["date"];
     $rootScope.stats.timeline.COUNT = deviceTimeline.length - 1;
@@ -417,15 +394,12 @@ function init($rootScope, $scope) {
   function updateTags() {
     $rootScope.profile.info.tags = [];
 
-    console.log("profile tags", $rootScope.profile.info.tags);
-
     for (let index in $rootScope.devices) {
       var tagsArray = $rootScope.devices[index].tags;
       if (tagsArray !== null) {
         for (var tagIndex in tagsArray) {
           if ($rootScope.profile.info.tags.includes(tagsArray[tagIndex])) {
             // duplicate tag found, skipping
-            console.log("duplicate tag found, skipping", tagsArray[tagIndex]);
           } else {
             $rootScope.profile.info.tags.push(tagsArray[tagIndex]);
           }
@@ -433,8 +407,6 @@ function init($rootScope, $scope) {
       }
 
     }
-    console.log("tags:");
-    console.log($rootScope.profile.info.tags);
   }
 
   if (typeof ($rootScope.submitNotificationResponseListener) === "undefined") {
@@ -468,18 +440,15 @@ function init($rootScope, $scope) {
 
   $scope.$on("saveProfile", function (event) {
     // event.stopPropagation();
-    console.log("SAVING PROFILE");
     submitProfile($rootScope.profile);
   });
 
   $scope.$on("saveProfileChanges", function (event, changes) {
     // event.stopPropagation();
-    console.log("-- Saving Profile Changes: " + changes);
     submitProfileChanges(changes, $rootScope.profile);
 
     // update transformers
     if (changes.indexOf("transformers") > -1) {
-      console.log("Transformers changed, updating metadata...");
       updateRawTransformers($rootScope.profile.info.transformers);
     }
   });
@@ -490,13 +459,9 @@ function init($rootScope, $scope) {
 
   function updateProfile(response) {
     if ((typeof (response) === "undefined") || (typeof (response.success) === "undefined")) return;
-    
-    console.log("/////// Profile response:");
 
     // validate response and refresh view
-    
     if (!response.success) {
-      console.log("error", response);
       return;
     }
 
@@ -504,19 +469,15 @@ function init($rootScope, $scope) {
 
     // set default avatar if one's missing
     if (typeof (profile.avatar) === "undefined" || profile.avatar.length == 0) {
-      console.log("- avatar not defined, falling back to default -");
       profile.avatar = "/assets/thinx/img/default_avatar_sm.png";
     }
     if (typeof (profile.info.goals) === "undefined") {
-      console.log("- goals not defined, retaining current -");
       profile.info["goals"] = $rootScope.profile.info.goals;
     }
     if (typeof (profile.info.tags) === "undefined") {
-      console.log("- tags not defined, creating -");
       profile.info["tags"] = $rootScope.profile.info.tags;
     }
     if (typeof (profile.info.transformers) === "undefined") {
-      console.log("- transformers not defined, creating -");
       profile.info["transformers"] = $rootScope.profile.info.transformers;
     }
     $rootScope.profile = profile;
@@ -525,7 +486,6 @@ function init($rootScope, $scope) {
 
     $scope.$apply();
 
-    console.log("Emitting initWebsocket with owner_id", profile.owner);
     $scope.$emit("initWebsocket", profile.owner);
   }
 
@@ -537,7 +497,6 @@ function init($rootScope, $scope) {
 
   function updateRawTransformers(transformers) {
     // decode all transformers
-    console.log("Decoding Transformers...");
     for (let index in transformers) {
       $rootScope.meta.transformers[transformers[index].utid] =
       {
@@ -548,8 +507,6 @@ function init($rootScope, $scope) {
         "changed": false
       };
     }
-
-    console.log("/////// transformers:");
   }
 
   $scope.$on("updateAuditHistory", function (event, data) {
@@ -561,11 +518,8 @@ function init($rootScope, $scope) {
   var invalidStr = "invalid";
 
   function updateAuditHistory(response) {
-    console.log("/////// auditHistory response:");
-
     if (typeof (response.success) !== "undefined" && response.success) {
       $rootScope.auditlog = response.response;
-      console.log("refreshing view...");
       if (typeof ($scope.chartRange) !== "undefined") {
         $scope.chart.computing = true;
       }
@@ -590,20 +544,15 @@ function init($rootScope, $scope) {
           }
         } else {
           // TODO: faulty audit log entries may be deleted
-          console.log("History event missing message property - skipping...");
         }
       }
       $rootScope.stats.total.ERRORS = totalErrors;
       $rootScope.stats.timeline.ERRORS = errorTimeline;
-      console.log($rootScope.stats.total.ERRORS);
-      console.log($rootScope.stats.timeline.ERRORS);
 
       if (typeof ($scope.chartRange) !== "undefined") {
         $scope.chartRange($scope.chart.range);
       }
       $scope.$apply();
-    } else {
-      console.log("auditHistory fetch error.");
     }
   }
 
@@ -613,10 +562,6 @@ function init($rootScope, $scope) {
 
   function updateLatestFirmwareEnvelope(data) {
     $rootScope.meta.latestFirmwareEnvelope = data;
-
-    console.log("//////// envelope:");
-    console.log(data);
-    console.log("refreshing view...");
     $rootScope.$apply();
   }
 
@@ -627,7 +572,6 @@ function init($rootScope, $scope) {
 
   function updateStats(response) {
     // sparkline stats defaults
-    console.log("/////// stats data:");
     if (response.success) {
       var days = response.response;
       for (var prop in days) {
@@ -658,13 +602,11 @@ function init($rootScope, $scope) {
 
   function updateBuildHistory(response) {
     if (typeof (response.success) !== "undefined" && response.success) {
-      console.log("buildHistory list length:", response.response.length);
       $rootScope.buildHistory = response.response;
 
       $rootScope.meta.builds = [];
       $rootScope.meta.deviceBuilds = {};
 
-      console.log("Grouping Build Entries...");
       for (let index in response.response) {
         // reset device build history
         if (typeof ($rootScope.meta.deviceBuilds[response.response[index].udid]) == "undefined") {
@@ -689,8 +631,6 @@ function init($rootScope, $scope) {
         $rootScope.meta.deviceBuilds[index].sort(sortByLastUpdate);
       }
       $scope.$apply();
-    } else {
-      console.log("buildHistory fetch error.");
     }
   }
 
@@ -886,13 +826,7 @@ function submitSystemMessage(messageForm) {
       message: messageForm.text
     }),
     dataType: "json",
-    contentType: "application/json",
-    success: function () {
-      console.log("SUCCESS");
-    },
-    error: function () {
-      console.log("ERROR");
-    }
+    contentType: "application/json"
   });
 }
 
@@ -1149,7 +1083,6 @@ function getProfile() {
 }
 
 function submitProfile(profile) {
-  console.log("Submitting profile...");
   var info = {
     first_name: profile.info.first_name,
     last_name: profile.info.last_name,

@@ -102,7 +102,7 @@
                 Updates
               </label>
               <label class="btn blue btn-outline btn-circle btn-sm">
-                <input type="radio" name="options" class="toggle" id="option2" />
+                <input type="radio" name="options" class="toggle" id="option3" />
                 MQTT
               </label>
             </div>
@@ -329,7 +329,8 @@
           <div class="col-xs-12" style="margin: 18px 0px 0px 0px; padding-right: 20px; padding-left: 20px;">
             <span class="input-icon left">
               <i class="icon-magnifier"></i>
-              <input type="text" class="form-control form-control-solid" ng-model="list.searchText" placeholder="Search...">
+              <label class="sr-only" for="dashboard-search">Search devices</label>
+              <input type="text" class="form-control form-control-solid" id="dashboard-search" name="dashboardSearch" ng-model="list.searchText" placeholder="Search..." aria-label="Search devices">
             </span>
           </div>
         </div>

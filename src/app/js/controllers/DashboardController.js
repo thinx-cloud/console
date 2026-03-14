@@ -18,21 +18,18 @@ angular.module( "RTM" ).controller( "DashboardController", [ "$rootScope", "$sco
 
     Thinx.sourceList()
     .done( function( data ) {
-      console.log( "+++ updateSources " );
       $scope.$emit( "updateSources", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
 
     Thinx.apikeyList()
     .done( function( data ) {
-      console.log( "+++ updateApikeys " );
       $scope.$emit( "updateApikeys", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
 
     Thinx.deploykeyList()
     .done( function( data ) {
-      console.log( "+++ updateDeploykeys " );
       $scope.$emit( "updateDeploykeys", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
@@ -105,15 +102,12 @@ angular.module( "RTM" ).controller( "DashboardController", [ "$rootScope", "$sco
   $rootScope.settings.layout.pageSidebarClosed = false;
 
   $scope.chartRange = function( range ) {
-    console.log( "updating charts" );
     $scope.chart.range = range;
     $scope.chart.computing = true;
     updateDashboardChart();
   };
 
   function updateDashboardChart() {
-    console.log( "/////// timeline" );
-    //console.log($rootScope.stats.timeline);
     var checkins = {};
     for ( var index in $rootScope.stats.timeline.CHECKINS ) {
       if ( typeof( checkins[ $rootScope.stats.timeline.CHECKINS[ index ].date ] ) == "undefined" ) {
@@ -123,18 +117,11 @@ angular.module( "RTM" ).controller( "DashboardController", [ "$rootScope", "$sco
       }
     }
 
-    console.log( "//////// checkins" );
-    //console.log(checkins);
     var checkinsByDate = {};
     for ( var checkinDate in checkins ) {
       checkinsByDate[ checkinDate ] = checkins[ checkinDate ];
     }
-    console.log( "//////// checkinsByDate" );
-    //console.log(checkinsByDate);
-
-    console.log( "//////// errorsByDate" );
     var errorsByDate = $rootScope.stats.timeline.ERRORS;
-    //console.log(errorsByDate);
 
     $rootScope.stats.total.RANGE_CHECKINS = 0;
     $rootScope.stats.total.RANGE_ERRORS = 0;
@@ -160,8 +147,6 @@ angular.module( "RTM" ).controller( "DashboardController", [ "$rootScope", "$sco
       }
     }
 
-    console.log( "//////// updating chart" );
-    //console.log(chartData);
     // eslint-disable-next-line  no-undef
     Dashboard.init( chartData );
     $scope.chart.init = true;
@@ -188,9 +173,6 @@ angular.module( "RTM" ).controller( "DashboardController", [ "$rootScope", "$sco
       start = new Date( newDate );
     }
 
-    console.log( "Last " + days + " Days: " );
-    //console.log(dateArr);
-
     return dateArr;
   }
 
@@ -205,7 +187,6 @@ angular.module( "RTM" ).controller( "DashboardController", [ "$rootScope", "$sco
       negBarColor: "#29b4b6"
     } );
 
-    console.log( "dailystats", $rootScope.stats.daily.DEVICE_NEW );
     $( "#sparkline_bar2" ).sparkline( $rootScope.stats.daily.DEVICE_NEW, {
       type: "bar",
       width: "80",
@@ -260,15 +241,11 @@ angular.module( "RTM" ).controller( "DashboardController", [ "$rootScope", "$sco
     } );
 
     $scope.$apply();
-
-    console.log( "stats:" );
-    console.log( $rootScope.stats );
   }
 
 
   $scope.showDeviceLastBuild = function( deviceUdid, event ) {
     event.stopPropagation();
-    console.log( "--- trying to show last build log for " + deviceUdid );
     $rootScope.modalBuildId = $rootScope.meta.deviceBuilds[ deviceUdid ][ 0 ].build_id;
     $rootScope.showLog( $rootScope.modalBuildId );
   };
@@ -296,10 +273,8 @@ angular.module( "RTM" ).controller( "DashboardController", [ "$rootScope", "$sco
   };
 
   $scope.checkItem = function( udid ) {
-    console.log( "### toggle item in selectedItems" );
     var index = $scope.selectedItems.indexOf( udid );
     if ( index > -1 ) {
-      console.log( "splicing on ", index, " value ", $scope.selectedItems[ index ] );
       $scope.selectedItems.splice( index, 1 );
     } else {
       $scope.selectedItems.push( udid );

@@ -32,13 +32,10 @@ var Dashboard = ( function() {
     },
 
     updateMorisCharts: function( dashboardMainChart, data ) {
-      console.log( "================== updating charts ==================" );
-      console.log( dashboardMainChart );
       dashboardMainChart.setData( data );
     },
 
     init: function( data ) {
-      console.log( "================== initilizing charts ==================" );
       $( "#device_statistics" ).empty();
       this.initMorisCharts( data );
     }
