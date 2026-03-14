@@ -25,7 +25,6 @@ export default {
         this.hostnames[key] = this.fixUrlProtocol(this.hostnames[key]);
       }
       this.$hostnames = this.hostnames;
-      console.log('global hostnames', this.$hostnames);
     },
   };
   

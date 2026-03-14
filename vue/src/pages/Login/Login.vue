@@ -152,9 +152,6 @@ export default {
         } = await response.json();
 
         if (success) {
-          console.log("VAL ACC", await this.isTokenValid(access_token));
-          console.log("VAL REF", await this.isTokenValid(refresh_token), refresh_token);
-
           if (
             (await this.isTokenValid(access_token)) &&
             (await this.isTokenValid(refresh_token))

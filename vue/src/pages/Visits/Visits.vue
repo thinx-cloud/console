@@ -48,7 +48,7 @@
                 </tr>
               </tbody>
             </table>
-            <b-link to="/app/history" class="mt-2 d-block">View all →</b-link>
+            <router-link to="/app/history" class="mt-2 d-block">View all →</router-link>
           </b-card>
         </b-col>
 
@@ -60,14 +60,14 @@
               <tbody>
                 <tr v-for="(item, i) in buildItems.slice(0, 10)" :key="i">
                   <td class="text-muted" style="white-space:nowrap">{{ item.date | shortDate }}</td>
-                  <td>{{ item.name || (item.udid | shortUdid) }}</td>
+                  <td>{{ formatBuildName(item) }}</td>
                   <td>
-                    <b-badge :variant="item.status === 'OK' ? 'success' : 'danger'">{{ item.status || '—' }}</b-badge>
+                    <b-badge :variant="badgeVariant(item.status)">{{ item.status || '—' }}</b-badge>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <b-link to="/app/history" class="mt-2 d-block">View all →</b-link>
+            <router-link to="/app/history" class="mt-2 d-block">View all →</router-link>
           </b-card>
         </b-col>
       </b-row>
@@ -84,10 +84,6 @@ export default {
     shortDate(val) {
       if (!val) return '—';
       return new Date(val).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    },
-    shortUdid(val) {
-      if (!val) return '—';
-      return val.substring(0, 8) + '...';
     },
   },
   data() {
@@ -145,6 +141,19 @@ export default {
       if (data[key] && Array.isArray(data[key])) return data[key][0] || 0;
       if (typeof data[key] === 'number') return data[key];
       return 0;
+    },
+    shortUdid(value) {
+      if (!value) return '—';
+      return `${value.substring(0, 8)}...`;
+    },
+    formatBuildName(item) {
+      return item.name || this.shortUdid(item.udid);
+    },
+    badgeVariant(status) {
+      const normalized = (status || '').toUpperCase();
+      if (normalized === 'OK') return 'success';
+      if (normalized === 'RUNNING') return 'warning';
+      return 'danger';
     },
     async loadData() {
       this.loading = true;

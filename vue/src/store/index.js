@@ -17,8 +17,6 @@ import auditlog from './auditlog.js';
 
 import stats from './stats.js';
 
-const loggerPlugin = Vuex.createLogger();
-
 Vue.use(Vuex);
 
 export default new Vuex.Store({
@@ -40,6 +38,5 @@ export default new Vuex.Store({
     auditlog,
 
     stats
-  },
-  plugins: [ loggerPlugin ],
+  }
 });
