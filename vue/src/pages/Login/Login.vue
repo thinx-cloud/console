@@ -35,6 +35,7 @@
                 ref="username"
                 class="form-control input-transparent pl-3"
                 type="text"
+                autocomplete="username"
                 required
                 placeholder="Username"
               />
@@ -50,6 +51,7 @@
                 ref="password"
                 class="form-control input-transparent pl-3"
                 type="password"
+                autocomplete="current-password"
                 required
                 placeholder="Password"
               />
