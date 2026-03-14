@@ -122,6 +122,19 @@ export default {
       isAuthenticated: "auth/isAuthenticated",
       getProfile: "profile/getProfile",
     }),
+    async pushIfNeeded(location) {
+      if (this.$route.fullPath === location) {
+        return;
+      }
+
+      try {
+        await this.$router.push(location);
+      } catch (error) {
+        if (error?.name !== "NavigationDuplicated") {
+          throw error;
+        }
+      }
+    },
     async login(e) {
       e.preventDefault();
       const usernameValue = this.$refs.username.value;
@@ -167,10 +180,9 @@ export default {
             window.localStorage.setItem("refreshToken", refresh_token);
             window.localStorage.setItem("authenticated", true);
 
-            this.fetchProfile().then(() => {
-              this.setUser(this.getProfile());
-              this.$router.push("/app/dashboard");
-            });
+            await this.fetchProfile();
+            this.setUser(this.getProfile());
+            await this.pushIfNeeded("/app/dashboard");
           } else {
             this.errorMessage = "Token expired";
           }
@@ -189,7 +201,7 @@ export default {
     if (authenticated && accessToken) {
       this.setAccessToken(accessToken);
       this.setRefreshToken(refreshToken);
-      this.$router.push("/app/dashboard");
+      void this.pushIfNeeded("/app/dashboard");
     }
   },
 };

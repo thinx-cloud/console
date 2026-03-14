@@ -18,6 +18,19 @@ export default {
       setRefreshToken: "auth/setRefreshToken",
     }),
     ...mapActions({ isTokenValid: "auth/isTokenValid" }),
+    async pushIfNeeded(location) {
+      if (this.$route.fullPath === location) {
+        return;
+      }
+
+      try {
+        await this.$router.push(location);
+      } catch (error) {
+        if (error?.name !== "NavigationDuplicated") {
+          throw error;
+        }
+      }
+    },
   },
   async created() {
     const currentPath = this.$router.history.current.path;
@@ -25,7 +38,7 @@ export default {
 
     if (!authenticated) {
       if (currentPath !== "/login") {
-        this.$router.push("/login");
+        await this.pushIfNeeded("/login");
       }
     }
 
@@ -42,7 +55,7 @@ export default {
 
       // concat default paths
       if (currentPath === "/" || currentPath === "/app") {
-        this.$router.push("/app/dashboard");
+        await this.pushIfNeeded("/app/dashboard");
       }
 
       /*
