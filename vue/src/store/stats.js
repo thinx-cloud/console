@@ -20,7 +20,7 @@ export default {
     },
     getters: {
         getStats(state) {
-            return !state.accessToken;
+            return state.stats;
         },
     },
   };
