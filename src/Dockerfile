@@ -53,7 +53,8 @@ RUN rm -rf .git
 
 # needs to include gulp
 
-FROM nginx:1.28.0-alpine3.21-slim
+FROM nginx:1.29.3-alpine
+ARG WEB_HOSTNAME
 
 RUN apk add procps
 
@@ -61,6 +62,8 @@ WORKDIR /usr/share/nginx/html
 COPY --from=0 /home/node/build/html .
 
 COPY default.conf /etc/nginx/conf.d/default.conf
+RUN web_hostname="${WEB_HOSTNAME:-localhost}" \
+    && sed -i "s|__WEB_HOSTNAME__|${web_hostname}|g" /etc/nginx/conf.d/default.conf
 
 # Expose port (HOST:CONTAINER; nginx, may be configured from outside with docker-compose)
 EXPOSE 7440:80

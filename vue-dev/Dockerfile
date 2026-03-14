@@ -17,10 +17,10 @@ RUN apt-get install -y -qq curl
 ## Install Cypress Dependencies
 RUN apt-get install -y libgtk-3-0 libgtk2.0-0 libgbm-dev libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 build-essential git libxtst6 xauth xvfb ca-certificates procps && apt-get clean
 
-# Install Node.js v22.x using nvm
+# Install Node.js v25.x using nvm
 # Install NVM
 ENV NVM_DIR=/root/.nvm
-ENV NODE_VERSION=22
+ENV NODE_VERSION=25
 
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
     . "$NVM_DIR/nvm.sh" && \

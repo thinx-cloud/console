@@ -79,7 +79,9 @@ RUN bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/insta
 #
 
 # needs to include gulp
-FROM nginx:1.28.0-alpine
+FROM nginx:1.29.3-alpine
+ARG WEB_HOSTNAME
+ENV NGINX_HOST=${WEB_HOSTNAME}
 
 RUN apk add procps
 
@@ -87,6 +89,8 @@ WORKDIR /usr/share/nginx/html
 COPY --from=0 /home/node/build/dist .
 
 COPY default.conf /etc/nginx/conf.d/default.conf
+RUN nginx_host="${NGINX_HOST:-localhost}" \
+    && sed -i "s|__NGINX_HOST__|${nginx_host}|g" /etc/nginx/conf.d/default.conf
 
 # Expose port (HOST:CONTAINER; nginx, may be configured from outside with docker-compose)
 EXPOSE 7440:80

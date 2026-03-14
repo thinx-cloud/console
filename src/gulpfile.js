@@ -191,8 +191,8 @@ gulp.task('prod', function() {
           'assets/global/plugins/bootstrap-switch/js/bootstrap-switch.js',
           'assets/global/plugins/jquery-slimscroll/jquery.slimscroll.js',
           'assets/global/plugins/jquery.blockui.js',
-          'assets/global/plugins/jquery-validation/js/jquery.validate.js',
-          'assets/global/plugins/jquery-validation/js/additional-methods.js',
+          'assets/global/plugins/jquery-validation-1.19.5/dist/jquery.validate.js',
+          'assets/global/plugins/jquery-validation-1.19.5/dist/additional-methods.js',
           'assets/thinx/js/plugins/ui-select/select.js',
           //'assets/global/plugins/select2/js/select2.js',
           'assets/global/scripts/app.js', // this is shared with Private
