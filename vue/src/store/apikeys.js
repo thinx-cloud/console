@@ -52,6 +52,16 @@ export default {
         }
         return state.items;
       },
+      async createItem({ dispatch }, alias) {
+        const result = await this.$api.$post('/apikey', JSON.stringify({ alias }));
+        if (result.success) await dispatch('fetchItems');
+        return result;
+      },
+      async deleteItems({ dispatch }, fingerprints) {
+        const result = await this.$api.$delete('/apikey', JSON.stringify({ fingerprints }));
+        if (result.success) await dispatch('fetchItems');
+        return result;
+      },
     },
     getters: {
         getItems(state) {

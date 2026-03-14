@@ -71,7 +71,8 @@ export default {
       }
       Vue.set(this, "selectedItems", selectedItems);
       this.$emit("selection-update", {
-        count: this.selectedItems.length
+        count: this.selectedItems.length,
+        items: this.selectedItems,
       });
     },
     changeCheck(ev, id) {
@@ -82,7 +83,8 @@ export default {
         this.selectedItems.push(id);
       }
       this.$emit("selection-update", {
-        count: this.selectedItems.length
+        count: this.selectedItems.length,
+        items: this.selectedItems,
       });
     },
     isItemSelected(id) {

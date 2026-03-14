@@ -72,4 +72,16 @@ export default class Api {
       return this.parseResult(result);
   }
 
+  async $put(path, body) {
+      const response = await fetch(this.composePath(path), this.composeOptions('PUT', body));
+      const result = await response.json();
+      return this.parseResult(result);
+  }
+
+  async $delete(path, body) {
+      const response = await fetch(this.composePath(path), this.composeOptions('DELETE', body));
+      const result = await response.json();
+      return this.parseResult(result);
+  }
+
 }

@@ -34,9 +34,19 @@ export default {
       async fetchItems({ state, commit }) {
         const result = await this.$api.$get('/mesh');
         if (result.success) {
-          commit('saveItems', { items: result.result });
+          commit('saveItems', { items: result.response });
         }
         return state.items;
+      },
+      async createItem({ dispatch }, { mesh_id, alias }) {
+        const result = await this.$api.$put('/mesh', JSON.stringify({ mesh_id, alias }));
+        if (result.success) await dispatch('fetchItems');
+        return result;
+      },
+      async deleteItems({ dispatch }, mesh_ids) {
+        const result = await this.$api.$delete('/mesh', JSON.stringify({ mesh_ids }));
+        if (result.success) await dispatch('fetchItems');
+        return result;
       },
     },
     getters: {

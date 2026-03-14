@@ -9,19 +9,16 @@
     </h1>
 
     <p>
-      <b-button variant="success" id="create-item" @click="create"
-        >Add API Key</b-button
-      >
+      <b-button variant="success" @click="$bvModal.show('create-apikey-modal')">Add API Key</b-button>
       <b-button
         variant="danger"
-        id="delete-selected-items"
         @click="deleteSelected"
         :disabled="!isSelected"
-        >{{ selectedCount }}<span class="glyphicon glyphicon-trash"></span
-      ></b-button>
+        class="ml-2"
+      >Delete ({{ selectedCount }})</b-button>
     </p>
 
-    <p>Manage your private API keys</p>
+    <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
 
     <List
       @selection-update="selectionUpdated"
@@ -29,6 +26,19 @@
       :dataheaders="headers"
       :showLoading="loading"
     ></List>
+
+    <!-- Create Modal -->
+    <b-modal id="create-apikey-modal" title="Add API Key" @ok="create" ok-title="Create">
+      <b-form-group label="Alias" label-for="apikey-alias">
+        <b-form-input id="apikey-alias" v-model="form.alias" placeholder="e.g. My Device Key" required />
+      </b-form-group>
+    </b-modal>
+
+    <!-- Created Key Result Modal -->
+    <b-modal id="apikey-result-modal" title="API Key Created" ok-only ok-title="Close">
+      <p>Your new API key has been created. Copy it now — it will not be shown again.</p>
+      <b-form-input readonly :value="createdKey" />
+    </b-modal>
   </div>
 </template>
 
@@ -43,31 +53,55 @@ export default {
     return {
       isSelected: false,
       selectedCount: 0,
+      selectedIds: [],
       items: [],
       headers: [],
       loading: true,
+      error: null,
+      createdKey: null,
+      form: { alias: '' },
     };
   },
   created() {
-    this.$watch(() => this.$route.params, () => { this.loadData() }, { immediate: true });
+    this.$watch(() => this.$route.params, () => { this.loadData(); }, { immediate: true });
   },
   methods: {
     ...mapGetters({ getItems: 'apikeys/getItems', getHeaders: 'apikeys/getHeaders' }),
-    ...mapActions({ fetchItems: 'apikeys/fetchItems' }),
-    create() {
-      // TODO implement
+    ...mapActions({ fetchItems: 'apikeys/fetchItems', createItem: 'apikeys/createItem', deleteItems: 'apikeys/deleteItems' }),
+    async create(bvModalEvt) {
+      bvModalEvt.preventDefault();
+      if (!this.form.alias.trim()) return;
+      const result = await this.createItem(this.form.alias.trim());
+      if (result.success) {
+        this.createdKey = result.response && result.response.key ? result.response.key : null;
+        this.form.alias = '';
+        this.$bvModal.hide('create-apikey-modal');
+        if (this.createdKey) this.$bvModal.show('apikey-result-modal');
+        this.loadData();
+      } else {
+        this.error = result.message || 'Failed to create API key.';
+      }
     },
-    deleteSelected() {
-      // TODO implement
+    async deleteSelected() {
+      const hashes = this.selectedIds
+        .map(id => this.items.find(item => item.id === id))
+        .filter(Boolean)
+        .map(item => item.hash);
+      if (!hashes.length) return;
+      const result = await this.deleteItems(hashes);
+      if (!result.success) this.error = result.message || 'Failed to delete API keys.';
+      this.selectedIds = [];
+      this.isSelected = false;
+      this.selectedCount = 0;
     },
     selectionUpdated(value) {
       this.isSelected = value.count > 0;
       this.selectedCount = value.count;
+      this.selectedIds = value.items || [];
     },
     loadData() {
       this.loading = true;
       this.fetchItems().then(() => {
-        // Removed unused 'items' parameter
         this.items = this.getItems();
         this.headers = this.getHeaders();
         this.loading = false;

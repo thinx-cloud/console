@@ -72,6 +72,16 @@ export default {
         }
         return state.items;
       },
+      async createItem({ dispatch }, { key, value }) {
+        const result = await this.$api.$put('/env', JSON.stringify({ key, value }));
+        if (result.success) await dispatch('fetchItems');
+        return result;
+      },
+      async deleteItems({ dispatch }, names) {
+        const result = await this.$api.$delete('/env', JSON.stringify({ names }));
+        if (result.success) await dispatch('fetchItems');
+        return result;
+      },
     },
     getters: {
         getItems(state) {

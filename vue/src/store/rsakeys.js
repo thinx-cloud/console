@@ -60,6 +60,16 @@ export default {
         }
         return state.items;
       },
+      async createItem({ dispatch }) {
+        const result = await this.$api.$put('/rsakey', JSON.stringify({}));
+        if (result.success) await dispatch('fetchItems');
+        return result;
+      },
+      async deleteItems({ dispatch }, filenames) {
+        const result = await this.$api.$delete('/rsakey', JSON.stringify({ filenames }));
+        if (result.success) await dispatch('fetchItems');
+        return result;
+      },
     },
     getters: {
         getItems(state) {

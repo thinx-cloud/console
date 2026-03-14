@@ -58,6 +58,19 @@ export default {
         }
         return state.items;
       },
+      async fetchItems({ dispatch }) {
+        return dispatch('fetchRepositories');
+      },
+      async createItem({ dispatch }, payload) {
+        const result = await this.$api.$put('/source', JSON.stringify(payload));
+        if (result.success) await dispatch('fetchRepositories');
+        return result;
+      },
+      async deleteItems({ dispatch }, source_ids) {
+        const result = await this.$api.$delete('/source', JSON.stringify({ source_ids }));
+        if (result.success) await dispatch('fetchRepositories');
+        return result;
+      },
     },
     getters: {
         getItems(state) {
