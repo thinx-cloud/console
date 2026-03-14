@@ -2,74 +2,96 @@
   <div>
     <b-breadcrumb>
       <b-breadcrumb-item>YOU ARE HERE</b-breadcrumb-item>
-      <b-breadcrumb-item active>Management</b-breadcrumb-item>
+      <b-breadcrumb-item active>Settings</b-breadcrumb-item>
     </b-breadcrumb>
     <h1 class="page-title">
-      Management - <span class="fw-semi-bold">Transformers</span>
+      Settings - <span class="fw-semi-bold">Transformers</span>
     </h1>
 
     <p>
-      <b-button variant="success" id="create-item" @click="create"
-        >Add Transformer</b-button
-      >
-      <b-button
-        variant="danger"
-        id="delete-selected-items"
-        @click="deleteSelected"
-        :disabled="!isSelected"
-        >{{ selectedCount }}<span class="glyphicon glyphicon-trash"></span
-      ></b-button>
+      <b-button variant="success" @click="$bvModal.show('create-transformer-modal')">Add Transformer</b-button>
     </p>
 
-    <p>Manage your Transformers</p>
+    <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
 
-    <List
-      @selection-update="selectionUpdated"
-      :datasource="items"
-      :dataheaders="headers"
-      :showLoading="loading"
-    ></List>
+    <p>Status transformers are JavaScript functions that process and transform device status data before display.</p>
+
+    <div v-if="loading">Loading...</div>
+    <table v-else class="table table-striped">
+      <thead>
+        <tr>
+          <th>Alias</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="item in items" :key="item.utid">
+          <td>{{ item.alias }}</td>
+          <td>
+            <b-button size="sm" variant="primary" @click="editTransformer(item.utid)" class="mr-2">Edit</b-button>
+            <b-button size="sm" variant="danger" @click="deleteTransformer(item.utid)">Delete</b-button>
+          </td>
+        </tr>
+        <tr v-if="!items.length">
+          <td colspan="2" class="text-muted">No transformers yet.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Create Modal -->
+    <b-modal id="create-transformer-modal" title="Add Transformer" @ok="create" ok-title="Create">
+      <b-form-group label="Alias" label-for="transformer-alias">
+        <b-form-input id="transformer-alias" v-model="form.alias" placeholder="e.g. Battery Parser" required />
+      </b-form-group>
+    </b-modal>
   </div>
 </template>
 
 <script>
-import List from '@/components/List/List';
 import { mapGetters, mapActions } from 'vuex';
 
 export default {
   name: "Transformers",
-  components: { List },
   data() {
     return {
-      isSelected: false,
-      selectedCount: 0,
       items: [],
-      headers: [],
       loading: true,
+      error: null,
+      form: { alias: '' },
     };
   },
   created() {
-    this.$watch(() => this.$route.params, () => { this.loadData() }, { immediate: true });
+    this.$watch(() => this.$route.params, () => { this.loadData(); }, { immediate: true });
   },
   methods: {
-    ...mapGetters({ getItems: 'transformers/getItems', getHeaders: 'transformers/getHeaders' }),
-    ...mapActions({ fetchItems: 'transformers/fetchItems' }),
-    create() {
-      // TODO implement
+    ...mapGetters({ getItems: 'transformers/getItems' }),
+    ...mapActions({ fetchItems: 'transformers/fetchItems', createItem: 'transformers/createItem', deleteItem: 'transformers/deleteItem' }),
+    editTransformer(utid) {
+      this.$router.push({ name: 'TransformerEditor', params: { utid } });
     },
-    deleteSelected() {
-      // TODO implement
+    async create(bvModalEvt) {
+      bvModalEvt.preventDefault();
+      if (!this.form.alias.trim()) return;
+      const result = await this.createItem(this.form.alias.trim());
+      if (result.success) {
+        this.form.alias = '';
+        this.$bvModal.hide('create-transformer-modal');
+        this.loadData();
+      } else {
+        this.error = result.message || 'Failed to create transformer.';
+      }
     },
-    selectionUpdated(value) {
-      this.isSelected = value.count > 0;
-      this.selectedCount = value.count;
+    async deleteTransformer(utid) {
+      const confirmed = await this.$bvModal.msgBoxConfirm('Delete this transformer?', { title: 'Confirm Delete', okVariant: 'danger', okTitle: 'Delete' });
+      if (!confirmed) return;
+      const result = await this.deleteItem(utid);
+      if (!result.success) this.error = result.message || 'Failed to delete transformer.';
+      else this.loadData();
     },
     loadData() {
       this.loading = true;
       this.fetchItems().then(() => {
-        // Removed unused 'items' parameter
         this.items = this.getItems();
-        this.headers = this.getHeaders();
         this.loading = false;
       });
     },

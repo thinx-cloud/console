@@ -14,6 +14,7 @@ import EnviroManager from '@/pages/Enviros/Enviros';
 import ChannelManager from '@/pages/Channels/Channels';
 import DeviceManager from '@/pages/Devices/Devices';
 import TransformerManager from '@/pages/Transformers/Transformers';
+import TransformerEditor from '@/pages/Transformers/TransformerEditor';
 
 import HistoryManager from '@/pages/History/History';
 
@@ -73,7 +74,12 @@ export default new Router({
         {
           path: 'transformers',
           name: 'Transformers',
-          component: TransformerManager, // Transformers,
+          component: TransformerManager,
+        },
+        {
+          path: 'transformer/:utid',
+          name: 'TransformerEditor',
+          component: TransformerEditor,
         },
 
         {
