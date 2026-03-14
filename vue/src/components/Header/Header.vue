@@ -65,34 +65,6 @@
           <i class="la la-sign-out" /> Log Out
         </b-dropdown-item-button>
       </b-nav-item-dropdown>
-      <b-nav-item-dropdown no-caret right class="d-md-down-none mr-2">
-        <template slot="button-content">
-          <i class="fi flaticon-bell px-2" />
-        </template>
-        <b-dropdown-item>
-          <span class="badge badge-danger mr-2"><i class="fa fa-bell-o"></i></span>
-          <span class="fs-sm">Check out this awesome ticket</span>
-        </b-dropdown-item>
-        <b-dropdown-item>
-          <span class="badge bg-primary mr-2"><i class="fa fa-question-circle"></i></span>
-          <span class="fs-sm">Finish 2019 annual report</span>
-        </b-dropdown-item>
-        <b-dropdown-item>
-          <span class="badge badge-success mr-2"><i class="fa fa-info-circle"></i></span>
-          <span class="fs-sm">Update Vue.js to the newest version</span>
-        </b-dropdown-item>
-        <b-dropdown-item>
-          <span class="badge badge-info mr-2"><i class="fa fa-plus"></i></span>
-          <span class="fs-sm">Establish OKR system</span>
-        </b-dropdown-item>
-        <b-dropdown-item>
-          <span class="badge badge-danger mr-2"><i class="fa fa-tag"></i></span>
-          <span class="fs-sm">Fill in time tracking</span>
-        </b-dropdown-item>
-        <b-dropdown-item-button class="text-center">
-          See all tickets <i class="fa fa-arrow-right ml-1"></i>
-        </b-dropdown-item-button>
-      </b-nav-item-dropdown>
       <b-nav-item class="d-md-down-none" @click="logout">
         <i class="fi flaticon-power-1 px-2" />
       </b-nav-item>
