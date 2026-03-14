@@ -65,7 +65,7 @@ export default {
         title: 'Unsaved Changes',
         okVariant: 'warning',
         okTitle: 'Leave',
-      }).then(confirmed => { if (confirmed) next(); });
+      }).then(confirmed => { next(confirmed ? undefined : false); });
     } else {
       next();
     }
