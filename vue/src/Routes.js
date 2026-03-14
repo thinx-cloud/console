@@ -18,6 +18,7 @@ import TransformerManager from '@/pages/Transformers/Transformers';
 import TransformerEditor from '@/pages/Transformers/TransformerEditor';
 
 import HistoryManager from '@/pages/History/History';
+import ProfilePage from '@/pages/Profile/Profile';
 
 
 Vue.use(Router);
@@ -98,6 +99,11 @@ export default new Router({
           path: 'channels',
           name: 'Mesh Channels',
           component: ChannelManager, // ChannelManager,
+        },
+        {
+          path: 'profile',
+          name: 'Profile',
+          component: ProfilePage,
         },
 
       ],

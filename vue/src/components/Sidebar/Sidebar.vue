@@ -54,6 +54,7 @@
             { header: 'Transformers', link: '/app/transformers' },
             { header: 'Environment Globals', link: '/app/enviros' },
             { header: 'Mesh Channels', link: '/app/channels' },
+            { header: 'My Profile', link: '/app/profile' },
           ]"
         />
         
