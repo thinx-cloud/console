@@ -373,6 +373,15 @@ angular.module( "RTM" ).filter( "propsFilter", function() {
     var out = [];
     if ( angular.isArray( items ) ) {
       var keys = Object.keys( props );
+
+      // If no filter text provided for any prop, return all items unchanged
+      var hasAnyFilter = keys.some( function( k ) {
+        return typeof( props[ k ] ) !== "undefined" && props[ k ] !== null && props[ k ] !== "";
+      } );
+      if ( !hasAnyFilter ) {
+        return items;
+      }
+
       items.forEach( function( item ) {
         var itemMatches = false;
         for ( var i = 0; i < keys.length; i++ ) {
