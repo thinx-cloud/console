@@ -206,16 +206,16 @@ workflows:
               only:
                 - thinx-staging
 
-      # - vue:
-      #     name: Build and Publish Vue console
-      #     context:
-      #       - dockerhub
-      #       - thinx-docker-repo
-      #       - sonarcloud
-      #       - console
-          # requires:
-          #   - test_vue
-          # filters:
-          #   branches:
-          #     only:
-          #       - thinx-console
+      - vue:
+          name: Build and Publish Vue console
+          context:
+            - dockerhub
+            - thinx-docker-repo
+            - sonarcloud
+            - console
+          requires:
+            - test_vue
+          filters:
+            branches:
+              only:
+                - thinx-console
