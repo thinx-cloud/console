@@ -11,3 +11,5 @@ src/cypress/videos
 yarn.lock
 .dccache
 settings.json
+# Nightshift plan artifacts (keep out of version control)
+.nightshift-plan

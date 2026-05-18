@@ -178,9 +178,9 @@ workflows:
       #         only:
       #           - thinx-staging
 
-      # - test_vue:
-      #     name: Test Vue console
-      #     context: sonarcloud
+      - test_vue:
+          name: Test Vue console
+          context: sonarcloud
 
       # - ggshield/scan:
       #     name: Scan using Gitguardian shield
