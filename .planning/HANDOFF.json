@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-18T21:29:00Z",
+  "phase": "2",
+  "phase_name": "CRUD for Simple Management Pages",
+  "phase_dir": ".planning/phase-2",
+  "plan": 1,
+  "task": 0,
+  "total_tasks": 3,
+  "status": "planned",
+  "completed_tasks": [],
+  "remaining_tasks": [
+    {
+      "id": 1,
+      "name": "Duplicate alias guard in Repositories create() (REPO-03)",
+      "status": "not_started",
+      "file": "vue/src/pages/Repositories/Repositories.vue",
+      "description": "Add this.items.find() duplicate check + inline b-alert inside create-repo-modal"
+    },
+    {
+      "id": 2,
+      "name": "Investigate and resolve device count per repository row (REPO-05)",
+      "status": "not_started",
+      "type": "checkpoint:human-verify",
+      "file": "vue/src/store/repositories.js",
+      "description": "Inspect live GET /source response for device count field; add column or add gap comment"
+    },
+    {
+      "id": 3,
+      "name": "Copy-to-clipboard button in one-time key modals (AKEY-02, RKEY-02)",
+      "status": "not_started",
+      "files": ["vue/src/pages/Apikeys/Apikeys.vue", "vue/src/pages/Rsakeys/Rsakeys.vue"],
+      "description": "Add Copy button + copyToClipboard() using this.$toasted (vue-toasted, NOT $bvToast)"
+    }
+  ],
+  "blockers": [],
+  "human_actions_pending": [
+    {
+      "action": "Inspect live GET /source API response for device count field",
+      "context": "Task 2 requires checking a real API response in browser DevTools or via curl — cannot be determined from static code",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Use $toasted (vue-toasted) not $bvToast for toast notifications",
+      "rationale": "main.js registers vue-toasted via Vue.use(Toasted). $bvToast is not initialized.",
+      "phase": "2"
+    },
+    {
+      "decision": "PUT is the correct HTTP method for create on /source, /rsakey, /env, /mesh",
+      "rationale": "Confirmed from backend route definitions in lib/router.*.js",
+      "phase": "2"
+    },
+    {
+      "decision": "RSA key modal shows pubkey (not privkey)",
+      "rationale": "Backend only returns pubkey in response; private key written to disk only. Showing pubkey is correct UX for deploy keys.",
+      "phase": "2"
+    },
+    {
+      "decision": "Legacy AngularJS UI (src/) is frozen — all new work in vue/ only",
+      "rationale": "Project strategy",
+      "phase": "all"
+    }
+  ],
+  "uncommitted_files": [],
+  "next_action": "Run /gsd:execute-phase 2 to implement the 3 tasks in .planning/phase-2/PLAN.md",
+  "context_notes": "Phase 1 was already complete pre-GSD-init. Phase 2 CRUD was also mostly pre-existing. Only 3 gap tasks remain. Plan verified (2 checker iterations). All research open questions resolved from backend source."
+}
