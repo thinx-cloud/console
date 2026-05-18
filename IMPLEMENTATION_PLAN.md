@@ -4,6 +4,8 @@ Generated: 2026-03-14
 Legacy console: `src/` (deployed at rtm.thinx.cloud)
 Vue console: `vue/` (deployed at staging.thinx.cloud)
 
+Note: Task grooming and a standard task-template live at `dev/TASK_GROOMING.md`. Use that template when refining entries in this plan.
+
 ---
 
 ## Feature Map: Legacy vs Vue
