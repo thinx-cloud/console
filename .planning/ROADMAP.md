@@ -7,7 +7,7 @@
 
 ## Phase 1 — Bug Fixes & Scaffolding Cleanup
 
-**Status:** Pending
+**Status:** Complete (pre-existing — verified 2026-05-18)
 **Effort:** XS
 **Goal:** Remove blockers so the Vue console renders real data and has no dead code.
 
