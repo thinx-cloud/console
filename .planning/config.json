@@ -1,0 +1,10 @@
+{
+  "yolo": false,
+  "granularity": "fine",
+  "git": {
+    "commitAfterPhase": true
+  },
+  "agents": {
+    "enabled": true
+  }
+}
