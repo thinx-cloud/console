@@ -21,6 +21,11 @@ export default {
       }
     },
     actions: {
+      // Transformers are stored inside the user profile document.
+      // No dedicated GET /transformer endpoint exists on the backend.
+      // The only read path is GET /api/v2/profile → response.info.transformers.
+      // The only write path is POST /api/v2/profile with { transformers: [...] }
+      // — no /transformer CRUD routes exist on the server.
       async fetchItems({ state, commit }) {
         const result = await this.$api.$get('/profile');
         if (result.success && result.response && result.response.info) {
@@ -29,9 +34,7 @@ export default {
         return state.items;
       },
       async saveTransformers({ dispatch }, transformers) {
-        const result = await this.$api.$post('/profile', JSON.stringify({
-          info: { transformers }
-        }));
+        const result = await this.$api.$post('/profile', JSON.stringify({ transformers }));
         if (result.success) await dispatch('fetchItems');
         return result;
       },

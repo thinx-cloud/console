@@ -40,6 +40,7 @@
 
     <!-- Create Modal -->
     <b-modal id="create-transformer-modal" title="Add Transformer" @ok="create" ok-title="Create">
+      <b-alert :show="!!error" variant="danger" class="mb-3">{{ error }}</b-alert>
       <b-form-group label="Alias" label-for="transformer-alias">
         <b-form-input id="transformer-alias" v-model="form.alias" placeholder="e.g. Battery Parser" required />
       </b-form-group>
@@ -71,7 +72,13 @@ export default {
     },
     async create(bvModalEvt) {
       bvModalEvt.preventDefault();
+      this.error = null;
       if (!this.form.alias.trim()) return;
+      const duplicate = this.items.find(t => t.alias === this.form.alias.trim());
+      if (duplicate) {
+        this.error = 'A transformer with this alias already exists.';
+        return;
+      }
       const result = await this.createItem(this.form.alias.trim());
       if (result.success) {
         this.form.alias = '';
