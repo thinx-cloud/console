@@ -9,7 +9,6 @@
     </h1>
 
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
-    <b-alert v-if="saved" variant="success" show dismissible @dismissed="saved = false">Transformer saved.</b-alert>
     <b-alert v-if="hasChanges" variant="warning" show>You have unsaved changes.</b-alert>
 
     <b-form-group label="Alias" label-for="transformer-alias" class="mb-3" style="max-width:400px">
@@ -45,7 +44,6 @@ export default {
       form: { alias: '', body: '' },
       hasChanges: false,
       saving: false,
-      saved: false,
       error: null,
       editorOptions: {
         tabSize: 2,
@@ -100,7 +98,7 @@ export default {
       this.saving = false;
       if (result.success) {
         this.hasChanges = false;
-        this.saved = true;
+        this.$router.push('/app/transformers');
       } else {
         this.error = result.message || 'Failed to save transformer.';
       }
