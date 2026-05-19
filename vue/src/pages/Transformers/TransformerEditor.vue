@@ -82,7 +82,7 @@ export default {
       this.form.alias = transformer.alias;
       // body is stored base64-encoded
       try {
-        this.form.body = transformer.body ? atob(transformer.body) : '';
+        this.form.body = transformer.body ? decodeURIComponent(escape(atob(transformer.body))) : '';
       } catch {
         this.form.body = transformer.body || '';
       }
