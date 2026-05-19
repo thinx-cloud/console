@@ -1,50 +1,56 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-18T21:29:00Z",
+  "timestamp": "2026-05-19T19:48:19Z",
   "phase": "2",
   "phase_name": "CRUD for Simple Management Pages",
   "phase_dir": ".planning/phase-2",
   "plan": 1,
-  "task": 0,
+  "task": 2,
   "total_tasks": 3,
-  "status": "planned",
-  "completed_tasks": [],
-  "remaining_tasks": [
+  "status": "paused_at_checkpoint",
+  "completed_tasks": [
     {
       "id": 1,
       "name": "Duplicate alias guard in Repositories create() (REPO-03)",
-      "status": "not_started",
-      "file": "vue/src/pages/Repositories/Repositories.vue",
-      "description": "Add this.items.find() duplicate check + inline b-alert inside create-repo-modal"
-    },
+      "status": "done",
+      "commit": "5d18b27"
+    }
+  ],
+  "remaining_tasks": [
     {
       "id": 2,
-      "name": "Investigate and resolve device count per repository row (REPO-05)",
-      "status": "not_started",
+      "name": "Device count investigation (REPO-05)",
+      "status": "awaiting_human_verify",
       "type": "checkpoint:human-verify",
-      "file": "vue/src/store/repositories.js",
-      "description": "Inspect live GET /source response for device count field; add column or add gap comment"
+      "description": "Inspect live GET /source response in DevTools. Reply 'column added: <field>' or 'backend gap confirmed'.",
+      "resume_signal": "Send reply to executor agent OR execute Task 2 manually and then do Task 3"
     },
     {
       "id": 3,
-      "name": "Copy-to-clipboard button in one-time key modals (AKEY-02, RKEY-02)",
+      "name": "Copy-to-clipboard in one-time key modals (AKEY-02, RKEY-02)",
       "status": "not_started",
       "files": ["vue/src/pages/Apikeys/Apikeys.vue", "vue/src/pages/Rsakeys/Rsakeys.vue"],
-      "description": "Add Copy button + copyToClipboard() using this.$toasted (vue-toasted, NOT $bvToast)"
+      "description": "Add Copy button + copyToClipboard() using this.$toasted (NOT $bvToast)"
     }
   ],
-  "blockers": [],
+  "blockers": [
+    {
+      "description": "Task 2 requires inspecting a live GET /source API response in browser DevTools — cannot be determined from static code",
+      "type": "human_action",
+      "workaround": "Start dev server (cd vue && npm run serve), log in, open Repositories page, check Network tab for GET /source response fields"
+    }
+  ],
   "human_actions_pending": [
     {
-      "action": "Inspect live GET /source API response for device count field",
-      "context": "Task 2 requires checking a real API response in browser DevTools or via curl — cannot be determined from static code",
-      "blocking": false
+      "action": "Inspect live GET /source response for device count field, then reply 'column added: <field>' or 'backend gap confirmed'",
+      "context": "Task 2 checkpoint — paused mid-execution waiting for this signal",
+      "blocking": true
     }
   ],
   "decisions": [
     {
       "decision": "Use $toasted (vue-toasted) not $bvToast for toast notifications",
-      "rationale": "main.js registers vue-toasted via Vue.use(Toasted). $bvToast is not initialized.",
+      "rationale": "main.js line 53 registers vue-toasted. $bvToast is NOT initialized.",
       "phase": "2"
     },
     {
@@ -54,16 +60,11 @@
     },
     {
       "decision": "RSA key modal shows pubkey (not privkey)",
-      "rationale": "Backend only returns pubkey in response; private key written to disk only. Showing pubkey is correct UX for deploy keys.",
+      "rationale": "Backend only returns pubkey in response; private key written to disk only.",
       "phase": "2"
-    },
-    {
-      "decision": "Legacy AngularJS UI (src/) is frozen — all new work in vue/ only",
-      "rationale": "Project strategy",
-      "phase": "all"
     }
   ],
   "uncommitted_files": [],
-  "next_action": "Run /gsd:execute-phase 2 to implement the 3 tasks in .planning/phase-2/PLAN.md",
-  "context_notes": "Phase 1 was already complete pre-GSD-init. Phase 2 CRUD was also mostly pre-existing. Only 3 gap tasks remain. Plan verified (2 checker iterations). All research open questions resolved from backend source."
+  "next_action": "1) Start dev server, inspect GET /source response. 2) Reply to checkpoint. 3) Execute Task 3 (copy-to-clipboard). 4) Run npm run build. 5) Write SUMMARY.md.",
+  "context_notes": "Executor agent paused at Task 2 checkpoint. Task 1 committed at 5d18b27. Task 3 is fully scripted and ready to execute after Task 2 is resolved. Fresh session recommended — context was at 68% when pausing."
 }
