@@ -37,7 +37,7 @@ export default {
       },
       async createItem({ state, dispatch }, alias) {
         await dispatch('fetchItems');
-        const utid = String(Date.now());
+        const utid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
         const defaultBody = btoa('// Minimal no-op Transformer\n\nvar transformer = function(status, device) {\n    return status;\n};');
         const transformers = [...state.items.map(t => ({ utid: t.utid, alias: t.alias, body: t.body })), { utid, alias, body: defaultBody }];
         return dispatch('saveTransformers', transformers);
