@@ -74,7 +74,7 @@
 
 Plans:
 - [x] 03-01-PLAN.md — Fix POST body bug in store + duplicate alias guard in create modal
-- [ ] 03-02-PLAN.md — Post-save redirect and UTF-8 safe base64 encode/decode
+- [x] 03-02-PLAN.md — Post-save redirect and UTF-8 safe base64 encode/decode
 
 **UAT:**
 - Create a transformer, see it in the list
