@@ -29,6 +29,7 @@
 
     <!-- Create Modal -->
     <b-modal id="create-repo-modal" title="Add Repository" @ok="create" ok-title="Add" size="lg">
+      <b-alert :show="!!error" variant="danger" class="mb-3">{{ error }}</b-alert>
       <b-form-group label="Git URL *" label-for="repo-url">
         <b-form-input
           id="repo-url"
@@ -95,7 +96,13 @@ export default {
     },
     async create(bvModalEvt) {
       bvModalEvt.preventDefault();
+      this.error = null;
       if (!this.form.url.trim() || !this.form.alias.trim()) return;
+      const duplicate = this.items.find(r => r.alias === this.form.alias.trim());
+      if (duplicate) {
+        this.error = 'A repository with this alias already exists.';
+        return;
+      }
       const payload = {
         url: this.form.url.trim(),
         alias: this.form.alias.trim(),
