@@ -35,7 +35,8 @@
     <b-modal id="rsakey-result-modal" title="RSA Key Generated" ok-only ok-title="Close">
       <p>Your new RSA key pair has been generated. Add the public key below to your Git repository's deploy keys.</p>
       <b-form-group label="Public Key">
-        <b-form-textarea readonly :value="createdPubkey" rows="4" />
+        <b-form-textarea readonly :value="createdPubkey" rows="4" class="mb-2" />
+        <b-button variant="outline-secondary" size="sm" @click="copyToClipboard(createdPubkey)">Copy to clipboard</b-button>
       </b-form-group>
     </b-modal>
   </div>
@@ -103,6 +104,17 @@ export default {
         this.headers = this.getHeaders();
         this.loading = false;
       });
+    },
+    copyToClipboard(value) {
+      navigator.clipboard.writeText(value).catch(() => {
+        const el = document.createElement('textarea');
+        el.value = value;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      });
+      this.$toasted.show('Copied to clipboard', { type: 'success', duration: 2000 });
     },
   },
 };

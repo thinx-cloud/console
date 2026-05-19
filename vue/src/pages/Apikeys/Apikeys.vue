@@ -37,7 +37,8 @@
     <!-- Created Key Result Modal -->
     <b-modal id="apikey-result-modal" title="API Key Created" ok-only ok-title="Close">
       <p>Your new API key has been created. Copy it now — it will not be shown again.</p>
-      <b-form-input readonly :value="createdKey" />
+      <b-form-input readonly :value="createdKey" class="mb-2" />
+      <b-button variant="outline-secondary" size="sm" @click="copyToClipboard(createdKey)">Copy to clipboard</b-button>
     </b-modal>
   </div>
 </template>
@@ -106,6 +107,17 @@ export default {
         this.headers = this.getHeaders();
         this.loading = false;
       });
+    },
+    copyToClipboard(value) {
+      navigator.clipboard.writeText(value).catch(() => {
+        const el = document.createElement('textarea');
+        el.value = value;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      });
+      this.$toasted.show('Copied to clipboard', { type: 'success', duration: 2000 });
     },
   },
 };
