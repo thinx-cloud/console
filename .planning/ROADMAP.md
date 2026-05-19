@@ -56,7 +56,7 @@
 
 ## Phase 3 — Transformers with Code Editor
 
-**Status:** Pending
+**Status:** Planned
 **Effort:** L
 **Goal:** Transformers are fully manageable with a proper code editing experience.
 
@@ -69,6 +69,12 @@
 - Unsaved-changes guard (confirm before leaving)
 
 **Requirements:** TRAN-01–07
+
+**Plans:** 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Fix POST body bug in store + duplicate alias guard in create modal
+- [ ] 03-02-PLAN.md — Post-save redirect and UTF-8 safe base64 encode/decode
 
 **UAT:**
 - Create a transformer, see it in the list
@@ -207,7 +213,7 @@
 |-------|-------------|--------|--------------|--------|
 | 1 | Bug Fixes & Scaffolding Cleanup | XS | CLEAN-01–04 | Pending |
 | 2 | CRUD for Simple Management Pages | M×5 | AKEY, REPO, RKEY, ENVI, CHAN | Pending |
-| 3 | Transformers with Code Editor | L | TRAN-01–07 | Pending |
+| 3 | Transformers with Code Editor | L | TRAN-01–07 | Planned |
 | 4 | Device Management | XL | DEVI-01–11 | Pending |
 | 5 | Real Dashboard | L | DASH-01–05 | Pending |
 | 6 | User Profile & Account Settings | L | PROF-01–06 | Pending |
