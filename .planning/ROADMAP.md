@@ -56,7 +56,7 @@
 
 ## Phase 3 — Transformers with Code Editor
 
-**Status:** Planned
+**Status:** Complete (UAT pending — 2026-05-19)
 **Effort:** L
 **Goal:** Transformers are fully manageable with a proper code editing experience.
 
