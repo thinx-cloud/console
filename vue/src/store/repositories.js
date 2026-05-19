@@ -13,6 +13,7 @@ export default {
           }
           */
         ],
+        // REPO-05: GET /source does not return a device count. Backend change required before this column can be added.
         headers: [
           {
             title: 'id',
