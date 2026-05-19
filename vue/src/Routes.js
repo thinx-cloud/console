@@ -23,6 +23,26 @@ import ProfilePage from '@/pages/Profile/Profile';
 
 Vue.use(Router);
 
+/**
+ * Application router using hash-mode navigation.
+ *
+ * Route tree:
+ * - `/login`         — public login page
+ * - `/error`         — generic error page (also matched by the `*` catch-all)
+ * - `/app`           — authenticated shell (`Layout`), with nested routes:
+ *   - `dashboard`            — visit/activity overview
+ *   - `devices`              — device list
+ *   - `device/:udid`         — single device detail
+ *   - `apikeys`              — API key manager
+ *   - `repositories`         — repository manager
+ *   - `history`              — audit history
+ *   - `rsakeys`              — RSA / deploy key manager
+ *   - `transformers`         — transformer list
+ *   - `transformer/:utid`    — transformer code editor
+ *   - `enviros`              — environment global variables
+ *   - `channels`             — mesh channel manager
+ *   - `profile`              — user profile
+ */
 export default new Router({
   mode: 'hash',
   routes: [
