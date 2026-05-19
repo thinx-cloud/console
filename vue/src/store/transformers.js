@@ -48,7 +48,7 @@ export default {
       async updateItem({ state, dispatch }, { utid, alias, body }) {
         const transformers = state.items.map(t =>
           t.utid === utid
-            ? { utid, alias, body: btoa(body) }
+            ? { utid, alias, body: btoa(unescape(encodeURIComponent(body))) }
             : { utid: t.utid, alias: t.alias, body: t.body }
         );
         return dispatch('saveTransformers', transformers);
