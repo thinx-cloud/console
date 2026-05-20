@@ -18,9 +18,9 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Current Status
 
-- **Active phase:** Phase 4 — Device Management (ready to execute)
-- **Last action:** Phase 4 Plan 00 executed — Wave 0 Cypress spec stubs created (2026-05-21)
-- **Next action:** Execute Phase 4 Plan 01 — Devices list implementation (Wave 1)
+- **Active phase:** Phase 4 — Device Management (Wave 1 in progress)
+- **Last action:** Phase 4 Plan 01 executed — Devices list enhancements (toolbar, grid view, filteredItems, per-row revoke) (2026-05-21)
+- **Next action:** Execute Phase 4 Plan 02 — Device Detail implementation (Wave 1)
 
 ## Phase Progress
 
@@ -57,5 +57,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-21T00:10:00.000Z
-Stopped at: Phase 4 Plan 00 complete (Wave 0 Cypress stubs)
+Last session: 2026-05-21T00:25:00.000Z
+Stopped at: Phase 4 Plan 01 complete (Devices list enhancements — DEVI-01 through DEVI-09)
