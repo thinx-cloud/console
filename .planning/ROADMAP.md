@@ -87,7 +87,7 @@ Plans:
 
 ## Phase 4 — Device Management
 
-**Status:** Pending
+**Status:** Planned
 **Effort:** XL
 **Goal:** Full device management parity with legacy console.
 
@@ -109,6 +109,22 @@ Plans:
 - Metadata, assigned repository, build/deploy history, device enviros, transformer assignment, device logs, revoke/transfer action buttons
 
 **Requirements:** DEVI-01–11
+
+**Plans:** 3 plans
+
+**Wave 0** — Cypress spec stubs (no production code):
+- [ ] 04-00-PLAN.md — Cypress test stubs for DEVI-01–11 (devices.spec.js + device-detail.spec.js)
+
+**Wave 1** *(blocked on Wave 0 completion)*:
+- [ ] 04-01-PLAN.md — Devices.vue list enhancements: toolbar, grid view, category pills, sort, search, per-row Revoke (DEVI-01–09)
+
+**Wave 2** *(blocked on Wave 1 completion)*:
+- [ ] 04-02-PLAN.md — DeviceDetail.vue: build history, env vars, transformer assignment, device logs, Transfer button (DEVI-10–11)
+
+**Cross-cutting constraints:**
+- `mapGetters` must remain spread into `methods` (not `computed`) throughout — project convention
+- `buildlog/fetchBuildLog` (not `buildlog/fetchItems`) — correct action name
+- No new npm packages in this phase
 
 **UAT:**
 - Can filter device list by category — only matching devices shown
