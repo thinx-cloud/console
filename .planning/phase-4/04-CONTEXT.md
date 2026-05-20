@@ -117,7 +117,7 @@ The GET /device payload normalizes each device to include: `alias`, `category` (
 - `this.$bvModal.msgBoxConfirm`: use for per-row single revoke confirm (same as existing bulk revoke pattern)
 - `devices/transferDevices` action: handles array of UDIDs — pass `[device.udid]` for single-device transfer from detail page
 - `devices/revokeDevices` action: same array pattern — `[udid]` for single revoke
-- `buildlog/fetchItems` action: fetches all build log entries — filter by udid or last_build_id after dispatch
+- `buildlog/fetchBuildLog` action: fetches all build log entries — filter by udid or last_build_id after dispatch
 - `transformers/getItems` getter: returns transformer list — use for UTID→alias lookup and dropdown options
 - `fromNow` filter: defined locally in both `Devices.vue` and `DeviceDetail.vue` — duplicate as needed or extract to mixin if both files are touched
 

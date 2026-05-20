@@ -115,9 +115,12 @@ legend {
   }
 }
 
-.badge-light,
-.badge-secondary {
+.badge-light {
   color: $gray-300;
+}
+
+.badge-secondary {
+  color: $header-color;
 }
 
 .table-no-border {
