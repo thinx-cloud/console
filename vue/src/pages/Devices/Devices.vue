@@ -100,6 +100,16 @@
 <script>
 import { mapGetters, mapActions } from 'vuex';
 
+const CATEGORY_COLORS = {
+  'yellow-crusta': '#f3c200',
+  'red-intense':   '#e35b5a',
+  'purple-studio': '#8E44AD',
+  'blue':          '#3598dc',
+  'green':         '#32c5d2',
+  'green-dark':    '#4DB3A2',
+  'grey-mint':     '#525e64',
+};
+
 export default {
   name: "Devices",
   filters: {
@@ -123,12 +133,36 @@ export default {
       enviros: [],
       transferForm: { to: '', mig_sources: false, mig_apikeys: false },
       pushForm: { selectedEnviros: [], reset_devices: false },
+      viewMode: 'list',
+      filterCategory: 'All',
+      sortBy: 'lastupdate',
+      searchText: '',
     };
   },
   computed: {
     isSelected() { return this.selectedUdids.length > 0; },
     selectedCount() { return this.selectedUdids.length; },
     isAllSelected() { return this.items.length > 0 && this.selectedUdids.length === this.items.length; },
+    filteredItems() {
+      let result = this.items;
+      if (this.filterCategory && this.filterCategory !== 'All') {
+        result = result.filter(d => d.category === this.filterCategory);
+      }
+      if (this.searchText) {
+        const q = this.searchText.toLowerCase();
+        result = result.filter(d =>
+          (d.alias || '').toLowerCase().includes(q) ||
+          (d.mac || '').toLowerCase().includes(q)
+        );
+      }
+      result = [...result].sort((a, b) => {
+        if (this.sortBy === 'lastupdate') return new Date(b.lastupdate || 0).getTime() - new Date(a.lastupdate || 0).getTime();
+        if (this.sortBy === 'platform')   return (a.platform || '').localeCompare(b.platform || '');
+        if (this.sortBy === 'alias')      return (a.alias || '').localeCompare(b.alias || '');
+        return 0;
+      });
+      return result;
+    },
   },
   created() {
     this.$watch(() => this.$route.params, () => { this.loadData(); }, { immediate: true });
@@ -216,6 +250,23 @@ export default {
         this.enviros = this.getEnviros();
         this.loading = false;
       });
+    },
+    async revokeRow(udid) {
+      const confirmed = await this.$bvModal.msgBoxConfirm(
+        'Revoke this device? This cannot be undone.',
+        { title: 'Confirm Revoke', okVariant: 'danger', okTitle: 'Revoke' }
+      );
+      if (!confirmed) return;
+      const result = await this.revokeDevices([udid]);
+      if (result.success) {
+        this.message = 'Device revoked.';
+        this.loadData();
+      } else {
+        this.error = result.message || 'Failed to revoke device.';
+      }
+    },
+    categoryColor(cat) {
+      return CATEGORY_COLORS[cat] || '#525e64';
     },
   },
 };
