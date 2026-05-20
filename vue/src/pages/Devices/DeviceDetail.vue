@@ -97,28 +97,38 @@ export default {
       loading: true,
       error: null,
       message: null,
-      editForm: { alias: '', description: '' },
+      editForm: { alias: '', description: '', transformers: [] },
+      buildHistory: [],
+      deviceLogs: [],
+      transferForm: { to: '', mig_sources: false, mig_apikeys: false },
     };
   },
   created() {
     this.loadDevice();
   },
   methods: {
-    ...mapGetters({ getByUdid: 'devices/getByUdid' }),
+    ...mapGetters({ getByUdid: 'devices/getByUdid', getBuildItems: 'buildlog/getItems', getTransformers: 'transformers/getItems' }),
     ...mapActions({
       fetchItems: 'devices/fetchItems',
       revokeDevices: 'devices/revokeDevices',
       buildFirmware: 'devices/buildFirmware',
       updateDevice: 'devices/updateDevice',
+      fetchBuildLog: 'buildlog/fetchBuildLog',
+      fetchTransformers: 'transformers/fetchItems',
+      transferDevices: 'devices/transferDevices',
     }),
     async loadDevice() {
       this.loading = true;
-      await this.fetchItems();
       const udid = this.$route.params.udid;
+      await Promise.all([this.fetchItems(), this.fetchBuildLog(), this.fetchTransformers()]);
       this.device = this.getByUdid()(udid) || null;
       if (this.device) {
         this.editForm.alias = this.device.alias;
         this.editForm.description = this.device.description || '';
+        this.editForm.transformers = [...(this.device.transformers || [])];
+        const allBuilds = this.getBuildItems() || [];
+        this.buildHistory = allBuilds.filter(b => b.udid === udid);
+        this.deviceLogs = allBuilds.filter(b => b.build_id === this.device.last_build_id);
       }
       this.loading = false;
     },
