@@ -456,17 +456,17 @@ async revokeRow(udid) {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does `device.environment` contain keys with masked values (e.g., `"*****"`) or is it a full plain-text object?**
    - What we know: CONTEXT.md says "masked" — so values are likely partially hidden server-side.
    - What's unclear: Whether `Object.keys(device.environment)` works normally or if the field is a special structure.
-   - Recommendation: Render as-is with `v-for="(val, key) in device.environment"` — the display will show whatever the server returns; add a note "(masked)" in the card title.
+   - RESOLVED: Render as-is with `v-for="(val, key) in device.environment"` — the display will show whatever the server returns; add a note "(masked)" in the card title. Guard with `v-if="device.environment"` null check.
 
 2. **Is `device.last_build_id` reliably populated for all devices?**
    - What we know: CONTEXT.md lists it as a device field.
    - What's unclear: Whether devices that have never been built have `last_build_id: null`.
-   - Recommendation: Guard with `v-if="device.last_build_id"` before the device logs section.
+   - RESOLVED: Guard with `v-if="device.last_build_id"` before the device logs section — devices without a build history will simply not show the logs card.
 
 ---
 
