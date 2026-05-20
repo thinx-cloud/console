@@ -45,7 +45,7 @@
       </div>
     </div>
     <div v-if="loading">Loading...</div>
-    <table v-if="viewMode === 'list'" class="table table-striped">
+    <table v-else-if="viewMode === 'list'" class="table table-striped">
       <thead>
         <tr>
           <th>
@@ -91,9 +91,7 @@
         </tr>
       </tbody>
     </table>
-
-    <!-- Grid view -->
-    <b-row v-if="viewMode === 'grid'">
+    <b-row v-else-if="viewMode === 'grid'">
       <b-col
         v-for="device in filteredItems"
         :key="device.udid"
@@ -201,7 +199,7 @@ export default {
   computed: {
     isSelected() { return this.selectedUdids.length > 0; },
     selectedCount() { return this.selectedUdids.length; },
-    isAllSelected() { return this.items.length > 0 && this.selectedUdids.length === this.items.length; },
+    isAllSelected() { return this.filteredItems.length > 0 && this.filteredItems.every(d => this.selectedUdids.includes(d.udid)); },
     filteredItems() {
       let result = this.items;
       if (this.filterCategory && this.filterCategory !== 'All') {
@@ -243,7 +241,7 @@ export default {
       else this.selectedUdids.push(udid);
     },
     checkAll(ev) {
-      this.selectedUdids = ev.target.checked ? this.items.map(d => d.udid) : [];
+      this.selectedUdids = ev.target.checked ? this.filteredItems.map(d => d.udid) : [];
     },
     viewDevice(udid) {
       this.$router.push({ name: 'DeviceDetail', params: { udid } });

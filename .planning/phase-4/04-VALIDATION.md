@@ -19,8 +19,9 @@ created: 2026-05-20
 |----------|-------|
 | **Framework** | Cypress 9.5.4 |
 | **Config file** | `vue/cypress.json` |
-| **Quick run command** | `yarn cy:open` (interactive) |
-| **Full suite command** | `yarn test` (requires dev server on :3000) |
+| **Quick run command** | `yarn --cwd vue cy:test` (headless, `cypress run`) |
+| **Interactive command** | `yarn --cwd vue cy:open` (debugging only — not a pass/fail gate) |
+| **Full suite command** | `yarn --cwd vue test` (boots dev server + headless run) |
 | **Estimated runtime** | ~2–5 minutes (e2e, server required) |
 
 ---
@@ -28,7 +29,7 @@ created: 2026-05-20
 ## Sampling Rate
 
 - **After every task commit:** Manual browser review (dev server at :3000)
-- **After every plan wave:** `yarn cy:open` — run devices + device-detail specs interactively
+- **After every plan wave:** `yarn --cwd vue cy:test` — run devices + device-detail specs headless (non-interactive pass/fail)
 - **Before `/gsd:verify-work`:** All spec assertions green
 - **Max feedback latency:** Browser reload
 
@@ -38,13 +39,13 @@ created: 2026-05-20
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 4-xx-01 | xx | 1 | DEVI-01 | — | N/A | e2e | `yarn cy:open` → devices spec | ❌ Wave 0 | ⬜ pending |
-| 4-xx-02 | xx | 1 | DEVI-02 | — | N/A | e2e | `yarn cy:open` → devices spec | ❌ Wave 0 | ⬜ pending |
-| 4-xx-03 | xx | 1 | DEVI-03 | — | N/A | e2e | `yarn cy:open` → devices spec | ❌ Wave 0 | ⬜ pending |
-| 4-xx-04 | xx | 1 | DEVI-04 | — | N/A | e2e | `yarn cy:open` → devices spec | ❌ Wave 0 | ⬜ pending |
-| 4-xx-05 | xx | 1 | DEVI-05 | — | N/A | e2e | `yarn cy:open` → devices spec | ❌ Wave 0 | ⬜ pending |
-| 4-xx-06 | xx | 1 | DEVI-10 | — | N/A | e2e | `yarn cy:open` → device-detail spec | ❌ Wave 0 | ⬜ pending |
-| 4-xx-07 | xx | 1 | DEVI-11 | — | N/A | e2e | `yarn cy:open` → device-detail spec | ❌ Wave 0 | ⬜ pending |
+| 4-xx-01 | xx | 1 | DEVI-01 | — | N/A | e2e | `yarn --cwd vue cy:test --spec cypress/integration/devices.spec.js` | ❌ Wave 0 | ⬜ pending |
+| 4-xx-02 | xx | 1 | DEVI-02 | — | N/A | e2e | `yarn --cwd vue cy:test --spec cypress/integration/devices.spec.js` | ❌ Wave 0 | ⬜ pending |
+| 4-xx-03 | xx | 1 | DEVI-03 | — | N/A | e2e | `yarn --cwd vue cy:test --spec cypress/integration/devices.spec.js` | ❌ Wave 0 | ⬜ pending |
+| 4-xx-04 | xx | 1 | DEVI-04 | — | N/A | e2e | `yarn --cwd vue cy:test --spec cypress/integration/devices.spec.js` | ❌ Wave 0 | ⬜ pending |
+| 4-xx-05 | xx | 1 | DEVI-05 | — | N/A | e2e | `yarn --cwd vue cy:test --spec cypress/integration/devices.spec.js` | ❌ Wave 0 | ⬜ pending |
+| 4-xx-06 | xx | 1 | DEVI-10 | — | N/A | e2e | `yarn --cwd vue cy:test --spec cypress/integration/device-detail.spec.js` | ❌ Wave 0 | ⬜ pending |
+| 4-xx-07 | xx | 1 | DEVI-11 | — | N/A | e2e | `yarn --cwd vue cy:test --spec cypress/integration/device-detail.spec.js` | ❌ Wave 0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
