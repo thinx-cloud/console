@@ -35,6 +35,12 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 7 — History Improvements | Pending |
 | 8 — Authentication Extras | Pending |
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260520-w52 | Fix secondary button background color to darker blue | 2026-05-20 | TBD | [260520-w52-fix-secondary-button-background-color-to](.planning/quick/260520-w52-fix-secondary-button-background-color-to/) |
+
 ## Key Files
 
 - `.planning/PROJECT.md` — project context and decisions
