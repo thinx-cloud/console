@@ -55,7 +55,7 @@ Full device management parity with the legacy console. This phase delivers:
 - **D-07:** Grid/list toggle: two small icon buttons at the start of the toolbar row. Bootstrap responsive layout: `col-12 col-sm-6 col-md-4` per card.
 
 ### Device detail: build history (DEVI-11)
-- **D-08:** Build history is fetched by dispatching `buildlog/fetchItems` and filtering client-side by `device.udid`. The buildlog store already exists. Display as a table of build entries (date, build ID, status). Add a note to `IMPROVEMENTS.md` tracking the future dedicated per-device build history endpoint.
+- **D-08:** Build history is fetched by dispatching `buildlog/fetchBuildLog` and filtering client-side by `device.udid`. The buildlog store already exists. Display as a table of build entries (date, build ID, status). Add a note to `IMPROVEMENTS.md` tracking the future dedicated per-device build history endpoint.
 
 ### Device detail: environment variables (DEVI-11)
 - **D-09:** Device-specific environment variables are included in the GET /device payload as `device.environment` (masked). Display as a read-only key-value table in `DeviceDetail.vue`. No additional API call needed.
@@ -89,7 +89,7 @@ Full device management parity with the legacy console. This phase delivers:
 - `vue/src/pages/Devices/Devices.vue` — current device list page with existing revoke/transfer/push-config/build
 - `vue/src/pages/Devices/DeviceDetail.vue` — current device detail page (metadata, edit, revoke, build)
 - `vue/src/store/devices.js` — devices Vuex module: all store actions already exist here
-- `vue/src/store/buildlog.js` — build log store: fetchItems calls GET /logs/build
+- `vue/src/store/buildlog.js` — build log store: fetchBuildLog calls GET /logs/build
 - `vue/src/store/transformers.js` — transformers store: used for UTID→alias lookup in DeviceDetail
 - `vue/src/store/enviros.js` — global enviros store: used for push-config modal env multi-select
 
