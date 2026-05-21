@@ -82,7 +82,7 @@
           <td>{{ device.lastupdate | fromNow }}</td>
           <td>
             <b-button size="sm" variant="primary" @click="viewDevice(device.udid)" class="mr-1">Detail</b-button>
-            <b-button size="sm" variant="secondary" @click="buildDevice(device.udid)" class="mr-1">Build</b-button>
+            <b-button size="sm" variant="secondary" @click="buildDevice(device)" class="mr-1">Build</b-button>
             <b-button size="sm" variant="danger" @click="revokeRow(device.udid)" class="ml-1">Revoke</b-button>
           </td>
         </tr>
@@ -119,7 +119,7 @@
             <label :for="'grid-checkbox-' + device.udid" />
           </div>
           <b-button size="sm" variant="primary" @click="viewDevice(device.udid)" class="mr-1">Detail</b-button>
-          <b-button size="sm" variant="secondary" @click="buildDevice(device.udid)">Build</b-button>
+          <b-button size="sm" variant="secondary" @click="buildDevice(device)">Build</b-button>
         </b-card>
       </b-col>
       <b-col v-if="!filteredItems.length" cols="12">
@@ -156,6 +156,7 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
+import moment from 'moment';
 
 const CATEGORY_COLORS = {
   'yellow-crusta': '#f3c200',
@@ -172,12 +173,7 @@ export default {
   filters: {
     fromNow(val) {
       if (!val) return '—';
-      const d = new Date(val);
-      const diff = Math.floor((Date.now() - d) / 1000);
-      if (diff < 60) return diff + 's ago';
-      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-      return Math.floor(diff / 86400) + 'd ago';
+      return moment(val).fromNow();
     }
   },
   data() {
@@ -246,8 +242,8 @@ export default {
     viewDevice(udid) {
       this.$router.push({ name: 'DeviceDetail', params: { udid } });
     },
-    async buildDevice(udid) {
-      const result = await this.buildFirmware(udid);
+    async buildDevice(device) {
+      const result = await this.buildFirmware({ udid: device.udid, source_id: device.source });
       if (result.success) this.message = 'Build triggered.';
       else this.error = result.message || 'Build failed.';
     },
@@ -275,9 +271,9 @@ export default {
         mig_sources: this.transferForm.mig_sources,
         mig_apikeys: this.transferForm.mig_apikeys,
       });
+      this.$bvModal.hide('transfer-modal');
       if (result.success) {
         this.message = 'Transfer request sent.';
-        this.$bvModal.hide('transfer-modal');
         this.transferForm = { to: '', mig_sources: false, mig_apikeys: false };
         this.selectedUdids = [];
         this.loadData();

@@ -44,7 +44,7 @@ export default {
         return state.items;
       },
       async revokeDevices({ dispatch }, udids) {
-        const result = await this.$api.$delete('/device', JSON.stringify({ udids }));
+        const result = await this.$api.$post('/device/revoke', JSON.stringify({ udids }));
         if (result.success) await dispatch('fetchItems');
         return result;
       },
@@ -52,8 +52,8 @@ export default {
         const result = await this.$api.$post('/device/configuration', JSON.stringify({ udids, enviros, reset_devices }));
         return result;
       },
-      async buildFirmware({ dispatch }, udid) {
-        const result = await this.$api.$post('/build', JSON.stringify({ build: { udid } }));
+      async buildFirmware({ dispatch }, { udid, source_id }) {
+        const result = await this.$api.$post('/build', JSON.stringify({ build: { udid, source_id, dryrun: false } }));
         return result;
       },
       async transferDevices({ dispatch }, { udids, to, mig_sources, mig_apikeys }) {

@@ -132,7 +132,10 @@
       <b-form-checkbox v-model="transferForm.mig_apikeys">Migrate API keys</b-form-checkbox>
     </b-modal>
   </div>
-  <div v-else-if="loading">Loading device...</div>
+  <div v-else-if="loading" class="text-center py-5">
+    <b-spinner label="Loading device..." />
+    <p class="text-muted mt-2">Loading device...</p>
+  </div>
   <div v-else>
     <b-alert variant="warning" show>Device not found.</b-alert>
     <b-button to="/app/devices" variant="secondary">Back to Devices</b-button>
@@ -141,18 +144,14 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
+import moment from 'moment';
 
 export default {
   name: "DeviceDetail",
   filters: {
     fromNow(val) {
       if (!val) return '—';
-      const d = new Date(val);
-      const diff = Math.floor((Date.now() - d) / 1000);
-      if (diff < 60) return diff + 's ago';
-      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-      return Math.floor(diff / 86400) + 'd ago';
+      return moment(val).fromNow();
     }
   },
   data() {
@@ -214,7 +213,7 @@ export default {
       }
     },
     async buildDevice() {
-      const result = await this.buildFirmware(this.device.udid);
+      const result = await this.buildFirmware({ udid: this.device.udid, source_id: this.device.source });
       if (result.success) this.message = 'Build triggered.';
       else this.error = result.message || 'Build failed.';
     },
@@ -251,8 +250,8 @@ export default {
         mig_sources: this.transferForm.mig_sources,
         mig_apikeys: this.transferForm.mig_apikeys,
       });
+      this.$bvModal.hide('transfer-modal');
       if (result.success) {
-        this.$bvModal.hide('transfer-modal');
         this.$router.push('/app/devices');
       } else {
         this.error = result.message || 'Failed to transfer device.';
