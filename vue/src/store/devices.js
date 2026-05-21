@@ -44,7 +44,7 @@ export default {
         return state.items;
       },
       async revokeDevices({ dispatch }, udids) {
-        const result = await this.$api.$post('/device/revoke', JSON.stringify({ udids }));
+        const result = await this.$api.$delete('/device', JSON.stringify({ udids }));
         if (result.success) await dispatch('fetchItems');
         return result;
       },

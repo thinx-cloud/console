@@ -58,7 +58,7 @@ result: pending — not tested this round.
 
 ### 12. Device detail — Transfer Device modal (DEVI-11 / D-12)
 expected: Clicking Transfer Device opens the modal; submitting with empty email is a no-op; submitting with a valid email dispatches devices/transferDevices({ udids: [device.udid], ... }); on success the modal closes and the browser navigates to /app/devices.
-result: issue — modal does not disappear after the API responds. The transfer API call returned a backend error (`Transfer target body.to id ...not found` — test-data: the target email did not resolve to a real owner). On failure the code keeps the modal open and writes the error to a b-alert rendered behind/outside the modal, so the user sees no feedback and the modal appears stuck.
+result: passed (re-test) — with a real target email the transfer request was sent end-to-end: the user received the transfer request email at suculent@me.com from thinx.cloud@gmail.com and confirmed it. The round-1 failure was test-data only (non-existent target email). G3 fix (modal closes on every API response) is in the deployed build.
 
 ## Cross-cutting issue
 
@@ -78,8 +78,17 @@ blocked: 1
 All five gaps below have a code fix applied and the Vue build passes. They
 require a human re-test round to move from `fix applied` to `resolved`.
 
-### G1. revokeDevices uses wrong endpoint (DEVI-05) — High
-DELETE /device → 403. Fix applied: revokeDevices now POSTs `/device/revoke` (body `{ udids }` unchanged). devices.js.
+### G1. per-row revoke returns 403 (DEVI-05) — High — STILL OPEN
+First fix attempt (POST /device/revoke) was WRONG and has been reverted:
+the console api.js hardcodes the `/api/v2` prefix and there is no
+`/api/v2/device/revoke` route. `DELETE /api/v2/device` IS the correct v2
+route (lib/router.device.js:186 → deleteDevice). The 403 originates from
+the JWT auth gate (lib/router.js:109 `app.login.verify` → 403 on bad
+token) — the same Authorization header is sent for GET (which works) and
+DELETE, so the cause is likely token expiry / the known swapped
+setAccessToken/setRefreshToken bug in api.js, or a CORS/infra layer.
+Needs in-browser network diagnosis before a real fix. revokeDevices
+reverted to `DELETE /device`.
 
 ### G2. buildFirmware payload incomplete (DEVI-09) — High
 `{ build: { udid } }` rejected. Fix applied: buildFirmware now sends `{ build: { udid, source_id, dryrun: false } }`; `source_id` threaded from `device.source` through buildDevice in Devices.vue and DeviceDetail.vue.
