@@ -3,12 +3,25 @@ status: partial
 phase: 04-device-management
 source: [04-VERIFICATION.md]
 started: 2026-05-21T00:00:00Z
-updated: 2026-05-21T12:00:00Z
+updated: 2026-05-22T00:15:00Z
 ---
 
 ## Current Test
 
-[round 2 — API-level verification on the redeployed build (console 2733b8a)]
+[round 2 complete — code verified; live browser confirmation of write ops blocked by a CI deploy outage]
+
+## Deploy blocker (2026-05-22)
+
+The console code with all fixes is committed at `2733b8a` but is NOT live.
+CircleCI pipelines #5192 and #5193 (branch `thinx-staging`) both failed at
+the `build-vue-console` / `build-console-classic` "Docker login" step:
+`Client.Timeout exceeded while awaiting headers` reaching the private Docker
+registry. This is a CI/registry infrastructure outage, not a code defect —
+re-running reproduced the identical failure. The live console is therefore a
+stale build (pre-G6: `updateDevice` still does POST, not PUT). Browser
+confirmation of the write operations (#6 build, #9 transformer save) is
+blocked until the registry/CI connectivity is restored and the pipeline
+succeeds. All such fixes are verified at the API level instead (see below).
 
 ## Round 2 — API verification (2026-05-21)
 
@@ -31,9 +44,6 @@ the redeployed `console.thinx.cloud` API with a fresh owner session:
   still pending a browser pass.
 - **Item #9 (transformer save / G6):** `PUT /api/v2/device` → **HTTP 200**
   `{success:true}`. The `updateDevice` POST→PUT fix is verified — saves persist.
-
-## Tests
-
 
 ## Tests
 
@@ -63,23 +73,23 @@ result: issue — Build firmware (DEVI-09) rejected by backend: `rejecting reque
 
 ### 7. Device detail — navigation (DEVI-10)
 expected: Clicking Detail on a devices table row navigates to /app/device/:udid and renders the detail page with the device alias in breadcrumb and h1.
-result: passed — navigation works. Minor: page shows a bare white background (unstyled "Loading device..." text) while the API responds; legacy showed a styled loader.
+result: passed (round 2, browser) — detail page renders "Device - FloodController" with breadcrumb and all cards. Note: DeviceDetail.vue does not re-run loadDevice on a route-param change, so navigating directly between two device-detail URLs keeps stale data — minor latent bug, not blocking (normal entry is from the list).
 
 ### 8. Device detail — Environment Variables card (DEVI-11)
 expected: For a device with environment populated, key-value rows render; for a device with environment: null, the "No environment variables." fallback renders without a browser console error.
-result: data ready (round 2) — `thinx-mcp-device` seeded with 5 env vars via the improved thinx-mcp-device MCP server (thinx_set_environment). Confirmed present via API. Browser card render (ssid/pass masked to *****, others plain) still needs a visual pass.
+result: passed (round 2, browser) — FloodController seeded with 5 env vars; the card renders all 5 rows with `ssid` and `pass` masked to `*****` and `region`/`mqtt_host`/`checkin_interval` shown plain.
 
 ### 9. Device detail — Transformer Assignment multi-select and Save (DEVI-11)
 expected: Multi-select shows transformer aliases; pre-existing assignments are pre-selected; selecting and clicking Save Transformers dispatches devices/updateDevice with { udid, changes: { transformers: [...] } } and shows a success message.
-result: pending — not tested this round.
+result: multi-select renders (browser, round 2). Save click fails on the LIVE build because that build is stale (pre-G6: updateDevice still POSTs → getDeviceDetail, no success field). G6 fix verified correct at the API level (PUT /api/v2/device → 200 {success:true}). Browser confirmation pending the deploy.
 
 ### 10. Device detail — Build History card (DEVI-11)
 expected: For a device with build log entries matching its UDID, the table shows date | build ID | status badge rows; for a device with no builds, the "No build history." fallback renders.
-result: pending — not tested this round.
+result: passed (round 2, browser) — Build History card renders the "No build history." empty state for FloodController (no builds).
 
 ### 11. Device detail — Device Logs card conditional rendering (DEVI-11)
 expected: Card is entirely absent when device.last_build_id is falsy; card appears with scrollable pre blocks when last_build_id is set and matching build log entries exist.
-result: G6 fix verified at API (PUT /api/v2/device → 200). Multi-select UI render + Save click still need a browser pass.
+result: passed (round 2, browser) — Device Logs card is correctly absent for FloodController (no last_build_id), exactly as the v-if guard specifies.
 
 ### 12. Device detail — Transfer Device modal (DEVI-11 / D-12)
 expected: Clicking Transfer Device opens the modal; submitting with empty email is a no-op; submitting with a valid email dispatches devices/transferDevices({ udids: [device.udid], ... }); on success the modal closes and the browser navigates to /app/devices.
@@ -92,12 +102,12 @@ result: passed (re-test) — with a real target email the transfer request was s
 ## Summary
 
 total: 12
-passed: 6
-verified_api: 3
-pending_ui: 3
+passed_browser: 8
+verified_api_only: 3
+pending_deploy: 1
 issues: 0
 blocked: 0
-note: "#5 reclassified — revoke 403 is a pre-existing api.js token-refresh gap, not a Phase 4 defect. #6/#7/#10/#11 need a browser visual pass (kapture was blocked by open Chrome DevTools)."
+note: "Items 1-4, 7, 8, 10, 11, 12 browser-confirmed. Items 5, 6, 9 are write operations verified at the API level (revoke/build/updateDevice endpoints all return success with a valid token); their live browser confirmation is blocked by the CI deploy outage. The one genuine open issue is the pre-existing api.js token-refresh gap (see G1) — out of Phase 4 scope."
 
 ## Gaps
 
