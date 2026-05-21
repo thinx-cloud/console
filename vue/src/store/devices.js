@@ -61,7 +61,9 @@ export default {
         return result;
       },
       async updateDevice({ dispatch }, { udid, changes }) {
-        const result = await this.$api.$post('/device', JSON.stringify({ udid, changes }));
+        // PUT /api/v2/device -> editDevice. POST is getDeviceDetail (read).
+        // editDevice reads req.body.changes and requires changes.udid.
+        const result = await this.$api.$put('/device', JSON.stringify({ changes: { udid, ...changes } }));
         return result;
       },
     },
