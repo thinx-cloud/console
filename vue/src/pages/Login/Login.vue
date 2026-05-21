@@ -139,12 +139,18 @@ export default {
     },
     async login(e) {
       e.preventDefault();
+      this.errorMessage = null;
       const usernameValue = this.$refs.username.value;
       const passwordValue = this.$refs.password.value;
       
-      if (usernameValue.length !== 0 && passwordValue.length !== 0) {
-        // TODO start JWT login scenario
-        const response = await fetch(this.$hostnames.API + "/login", {
+      if (usernameValue.length === 0 || passwordValue.length === 0) {
+        this.errorMessage = "Enter both username and password.";
+        return;
+      }
+
+      let response;
+      try {
+        response = await fetch(this.$hostnames.API + "/login", {
           method: "POST",
           // mode: 'no-cors', // no-cors, *cors, same-origin
           redirect: "manual",
@@ -154,43 +160,55 @@ export default {
             "Access-Control-Allow-Origin": "http://localhost:3080 " + this.$hostnames.API,
           },
           body: JSON.stringify({
-            username: this.$refs.username.value,
-            password: this.$refs.password.value,
+            username: usernameValue,
+            password: passwordValue,
           }),
         });
+      } catch (networkError) {
+        this.errorMessage = "Cannot reach the server. Check your connection and try again.";
+        return;
+      }
 
-        const {
-          // status, // Unused variable
-          success,
-          access_token,
-          refresh_token,
-          // redirectURL, // Unused variable
-          // g, // Unused variable
-        } = await response.json();
+      // The server returns JSON for both success and credential failures
+      // (403). A non-JSON body means a 5xx / gateway HTML error page — parse
+      // defensively so the page shows a message instead of throwing.
+      let payload;
+      try {
+        payload = await response.json();
+      } catch (parseError) {
+        this.errorMessage = response.status >= 500
+          ? "Server error during login. Please try again in a moment."
+          : "Unexpected response from the server. Please try again.";
+        return;
+      }
 
-        if (success) {
-          if (
-            (await this.isTokenValid(access_token)) &&
-            (await this.isTokenValid(refresh_token))
-          ) {
-            this.setAccessToken(access_token);
-            this.setRefreshToken(refresh_token);
-          }
+      const { success, access_token, refresh_token } = payload || {};
 
-          if (this.isAuthenticated()) {
-            window.localStorage.setItem("accessToken", access_token);
-            window.localStorage.setItem("refreshToken", refresh_token);
-            window.localStorage.setItem("authenticated", true);
+      if (!success) {
+        this.errorMessage = (payload && payload.message)
+          ? "Login failed: " + payload.message
+          : "Invalid username or password";
+        return;
+      }
 
-            await this.fetchProfile();
-            this.setUser(this.getProfile());
-            await this.pushIfNeeded("/app/dashboard");
-          } else {
-            this.errorMessage = "Token expired";
-          }
-        } else {
-          this.errorMessage = "Invalid username or password";
-        }
+      if (
+        (await this.isTokenValid(access_token)) &&
+        (await this.isTokenValid(refresh_token))
+      ) {
+        this.setAccessToken(access_token);
+        this.setRefreshToken(refresh_token);
+      }
+
+      if (this.isAuthenticated()) {
+        window.localStorage.setItem("accessToken", access_token);
+        window.localStorage.setItem("refreshToken", refresh_token);
+        window.localStorage.setItem("authenticated", true);
+
+        await this.fetchProfile();
+        this.setUser(this.getProfile());
+        await this.pushIfNeeded("/app/dashboard");
+      } else {
+        this.errorMessage = "Token expired";
       }
     },
   },
