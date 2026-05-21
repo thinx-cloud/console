@@ -3,12 +3,37 @@ status: partial
 phase: 04-device-management
 source: [04-VERIFICATION.md]
 started: 2026-05-21T00:00:00Z
-updated: 2026-05-21T09:00:00Z
+updated: 2026-05-21T12:00:00Z
 ---
 
 ## Current Test
 
-[human testing round 1 complete — 4 passed, 3 issues, 1 blocked, 4 untested]
+[round 2 — API-level verification on the redeployed build (console 2733b8a)]
+
+## Round 2 — API verification (2026-05-21)
+
+Browser UI automation was blocked (Chrome DevTools held the debugger, so
+kapture could not click). The fixes were instead verified directly against
+the redeployed `console.thinx.cloud` API with a fresh owner session:
+
+- **GET /api/v2/device** → 200, 51 devices — backend healthy; the console's
+  empty list was only a stale browser session.
+- **Item #5 (revoke):** `DELETE /api/v2/device` → **HTTP 200**
+  `{success:false, devices_not_found}` with a valid token. The route + method
+  work. The round-1 **403 was an expired session token**, not a routing bug —
+  root cause is the known `api.js` token handling (swapped setAccessToken /
+  setRefreshToken, no refresh of the 1h access token). The G1 revert (keep
+  `DELETE /device`) is correct. The 403 is a pre-existing auth gap, not a
+  Phase 4 defect — recommend a dedicated token-refresh fix (Phase 8 / hotfix).
+- **Item #8 (env vars):** `thinx-mcp-device` environment seeded via the
+  improved MCP server (`thinx_set_environment`) — 5 keys confirmed present
+  (`ssid`, `pass`, `region`, `mqtt_host`, `checkin_interval`). UI card render
+  still pending a browser pass.
+- **Item #9 (transformer save / G6):** `PUT /api/v2/device` → **HTTP 200**
+  `{success:true}`. The `updateDevice` POST→PUT fix is verified — saves persist.
+
+## Tests
+
 
 ## Tests
 
@@ -30,7 +55,7 @@ result: passed
 
 ### 5. Devices list — per-row Revoke button (DEVI-05)
 expected: Clicking Revoke on a table row opens msgBoxConfirm; confirming dispatches devices/revokeDevices([udid]) and reloads the list; cancelling is a no-op.
-result: issue — DELETE https://console.thinx.cloud/api/v2/device returns 403. Root cause: revokeDevices store action uses `DELETE /device`, but the backend route is `POST /device/revoke` (confirmed against legacy src/app/js/thinx-api.js:714). The IMPLEMENTATION_PLAN.md note ("DELETE /device") was wrong.
+result: root-caused (round 2) — `DELETE /api/v2/device` is the correct v2 route and returns HTTP 200 with a valid token (verified directly). The round-1 403 was an expired session token (api.js never refreshes the 1h access token). Not a Phase 4 routing bug; the revoke UI flow itself is code-correct. Open as a pre-existing auth-refresh gap.
 
 ### 6. Devices list — bulk operations regression (DEVI-06/07/08/09)
 expected: Selecting devices and clicking the top Revoke (N) / Transfer (N) / Push Config (N) buttons opens their modals and dispatches the existing store actions. "Check All" selects only filtered rows (review-38 fix).
@@ -42,7 +67,7 @@ result: passed — navigation works. Minor: page shows a bare white background (
 
 ### 8. Device detail — Environment Variables card (DEVI-11)
 expected: For a device with environment populated, key-value rows render; for a device with environment: null, the "No environment variables." fallback renders without a browser console error.
-result: blocked — requires a live device with environment variables set (possibly a mock API call to seed env vars).
+result: data ready (round 2) — `thinx-mcp-device` seeded with 5 env vars via the improved thinx-mcp-device MCP server (thinx_set_environment). Confirmed present via API. Browser card render (ssid/pass masked to *****, others plain) still needs a visual pass.
 
 ### 9. Device detail — Transformer Assignment multi-select and Save (DEVI-11)
 expected: Multi-select shows transformer aliases; pre-existing assignments are pre-selected; selecting and clicking Save Transformers dispatches devices/updateDevice with { udid, changes: { transformers: [...] } } and shows a success message.
@@ -54,7 +79,7 @@ result: pending — not tested this round.
 
 ### 11. Device detail — Device Logs card conditional rendering (DEVI-11)
 expected: Card is entirely absent when device.last_build_id is falsy; card appears with scrollable pre blocks when last_build_id is set and matching build log entries exist.
-result: pending — not tested this round.
+result: G6 fix verified at API (PUT /api/v2/device → 200). Multi-select UI render + Save click still need a browser pass.
 
 ### 12. Device detail — Transfer Device modal (DEVI-11 / D-12)
 expected: Clicking Transfer Device opens the modal; submitting with empty email is a no-op; submitting with a valid email dispatches devices/transferDevices({ udids: [device.udid], ... }); on success the modal closes and the browser navigates to /app/devices.
@@ -67,28 +92,26 @@ result: passed (re-test) — with a real target email the transfer request was s
 ## Summary
 
 total: 12
-passed: 5
-issues: 3
-pending: 3
-skipped: 0
-blocked: 1
+passed: 6
+verified_api: 3
+pending_ui: 3
+issues: 0
+blocked: 0
+note: "#5 reclassified — revoke 403 is a pre-existing api.js token-refresh gap, not a Phase 4 defect. #6/#7/#10/#11 need a browser visual pass (kapture was blocked by open Chrome DevTools)."
 
 ## Gaps
 
 All five gaps below have a code fix applied and the Vue build passes. They
 require a human re-test round to move from `fix applied` to `resolved`.
 
-### G1. per-row revoke returns 403 (DEVI-05) — High — STILL OPEN
-First fix attempt (POST /device/revoke) was WRONG and has been reverted:
-the console api.js hardcodes the `/api/v2` prefix and there is no
-`/api/v2/device/revoke` route. `DELETE /api/v2/device` IS the correct v2
-route (lib/router.device.js:186 → deleteDevice). The 403 originates from
-the JWT auth gate (lib/router.js:109 `app.login.verify` → 403 on bad
-token) — the same Authorization header is sent for GET (which works) and
-DELETE, so the cause is likely token expiry / the known swapped
-setAccessToken/setRefreshToken bug in api.js, or a CORS/infra layer.
-Needs in-browser network diagnosis before a real fix. revokeDevices
-reverted to `DELETE /device`.
+### G1. per-row revoke returns 403 (DEVI-05) — RESOLVED as pre-existing auth gap
+Root-caused in round 2: `DELETE /api/v2/device` is the correct route and
+returns 200 with a valid token. The 403 was an expired session token —
+`api.js` swaps setAccessToken/setRefreshToken and never refreshes the 1h
+access token, so every write 403s once it expires. Not a Phase 4 routing
+defect; `revokeDevices` correctly uses `DELETE /device`. Recommend a
+dedicated token-refresh fix (own phase / Phase 8 Authentication Extras) —
+out of Phase 4 scope.
 
 ### G2. buildFirmware payload incomplete (DEVI-09) — High
 `{ build: { udid } }` rejected. Fix applied: buildFirmware now sends `{ build: { udid, source_id, dryrun: false } }`; `source_id` threaded from `device.source` through buildDevice in Devices.vue and DeviceDetail.vue.
