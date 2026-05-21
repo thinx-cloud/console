@@ -12,16 +12,28 @@ updated: 2026-05-22T00:15:00Z
 
 ## Deploy blocker (2026-05-22)
 
-The console code with all fixes is committed at `2733b8a` but is NOT live.
-CircleCI pipelines #5192 and #5193 (branch `thinx-staging`) both failed at
-the `build-vue-console` / `build-console-classic` "Docker login" step:
-`Client.Timeout exceeded while awaiting headers` reaching the private Docker
-registry. This is a CI/registry infrastructure outage, not a code defect —
-re-running reproduced the identical failure. The live console is therefore a
-stale build (pre-G6: `updateDevice` still does POST, not PUT). Browser
-confirmation of the write operations (#6 build, #9 transformer save) is
-blocked until the registry/CI connectivity is restored and the pipeline
-succeeds. All such fixes are verified at the API level instead (see below).
+The console code with all fixes is committed at `2733b8a` and the Docker
+image is built. It is still NOT live, for two separate reasons hit in
+sequence:
+
+1. CircleCI pipelines #5192 and #5193 failed at the `build-vue-console`
+   "Docker login" step (`Client.Timeout` reaching the private registry) —
+   a transient registry outage.
+2. After the registry recovered, pipeline #5194 **succeeded** and pushed a
+   fresh `registry.thinx.cloud:5000/thinx/console:vue` image built from
+   `2733b8a`. But the live `console.thinx.cloud` frontend is still the old
+   build — `js/app.js` last-modified 2026-05-21 18:21, still contains the
+   wrong `device/revoke` G1 and lacks the Login fix (= `ca54be9`-era).
+
+Root cause of (2): the CircleCI workflow has **no deploy job**.
+`build-vue-console` only builds and pushes the image; pulling that image
+and restarting the running container/service is a separate server-side
+step (Docker Swarm service update / compose pull) that CI does not perform.
+Until that server-side deploy runs, the live frontend stays stale.
+
+Browser confirmation of the write operations (#6 build, #9 transformer
+save) is blocked on that server-side deploy. All such fixes are verified
+at the API level instead (see below).
 
 ## Round 2 — API verification (2026-05-21)
 
