@@ -18,9 +18,9 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Current Status
 
-- **Active phase:** Phase 5 — Real Dashboard (executing)
-- **Last action:** Phase 5 all 3 plans executed (Cypress stub, stats store + chart, Visits.vue rework); production build passes. (2026-05-22)
-- **Next action:** Phase 5 verification
+- **Active phase:** Phase 5 — Real Dashboard (code complete; human UAT pending)
+- **Last action:** Phase 5 all 3 plans executed + verified (10/10 must-haves). Pushed to thinx-staging; CircleCI pipeline #400 green (Test Vue console + Release legacy console both passed) after fixing a pre-existing config bug. (2026-05-22)
+- **Next action:** Human UAT of Phase 5 — see .planning/phase-5/05-HUMAN-UAT.md (4 browser/live-backend items)
 
 ## Phase Progress
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 2 — CRUD for Simple Management Pages | Complete (2026-05-19) |
 | 3 — Transformers with Code Editor | Complete (UAT pending — 2026-05-19) |
 | 4 — Device Management | Complete (code; deploy + final UAT pending — 2026-05-22) |
-| 5 — Real Dashboard | In Progress (executing) |
+| 5 — Real Dashboard | Code complete (verified 10/10; human UAT pending — 2026-05-22) |
 | 6 — User Profile & Account Settings | Pending |
 | 7 — History Improvements | Pending |
 | 8 — Authentication Extras | Pending |
