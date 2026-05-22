@@ -161,7 +161,7 @@ Plans:
 - [x] 05-01-PLAN.md — stats store `fetchDashboard` + `getTimeline`; `CheckinsTimeline.vue` range-aware line chart (DASH-01, DASH-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*:
-- [ ] 05-02-PLAN.md — Rework `Visits.vue`: 6 metric cards with period breakdowns, timeline chart + range selector, builds widget with download links, audit widget (DASH-01–05)
+- [x] 05-02-PLAN.md — Rework `Visits.vue`: 6 metric cards with period breakdowns, timeline chart + range selector, builds widget with download links, audit widget (DASH-01–05)
 
 **Cross-cutting constraints:**
 - `mapGetters` must remain spread into `methods` (not `computed`) — project convention
