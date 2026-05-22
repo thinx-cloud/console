@@ -87,7 +87,7 @@ Plans:
 
 ## Phase 4 — Device Management
 
-**Status:** Planned
+**Status:** Complete (code — 2026-05-22; deploy + final UAT pending)
 **Effort:** XL
 **Goal:** Full device management parity with legacy console.
 
@@ -137,7 +137,7 @@ Plans:
 
 ## Phase 5 — Real Dashboard
 
-**Status:** Pending
+**Status:** In Progress (planning)
 **Effort:** L
 **Goal:** Dashboard shows real platform statistics instead of hardcoded demo data.
 
@@ -151,6 +151,22 @@ Plans:
 - Recent audit events widget
 
 **Requirements:** DASH-01–05
+
+**Plans:** 3 plans
+
+**Wave 0** — Cypress spec stub (no production code):
+- [ ] 05-00-PLAN.md — Cypress test stub for DASH-01–05 (dashboard.spec.js)
+
+**Wave 1** *(blocked on Wave 0 completion)*:
+- [ ] 05-01-PLAN.md — stats store `fetchDashboard` + `getTimeline`; `CheckinsTimeline.vue` range-aware line chart (DASH-01, DASH-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*:
+- [ ] 05-02-PLAN.md — Rework `Visits.vue`: 6 metric cards with period breakdowns, timeline chart + range selector, builds widget with download links, audit widget (DASH-01–05)
+
+**Cross-cutting constraints:**
+- `mapGetters` must remain spread into `methods` (not `computed`) — project convention
+- No new npm packages — reuse the pre-existing `vue-chartjs` 3.5.1 + `chart.js` 2.9.4 (already used by `AreaChart.vue`)
+- Extend existing stores (`stats.js`, `buildlog.js`, `auditlog.js`) — do not replace
 
 **UAT:**
 - Dashboard loads and displays real numbers (not zeros/undefined)
@@ -230,8 +246,8 @@ Plans:
 | 1 | Bug Fixes & Scaffolding Cleanup | XS | CLEAN-01–04 | Pending |
 | 2 | CRUD for Simple Management Pages | M×5 | AKEY, REPO, RKEY, ENVI, CHAN | Pending |
 | 3 | Transformers with Code Editor | L | TRAN-01–07 | Planned |
-| 4 | Device Management | XL | DEVI-01–11 | Pending |
-| 5 | Real Dashboard | L | DASH-01–05 | Pending |
+| 4 | Device Management | XL | DEVI-01–11 | Complete (code) |
+| 5 | Real Dashboard | L | DASH-01–05 | In Progress |
 | 6 | User Profile & Account Settings | L | PROF-01–06 | Pending |
 | 7 | History Improvements | M | HIST-01–05 | Pending |
 | 8 | Authentication Extras | S | AUTH-01–02 | Pending |
