@@ -214,7 +214,7 @@ workflows:
             - sonarcloud
             - console
           requires:
-            - test_vue
+            - Test Vue console
           filters:
             branches:
               only:
