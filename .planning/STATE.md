@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 4 planned
-last_updated: "2026-05-20T22:17:26.000Z"
+stopped_at: Phase 5 planning
+last_updated: "2026-05-22T01:00:00.000Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-20T22:17:26.000Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 3 — Transformers with Code Editor
+**Current focus:** Phase 5 — Real Dashboard
 
 ## Current Status
 
-- **Active phase:** Phase 4 — Device Management (Wave 2 complete)
-- **Last action:** Phase 4 Plan 02 executed — Device Detail enhancements (Build History, Env Vars, Transformer Assignment, Device Logs, Transfer modal) (2026-05-21)
-- **Next action:** Phase 4 Wave 2 complete — proceed to next phase or plan as needed
+- **Active phase:** Phase 5 — Real Dashboard (planning)
+- **Last action:** Phase 4 code-complete — all 3 plans executed + UAT round-2 fixes; 8/12 UAT browser-confirmed, rest API-verified. Deploy of console 2733b8a pending a server-side swarm update (CI builds+pushes only). (2026-05-22)
+- **Next action:** Plan Phase 5 — Real Dashboard
 
 ## Phase Progress
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 1 — Bug Fixes & Scaffolding Cleanup | Complete (pre-existing) |
 | 2 — CRUD for Simple Management Pages | Complete (2026-05-19) |
 | 3 — Transformers with Code Editor | Complete (UAT pending — 2026-05-19) |
-| 4 — Device Management | In Progress (Wave 0 complete) |
-| 5 — Real Dashboard | Pending |
+| 4 — Device Management | Complete (code; deploy + final UAT pending — 2026-05-22) |
+| 5 — Real Dashboard | In Progress (planning) |
 | 6 — User Profile & Account Settings | Pending |
 | 7 — History Improvements | Pending |
 | 8 — Authentication Extras | Pending |
