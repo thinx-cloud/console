@@ -28,6 +28,13 @@ export default {
             }
             return state.today;
         },
+        async fetchDashboard({ dispatch }) {
+            await Promise.allSettled([
+                dispatch('fetchStats'),
+                dispatch('auditlog/fetchAuditlog', null, { root: true }),
+                dispatch('buildlog/fetchBuildLog', null, { root: true }),
+            ]);
+        },
     },
     getters: {
         getStats(state) {
@@ -35,6 +42,9 @@ export default {
         },
         getToday(state) {
             return state.today;
+        },
+        getTimeline(state) {
+            return state.stats && state.stats.timeline ? state.stats.timeline : null;
         },
     },
   };
