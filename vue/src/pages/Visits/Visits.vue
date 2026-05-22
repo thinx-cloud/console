@@ -4,37 +4,53 @@
 
     <div v-if="loading" class="text-center py-5">Loading...</div>
     <div v-else>
-      <!-- Stat cards -->
+      <!-- 6 Metric cards (DASH-02) -->
       <b-row class="mb-4">
-        <b-col md="3" sm="6" class="mb-3" v-for="card in statCards" :key="card.label">
+        <b-col md="4" sm="6" class="mb-3" v-for="card in metricCards" :key="card.label">
           <b-card :class="'text-white bg-' + card.variant">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <div style="font-size:2rem;font-weight:bold">{{ card.value }}</div>
-                <div>{{ card.label }}</div>
-              </div>
-              <i :class="'fa fa-3x ' + card.icon" style="opacity:0.4" />
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="font-weight-bold">{{ card.label }}</div>
+              <i :class="'fa fa-2x ' + card.icon" style="opacity:0.4" />
+            </div>
+            <div class="small">
+              <div>Today: <strong>{{ card.today }}</strong></div>
+              <div>Week: <strong>{{ card.week }}</strong></div>
+              <div>Month: <strong>{{ card.month }}</strong></div>
             </div>
           </b-card>
         </b-col>
       </b-row>
 
-      <!-- Build stats row -->
+      <!-- Timeline chart section (DASH-03) -->
       <b-row class="mb-4">
-        <b-col md="4" sm="6" class="mb-3" v-for="card in buildCards" :key="card.label">
-          <b-card :class="'text-white bg-' + card.variant">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <div style="font-size:2rem;font-weight:bold">{{ card.value }}</div>
-                <div>{{ card.label }}</div>
-              </div>
-              <i :class="'fa fa-3x ' + card.icon" style="opacity:0.4" />
+        <b-col cols="12">
+          <b-card title="Device Check-ins">
+            <div class="mb-3">
+              <b-button
+                size="sm"
+                class="mr-1"
+                :variant="chartRange === 7 ? 'primary' : 'outline-secondary'"
+                @click="chartRange = 7"
+              >7 days</b-button>
+              <b-button
+                size="sm"
+                class="mr-1"
+                :variant="chartRange === 31 ? 'primary' : 'outline-secondary'"
+                @click="chartRange = 31"
+              >31 days</b-button>
+              <b-button
+                size="sm"
+                class="mr-1"
+                :variant="chartRange === 365 ? 'primary' : 'outline-secondary'"
+                @click="chartRange = 365"
+              >365 days</b-button>
             </div>
+            <checkins-timeline :checkins="timelineCheckins" :range="chartRange" />
           </b-card>
         </b-col>
       </b-row>
 
-      <!-- Recent audit events -->
+      <!-- Recent audit events (DASH-05) and Recent builds (DASH-04) -->
       <b-row>
         <b-col md="6" class="mb-4">
           <b-card title="Recent Audit Events">
@@ -56,13 +72,22 @@
           <b-card title="Recent Builds">
             <div v-if="!buildItems.length" class="text-muted">No builds yet.</div>
             <table v-else class="table table-sm mb-0">
-              <thead><tr><th>Time</th><th>Device</th><th>Status</th></tr></thead>
+              <thead><tr><th>Time</th><th>Device</th><th>Status</th><th>Download</th></tr></thead>
               <tbody>
                 <tr v-for="(item, i) in buildItems.slice(0, 10)" :key="i">
                   <td class="text-muted" style="white-space:nowrap">{{ item.date | shortDate }}</td>
                   <td>{{ formatBuildName(item) }}</td>
                   <td>
                     <b-badge :variant="badgeVariant(item.status)">{{ item.status || '—' }}</b-badge>
+                  </td>
+                  <td>
+                    <b-button
+                      v-if="item.build_id"
+                      size="sm"
+                      variant="primary"
+                      @click="downloadArtifact(item)"
+                    >Download</b-button>
+                    <span v-else class="text-muted">—</span>
                   </td>
                 </tr>
               </tbody>
@@ -77,9 +102,11 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
+import CheckinsTimeline from './components/CheckinsTimeline/CheckinsTimeline.vue';
 
 export default {
   name: "Dashboard",
+  components: { CheckinsTimeline },
   filters: {
     shortDate(val) {
       if (!val) return '—';
@@ -94,34 +121,74 @@ export default {
       auditItems: [],
       buildItems: [],
       deviceCount: 0,
+      chartRange: 7,
     };
   },
   computed: {
-    statCards() {
+    metricCards() {
       const s = this.statsData || {};
       const t = this.todayData || {};
       return [
-        { label: 'Devices', value: this.deviceCount, variant: 'primary', icon: 'fa-microchip' },
-        { label: 'Check-ins (today)', value: this.extractMetric(t, 'DEVICE_CHECKIN'), variant: 'info', icon: 'fa-check-circle' },
-        { label: 'New devices (week)', value: this.extractMetric(s, 'DEVICE_NEW'), variant: 'success', icon: 'fa-plus-circle' },
-        { label: 'Revocations (week)', value: this.extractMetric(s, 'DEVICE_REVOCATION'), variant: 'warning', icon: 'fa-times-circle' },
+        {
+          label: 'Devices Checked In',
+          icon: 'fa-check-circle',
+          variant: 'info',
+          today: this.extractMetric(t, 'DEVICE_CHECKIN'),
+          week: this.extractMetric(s, 'DEVICE_CHECKIN'),
+          month: this.extractMetric(s, 'DEVICE_CHECKIN'),
+        },
+        {
+          label: 'New Devices',
+          icon: 'fa-plus-circle',
+          variant: 'success',
+          today: this.extractMetric(t, 'DEVICE_NEW'),
+          week: this.extractMetric(s, 'DEVICE_NEW'),
+          month: this.extractMetric(s, 'DEVICE_NEW'),
+        },
+        {
+          label: 'Active Devices',
+          icon: 'fa-microchip',
+          variant: 'primary',
+          today: this.deviceCount,
+          week: this.deviceCount,
+          month: this.deviceCount,
+        },
+        {
+          label: 'Errors',
+          icon: 'fa-exclamation-triangle',
+          variant: 'danger',
+          today: this.extractMetric(t, 'DEVICE_REVOCATION'),
+          week: this.extractMetric(s, 'DEVICE_REVOCATION'),
+          month: this.extractMetric(s, 'DEVICE_REVOCATION'),
+        },
+        {
+          label: 'Updates Deployed',
+          icon: 'fa-cloud-upload',
+          variant: 'warning',
+          today: this.extractMetric(t, 'BUILD_STARTED'),
+          week: this.extractMetric(s, 'BUILD_STARTED'),
+          month: this.extractMetric(s, 'BUILD_STARTED'),
+        },
+        {
+          label: 'Build Successes',
+          icon: 'fa-check',
+          variant: 'secondary',
+          today: this.extractMetric(t, 'BUILD_SUCCESS'),
+          week: this.extractMetric(s, 'BUILD_SUCCESS'),
+          month: this.extractMetric(s, 'BUILD_SUCCESS'),
+        },
       ];
     },
-    buildCards() {
-      const s = this.statsData || {};
-      return [
-        { label: 'Builds started (week)', value: this.extractMetric(s, 'BUILD_STARTED'), variant: 'secondary', icon: 'fa-hammer' },
-        { label: 'Builds succeeded (week)', value: this.extractMetric(s, 'BUILD_SUCCESS'), variant: 'success', icon: 'fa-check' },
-        { label: 'Builds failed (week)', value: this.extractMetric(s, 'BUILD_FAILED'), variant: 'danger', icon: 'fa-times' },
-      ];
+    timelineCheckins() {
+      return (this.getTimeline() && this.getTimeline().CHECKINS) || [];
     },
   },
   created() {
     this.loadData();
   },
   methods: {
-    ...mapGetters({ getStats: 'stats/getStats', getToday: 'stats/getToday', getDevices: 'devices/getItems', getAudit: 'auditlog/getItems', getBuildLog: 'buildlog/getItems' }),
-    ...mapActions({ fetchStats: 'stats/fetchStats', fetchToday: 'stats/fetchToday', fetchDevices: 'devices/fetchItems', fetchAudit: 'auditlog/fetchAuditlog', fetchBuildLog: 'buildlog/fetchBuildLog' }),
+    ...mapGetters({ getStats: 'stats/getStats', getToday: 'stats/getToday', getTimeline: 'stats/getTimeline', getDevices: 'devices/getItems', getAudit: 'auditlog/getItems', getBuildLog: 'buildlog/getItems', getProfile: 'profile/getProfile' }),
+    ...mapActions({ fetchDashboard: 'stats/fetchDashboard', fetchToday: 'stats/fetchToday', fetchDevices: 'devices/fetchItems' }),
     extractMetric(data, key) {
       if (!data) return 0;
       // InfluxDB v2 series format: [{series:[{name,columns,values}]}]
@@ -158,11 +225,9 @@ export default {
     async loadData() {
       this.loading = true;
       await Promise.allSettled([
-        this.fetchStats(),
+        this.fetchDashboard(),
         this.fetchToday(),
         this.fetchDevices(),
-        this.fetchAudit(),
-        this.fetchBuildLog(),
       ]);
       this.statsData = this.getStats();
       this.todayData = this.getToday();
@@ -170,6 +235,36 @@ export default {
       this.auditItems = this.getAudit() || [];
       this.buildItems = this.getBuildLog() || [];
       this.loading = false;
+    },
+    async downloadArtifact(item) {
+      if (!item.build_id) return;
+      const profile = this.getProfile() || {};
+      const owner = profile.owner || '';
+      let response;
+      try {
+        response = await fetch(this.$hostnames.API + '/build/artifacts', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ owner, udid: item.udid, build_id: item.build_id }),
+        });
+      } catch (networkError) {
+        console.error('Download failed (network):', networkError);
+        return;
+      }
+      if (!response.ok) {
+        console.error('Download failed:', response.status, response.statusText);
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = item.build_id + '.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     },
   },
 };
