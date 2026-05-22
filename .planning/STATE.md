@@ -20,7 +20,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 - **Active phase:** Phase 5 — Real Dashboard (executing)
 - **Last action:** Phase 5 execution started — 3 plans across 3 waves (Cypress stub → stats store + chart → Visits.vue rework). (2026-05-22)
-- **Next action:** Execute Wave 0 — 05-00 Cypress dashboard spec stub
+- **Next action:** Execute Wave 1 — 05-01 stats store fetchDashboard + CheckinsTimeline chart
 
 ## Phase Progress
 

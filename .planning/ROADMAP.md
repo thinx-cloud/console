@@ -155,7 +155,7 @@ Plans:
 **Plans:** 3 plans
 
 **Wave 0** — Cypress spec stub (no production code):
-- [ ] 05-00-PLAN.md — Cypress test stub for DASH-01–05 (dashboard.spec.js)
+- [x] 05-00-PLAN.md — Cypress test stub for DASH-01–05 (dashboard.spec.js)
 
 **Wave 1** *(blocked on Wave 0 completion)*:
 - [ ] 05-01-PLAN.md — stats store `fetchDashboard` + `getTimeline`; `CheckinsTimeline.vue` range-aware line chart (DASH-01, DASH-03)
