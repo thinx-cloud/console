@@ -103,9 +103,11 @@
 <script>
 import { mapGetters, mapActions } from 'vuex';
 import CheckinsTimeline from './components/CheckinsTimeline/CheckinsTimeline.vue';
+import hostnameMixin from '@/mixins/hostnames';
 
 export default {
   name: "Dashboard",
+  mixins: [hostnameMixin],
   components: { CheckinsTimeline },
   filters: {
     shortDate(val) {
@@ -245,7 +247,10 @@ export default {
         response = await fetch(this.$hostnames.API + '/build/artifacts', {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + this.$store.$api.refreshToken,
+          },
           body: JSON.stringify({ owner, udid: item.udid, build_id: item.build_id }),
         });
       } catch (networkError) {
@@ -254,6 +259,14 @@ export default {
       }
       if (!response.ok) {
         console.error('Download failed:', response.status, response.statusText);
+        return;
+      }
+      // The API returns a JSON `{ success: false, response }` envelope (HTTP 200)
+      // when no artifact exists for the build — guard against saving it as a .zip.
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.indexOf('application/json') !== -1) {
+        const envelope = await response.json().catch(() => ({}));
+        console.error('Download failed:', (envelope && envelope.response) || 'no artifact available');
         return;
       }
       const blob = await response.blob();
