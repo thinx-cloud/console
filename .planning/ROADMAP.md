@@ -158,7 +158,7 @@ Plans:
 - [x] 05-00-PLAN.md — Cypress test stub for DASH-01–05 (dashboard.spec.js)
 
 **Wave 1** *(blocked on Wave 0 completion)*:
-- [ ] 05-01-PLAN.md — stats store `fetchDashboard` + `getTimeline`; `CheckinsTimeline.vue` range-aware line chart (DASH-01, DASH-03)
+- [x] 05-01-PLAN.md — stats store `fetchDashboard` + `getTimeline`; `CheckinsTimeline.vue` range-aware line chart (DASH-01, DASH-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*:
 - [ ] 05-02-PLAN.md — Rework `Visits.vue`: 6 metric cards with period breakdowns, timeline chart + range selector, builds widget with download links, audit widget (DASH-01–05)
