@@ -177,7 +177,7 @@ Plans:
 
 ## Phase 6 — User Profile & Account Settings
 
-**Status:** In Progress (research)
+**Status:** Code complete (verified 8/8; human UAT pending — 2026-05-23) — 3 plans executed (06-00 Cypress stub + G1 fix; 06-01 store/header; 06-02 Profile.vue tabs). Production build passes.
 **Effort:** L
 **Goal:** Users can manage their profile and account from within the Vue console.
 

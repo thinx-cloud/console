@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 6 research
-last_updated: "2026-05-23T00:00:00.000Z"
+stopped_at: Phase 6 code complete
+last_updated: "2026-05-23T18:00:00.000Z"
 ---
 
 # Project State
@@ -18,9 +18,9 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Current Status
 
-- **Active phase:** Phase 6 — User Profile & Account Settings (research)
-- **Last action:** Phase 5 complete — browser UAT via Chrome DevTools found 2 real DASH-04 bugs (undefined $hostnames.API, missing Authorization Bearer); fixed in commit 04f78e0, pushed; one pre-existing console error from Notifications.vue (Gap G1) deferred to Phase 6. (2026-05-23)
-- **Next action:** Research Phase 6 — User Profile & Account Settings
+- **Active phase:** Phase 6 — User Profile & Account Settings (code complete; human UAT pending)
+- **Last action:** Phase 6 research + planning + execution + verification done in one session. 3 plans executed; verifier reports 8/8 must-haves; production build green. Includes G1 fix carried over from Phase 5. (2026-05-23)
+- **Next action:** Browser UAT of Phase 6 — see .planning/phase-6/06-HUMAN-UAT.md (6 items)
 
 ## Phase Progress
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 3 — Transformers with Code Editor | Complete (UAT pending — 2026-05-19) |
 | 4 — Device Management | Complete (code; deploy + final UAT pending — 2026-05-22) |
 | 5 — Real Dashboard | Complete (UAT 3/4 pass; G1 deferred — 2026-05-23) |
-| 6 — User Profile & Account Settings | In Progress (research) |
+| 6 — User Profile & Account Settings | Code complete (verified 8/8; human UAT pending — 2026-05-23) |
 | 7 — History Improvements | Pending |
 | 8 — Authentication Extras | Pending |
 
