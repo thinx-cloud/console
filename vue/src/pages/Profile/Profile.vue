@@ -47,6 +47,34 @@
         </b-form>
       </b-tab>
 
+      <!-- Avatar Tab -->
+      <b-tab title="Avatar">
+        <div style="max-width:400px">
+          <div class="mb-3">
+            <img
+              :src="avatarSrc"
+              class="rounded-circle mb-2"
+              style="width:96px;height:96px;object-fit:cover"
+              alt="Profile avatar"
+            />
+          </div>
+          <b-form-group label="Upload new avatar (JPEG or PNG, max 2 MB)">
+            <b-form-file
+              accept="image/jpeg,image/png"
+              @change="onAvatarFileChange"
+              :disabled="avatarUploading"
+            />
+          </b-form-group>
+          <b-button
+            variant="primary"
+            :disabled="!avatarB64 || avatarUploading"
+            @click="saveAvatar"
+          >
+            {{ avatarUploading ? 'Uploading...' : 'Save Avatar' }}
+          </b-button>
+        </div>
+      </b-tab>
+
       <!-- Account Tab -->
       <b-tab title="Account">
         <div style="max-width:500px">
@@ -61,6 +89,26 @@
           <b-card title="Delete Account" border-variant="danger">
             <p class="text-danger">This action is permanent and cannot be undone. All devices, repositories, and data will be deleted.</p>
             <b-button variant="danger" @click="confirmDeleteAccount">Delete My Account</b-button>
+          </b-card>
+        </div>
+      </b-tab>
+
+      <!-- Admin Tab — visible only to admin users (v-if removes from DOM for non-admins) -->
+      <b-tab v-if="profile && profile.admin === true" title="Admin">
+        <div style="max-width:500px">
+          <b-card title="Admin Status" class="mb-3">
+            <table class="table table-sm table-borderless mb-0">
+              <tr><td class="text-muted" style="width:140px">Username</td><td>{{ profile && profile.username }}</td></tr>
+              <tr><td class="text-muted">Owner ID</td><td><code style="font-size:11px">{{ profile && profile.owner }}</code></td></tr>
+              <tr><td class="text-muted">Admin</td><td><b-badge variant="success">Yes</b-badge></td></tr>
+            </table>
+          </b-card>
+          <b-card border-variant="secondary">
+            <p class="text-muted mb-0">
+              <i class="la la-info-circle mr-1"></i>
+              Admin-management features (user list, session revocation, impersonation) are not yet available in this API version.
+              This tab will be expanded when backend admin endpoints are implemented.
+            </p>
           </b-card>
         </div>
       </b-tab>
@@ -92,14 +140,24 @@ export default {
         important: false,
         info: false,
       },
+      avatarB64: null,
+      avatarUploading: false,
     };
+  },
+  computed: {
+    avatarSrc() {
+      if (this.profile && this.profile.avatar && this.profile.avatar.length > 0) {
+        return 'data:image/png;base64,' + this.profile.avatar;
+      }
+      return require('@/assets/thinx/default_avatar_sm.png');
+    },
   },
   created() {
     this.loadProfile();
   },
   methods: {
     ...mapGetters({ getProfile: 'profile/getProfile' }),
-    ...mapActions({ fetchProfile: 'profile/fetchProfile', updateProfile: 'profile/updateProfile', deleteAccount: 'profile/deleteAccount' }),
+    ...mapActions({ fetchProfile: 'profile/fetchProfile', updateProfile: 'profile/updateProfile', deleteAccount: 'profile/deleteAccount', uploadAvatar: 'profile/uploadAvatar' }),
     async loadProfile() {
       this.loading = true;
       await this.fetchProfile();
@@ -131,16 +189,42 @@ export default {
     },
     async saveNotifications() {
       this.saving = true;
-      const result = await this.updateProfile({
+      const existingInfo = (this.profile && this.profile.info) ? Object.assign({}, this.profile.info) : {};
+      const info = Object.assign(existingInfo, {
         notifications: {
           all: this.notifForm.all,
           important: this.notifForm.important,
           info: this.notifForm.info,
         },
       });
+      const result = await this.updateProfile(info);
       this.saving = false;
-      if (result.success) this.message = 'Notification preferences saved.';
-      else this.error = result.message || 'Failed to save notifications.';
+      if (result && result.success) this.message = 'Notification preferences saved.';
+      else this.error = (result && result.message) || 'Failed to save notifications.';
+    },
+    onAvatarFileChange(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUri = e.target.result; // e.g. "data:image/png;base64,AAAA..."
+        const commaIdx = dataUri.indexOf(',');
+        this.avatarB64 = commaIdx !== -1 ? dataUri.substring(commaIdx + 1) : dataUri;
+      };
+      reader.readAsDataURL(file);
+    },
+    async saveAvatar() {
+      if (!this.avatarB64) return;
+      this.avatarUploading = true;
+      const result = await this.uploadAvatar(this.avatarB64);
+      this.avatarUploading = false;
+      if (result && result.success) {
+        this.profile = this.getProfile();
+        this.message = 'Avatar updated.';
+        this.avatarB64 = null;
+      } else {
+        this.error = (result && result.message) || 'Failed to upload avatar.';
+      }
     },
     async confirmDeleteAccount() {
       const confirmed = await this.$bvModal.msgBoxConfirm(
