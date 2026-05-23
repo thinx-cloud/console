@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 5 execution
-last_updated: "2026-05-22T12:00:00.000Z"
+stopped_at: Phase 6 research
+last_updated: "2026-05-23T00:00:00.000Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-22T12:00:00.000Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 5 — Real Dashboard
+**Current focus:** Phase 6 — User Profile & Account Settings
 
 ## Current Status
 
-- **Active phase:** Phase 5 — Real Dashboard (code complete; human UAT pending)
-- **Last action:** Phase 5 all 3 plans executed + verified (10/10 must-haves). Pushed to thinx-staging; CircleCI pipeline #400 green (Test Vue console + Release legacy console both passed) after fixing a pre-existing config bug. (2026-05-22)
-- **Next action:** Human UAT of Phase 5 — see .planning/phase-5/05-HUMAN-UAT.md (4 browser/live-backend items)
+- **Active phase:** Phase 6 — User Profile & Account Settings (research)
+- **Last action:** Phase 5 complete — browser UAT via Chrome DevTools found 2 real DASH-04 bugs (undefined $hostnames.API, missing Authorization Bearer); fixed in commit 04f78e0, pushed; one pre-existing console error from Notifications.vue (Gap G1) deferred to Phase 6. (2026-05-23)
+- **Next action:** Research Phase 6 — User Profile & Account Settings
 
 ## Phase Progress
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 2 — CRUD for Simple Management Pages | Complete (2026-05-19) |
 | 3 — Transformers with Code Editor | Complete (UAT pending — 2026-05-19) |
 | 4 — Device Management | Complete (code; deploy + final UAT pending — 2026-05-22) |
-| 5 — Real Dashboard | Code complete (verified 10/10; human UAT pending — 2026-05-22) |
-| 6 — User Profile & Account Settings | Pending |
+| 5 — Real Dashboard | Complete (UAT 3/4 pass; G1 deferred — 2026-05-23) |
+| 6 — User Profile & Account Settings | In Progress (research) |
 | 7 — History Improvements | Pending |
 | 8 — Authentication Extras | Pending |
 

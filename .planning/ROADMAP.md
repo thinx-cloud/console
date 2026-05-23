@@ -137,7 +137,7 @@ Plans:
 
 ## Phase 5 — Real Dashboard
 
-**Status:** In Progress (planning)
+**Status:** Complete (2026-05-23) — UAT 3/4 dashboard items pass; one pre-existing gap (G1, `Notifications.vue`) deferred to Phase 6
 **Effort:** L
 **Goal:** Dashboard shows real platform statistics instead of hardcoded demo data.
 
@@ -177,7 +177,7 @@ Plans:
 
 ## Phase 6 — User Profile & Account Settings
 
-**Status:** Pending
+**Status:** In Progress (research)
 **Effort:** L
 **Goal:** Users can manage their profile and account from within the Vue console.
 
@@ -187,6 +187,7 @@ Plans:
 - `Account.vue`: tabs for Profile, Avatar, Preferences, Notifications; admin tab if admin
 - `Delete.vue`: account deletion with confirmation
 - Sidebar/header link to profile
+- **Carry-over gap G1 from Phase 5 UAT:** fix `vue/src/components/Notifications/Notifications.vue` — move the `mapGetters({ getBuildLog })` spread from `computed:` (line 57) into `methods:` so `this.getBuildLog()` works as a function call (project convention). Currently throws `TypeError: getBuildLog is not a function` on every authenticated page.
 
 **Requirements:** PROF-01–06
 
