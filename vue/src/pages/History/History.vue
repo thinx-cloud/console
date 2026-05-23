@@ -6,10 +6,10 @@
     <h1 class="page-title">History</h1>
 
     <div v-if="loading" class="py-4 text-center">Loading...</div>
-    <b-tabs v-else content-class="mt-3">
+    <b-tabs v-else v-model="activeTabIndex" content-class="mt-3">
 
       <!-- Audit Log Tab -->
-      <b-tab title="Audit Log" active>
+      <b-tab title="Audit Log">
         <b-form-input v-model="auditSearch" placeholder="Search audit log..." class="mb-3" style="max-width:400px" />
         <div v-if="!filteredAudit.length" class="text-muted">No audit events.</div>
         <table v-else class="table table-striped table-sm">
@@ -92,22 +92,64 @@ export default {
       buildlog: [],
       auditSearch: '',
       buildSearch: '',
+      dateFrom: '',
+      dateTo: '',
+      auditFlagFilter: ['danger', 'warning', 'info'],
     };
   },
   computed: {
+    activeTabIndex: {
+      // Reactivity flow: $route changes -> this getter re-runs -> v-model updates -> b-tabs switches tab.
+      // No watcher needed; computed dependency on this.$route.name is the entire reactivity link.
+      get() {
+        return this.$route.name === 'HistoryBuilds' ? 1 : 0;
+      },
+      set(idx) {
+        const target = idx === 1 ? 'HistoryBuilds' : 'HistoryAudit';
+        if (this.$route.name !== target) {
+          this.$router.push({ name: target });
+        }
+      },
+    },
     filteredAudit() {
-      if (!this.auditSearch) return this.auditlog;
-      const q = this.auditSearch.toLowerCase();
-      return this.auditlog.filter(item => (item.message || '').toLowerCase().includes(q));
+      const q = this.auditSearch ? this.auditSearch.toLowerCase() : '';
+      return this.auditlog.filter(item => {
+        // Date-range predicate (Number.isFinite guard so items with empty/invalid dates fall through to include).
+        const t = new Date(item.date).getTime();
+        if (Number.isFinite(t)) {
+          if (this.dateFrom && t < new Date(this.dateFrom).getTime()) return false;
+          if (this.dateTo && t > new Date(this.dateTo).getTime() + 86399999) return false;
+        }
+        // Flag-filter predicate (audit only).
+        const flags = item.flags || [];
+        if (flags.length && !flags.some(f => this.auditFlagFilter.includes(f))) return false;
+        // Text-search predicate (existing behaviour).
+        if (q && !(item.message || '').toLowerCase().includes(q)) return false;
+        return true;
+      });
     },
     filteredBuilds() {
-      if (!this.buildSearch) return this.buildlog;
-      const q = this.buildSearch.toLowerCase();
-      return this.buildlog.filter(item => (item.name || '').toLowerCase().includes(q));
+      const q = this.buildSearch ? this.buildSearch.toLowerCase() : '';
+      return this.buildlog.filter(item => {
+        // Date-range predicate (same guard as filteredAudit).
+        const t = new Date(item.date).getTime();
+        if (Number.isFinite(t)) {
+          if (this.dateFrom && t < new Date(this.dateFrom).getTime()) return false;
+          if (this.dateTo && t > new Date(this.dateTo).getTime() + 86399999) return false;
+        }
+        // Text-search predicate (existing behaviour).
+        if (q && !(item.name || '').toLowerCase().includes(q)) return false;
+        return true;
+      });
     },
   },
   created() {
     this.loadData();
+    // Hydrate filter state from URL query (deep-link support; Wave 2 wires the write side).
+    const { from, to, flags } = this.$route.query;
+    if (typeof from === 'string') this.dateFrom = from;
+    if (typeof to === 'string') this.dateTo = to;
+    if (typeof flags === 'string') this.auditFlagFilter = flags.split(',').filter(Boolean);
   },
   methods: {
     ...mapGetters({
