@@ -231,12 +231,14 @@ Plans:
 **Delivers:**
 - `/password-reset` route and `PasswordReset.vue` page
 - Port reset flow logic from `src/password.html`
+- **Session-state hygiene fix (carry-over found during Phase 6 UAT, 2026-05-23):** `localStorage.authenticated:true` outlives the actual session cookie / JWT. Vue router happily keeps the user on the dashboard after the cookie is invalidated server-side, while every API call silently 403s. Schedule a timer (e.g. `setTimeout` keyed to `accessToken`/`refreshToken` `exp` claim) to clear `localStorage.authenticated` (and tokens) when the JWT expires. Reschedule on each successful token fetch/refresh. On clear, redirect to `/#/login`. Until then the documented workaround is `localStorage.clear() + cookie wipe` (saved in memory).
 
-**Requirements:** AUTH-01–02
+**Requirements:** AUTH-01–02 (+ AUTH-03 session-hygiene timer)
 
 **UAT:**
 - Navigate to `/password-reset` — page renders without errors
 - Submit a reset request — appropriate API call is made and feedback is shown
+- Leave the dashboard open until the token would expire — page auto-redirects to login instead of silently 403'ing every API call
 
 ---
 

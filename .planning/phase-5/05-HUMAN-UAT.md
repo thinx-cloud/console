@@ -23,7 +23,7 @@ result: pass — empty-state ("No check-in data for this range.") shows correctl
 
 ### 3. DASH-04 — Recent Builds download link
 expected: Clicking "Download" on a row with a `build_id` POSTs to `/api/v2/build/artifacts` and saves `<build_id>.zip`; rows without one show "—".
-result: pass (after fix 04f78e0) — UAT first found the button broken: `$hostnames.API` was undefined (POST to `/undefined/build/artifacts`, 404) and the raw fetch lacked the `Authorization: Bearer` header (401). Both fixed plus a content-type guard for no-artifact builds. POST `/api/v2/build/artifacts` now returns 200. The `test` account's builds are all failed (status ERROR) so the API returns `artifact_not_found` — the guard handles this gracefully (no corrupt download). The actual zip-save path is unverified only because no successful build with an artifact was available on the test account.
+result: pass (after fix 04f78e0) — UAT first found the button broken: `$hostnames.API` was undefined (POST to `/undefined/build/artifacts`, 404) and the raw fetch lacked the `Authorization: Bearer` header (401). Both fixed plus a content-type guard for no-artifact builds. POST `/api/v2/build/artifacts` now returns 200. The `test` account's builds are all failed (status ERROR) so the API returns `artifact_not_found` — the guard handles this gracefully (no corrupt download). User confirmed during deploy verification (2026-05-23): no build with an existing artifact zip is available on this account — code path + auth + URL all verified; actual zip-save round-trip stays open for Phase 9 against an account that has a successful build with an artifact.
 
 ### 4. No JavaScript console errors during load
 expected: Loading the dashboard produces no JS errors in the console.
