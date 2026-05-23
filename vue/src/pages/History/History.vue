@@ -10,7 +10,19 @@
 
       <!-- Audit Log Tab -->
       <b-tab title="Audit Log">
+        <b-form-inline class="mb-2">
+          <label class="mr-2 mb-0">From</label>
+          <b-form-input type="date" v-model="dateFrom" class="mr-3" style="max-width:180px" />
+          <label class="mr-2 mb-0">To</label>
+          <b-form-input type="date" v-model="dateTo" style="max-width:180px" />
+        </b-form-inline>
         <b-form-input v-model="auditSearch" placeholder="Search audit log..." class="mb-3" style="max-width:400px" />
+        <b-form-checkbox-group
+          v-model="auditFlagFilter"
+          :options="flagFilterOptions"
+          class="mb-3"
+          switches
+        />
         <div v-if="!filteredAudit.length" class="text-muted">No audit events.</div>
         <table v-else class="table table-striped table-sm">
           <thead>
@@ -39,6 +51,12 @@
 
       <!-- Build Log Tab -->
       <b-tab title="Build Log">
+        <b-form-inline class="mb-2">
+          <label class="mr-2 mb-0">From</label>
+          <b-form-input type="date" v-model="dateFrom" class="mr-3" style="max-width:180px" />
+          <label class="mr-2 mb-0">To</label>
+          <b-form-input type="date" v-model="dateTo" style="max-width:180px" />
+        </b-form-inline>
         <b-form-input v-model="buildSearch" placeholder="Search build log..." class="mb-3" style="max-width:400px" />
         <div v-if="!filteredBuilds.length" class="text-muted">No build logs.</div>
         <table v-else class="table table-striped table-sm">
@@ -59,11 +77,18 @@
               </td>
               <td style="max-width:600px">
                 <pre
-                  v-if="item.log && (Array.isArray(item.log) ? item.log.length : item.log.length)"
+                  v-if="hasLog(item)"
                   class="mb-0"
-                  style="white-space:pre-wrap;word-break:break-word;max-height:120px;overflow:hidden;font-size:11px;background:#f8f9fa;padding:6px;border-radius:3px;margin:0"
-                >{{ logSnippet(item) }}</pre>
-                <span v-else class="text-muted">—</span>
+                  :style="logStyle(item)"
+                >{{ logFull(item) }}</pre>
+                <b-button
+                  v-if="logIsTruncatable(item)"
+                  size="sm"
+                  variant="link"
+                  class="p-0"
+                  @click="toggleExpand(item)"
+                >{{ isExpanded(item) ? 'Collapse' : 'Expand' }}</b-button>
+                <span v-if="!hasLog(item)" class="text-muted">—</span>
               </td>
             </tr>
           </tbody>
@@ -95,6 +120,14 @@ export default {
       dateFrom: '',
       dateTo: '',
       auditFlagFilter: ['danger', 'warning', 'info'],
+      flagFilterOptions: [
+        { text: 'Danger', value: 'danger' },
+        { text: 'Warning', value: 'warning' },
+        { text: 'Info', value: 'info' },
+      ],
+      // Array of build keys (build_id, falling back to id, falling back to row index) that are currently expanded.
+      // Per-row, component-local state; not persisted across reload. Variant (b) of locked HIST-03 decision.
+      expandedBuilds: [],
     };
   },
   computed: {
@@ -151,6 +184,11 @@ export default {
     if (typeof to === 'string') this.dateTo = to;
     if (typeof flags === 'string') this.auditFlagFilter = flags.split(',').filter(Boolean);
   },
+  watch: {
+    dateFrom() { this.syncFiltersToQuery(); },
+    dateTo() { this.syncFiltersToQuery(); },
+    auditFlagFilter() { this.syncFiltersToQuery(); },
+  },
   methods: {
     ...mapGetters({
       getAuditItems: "auditlog/getItems",
@@ -177,6 +215,51 @@ export default {
       const MAX = 400;
       return text.length > MAX ? text.slice(0, MAX) + '…' : text;
     },
+    buildKey(item) {
+      // Stable key for the expansion set. Prefer build_id (set by normalizeBuildItems for most rows);
+      // fall back to id, then to the raw object reference via Object.prototype.hasOwnProperty.
+      if (item && item.build_id) return item.build_id;
+      if (item && item.id) return item.id;
+      return null; // caller must use array index as a final fallback in the template
+    },
+    isExpanded(item) {
+      const key = this.buildKey(item);
+      if (key === null) return false;
+      return this.expandedBuilds.indexOf(key) !== -1;
+    },
+    toggleExpand(item) {
+      const key = this.buildKey(item);
+      if (key === null) return;
+      const idx = this.expandedBuilds.indexOf(key);
+      if (idx === -1) {
+        // Use Vue.set-style push so reactivity tracks the change
+        this.expandedBuilds.push(key);
+      } else {
+        this.expandedBuilds.splice(idx, 1);
+      }
+    },
+    hasLog(item) {
+      if (!item) return false;
+      if (Array.isArray(item.log)) return item.log.length > 0;
+      return typeof item.log === 'string' && item.log.length > 0;
+    },
+    logFull(item) {
+      // When collapsed, defer to logSnippet (Wave-1-preserved). When expanded, return the full text.
+      if (!this.hasLog(item)) return '';
+      if (!this.isExpanded(item)) return this.logSnippet(item);
+      return Array.isArray(item.log) ? item.log.join('\n') : (item.log || '');
+    },
+    logStyle(item) {
+      // Inline styles always applied; max-height/overflow added only when collapsed.
+      const base = 'white-space:pre-wrap;word-break:break-word;font-size:11px;background:#f8f9fa;padding:6px;border-radius:3px;margin:0;';
+      if (this.isExpanded(item)) return base;
+      return base + 'max-height:120px;overflow:hidden;';
+    },
+    logIsTruncatable(item) {
+      if (!this.hasLog(item)) return false;
+      const text = Array.isArray(item.log) ? item.log.join('\n') : (item.log || '');
+      return text.length > 400;
+    },
     loadData() {
       this.loading = true;
       Promise.all([this.fetchAuditlog(), this.fetchBuildlog()]).then(() => {
@@ -184,6 +267,20 @@ export default {
         this.buildlog = this.getBuildItems() || [];
         this.loading = false;
       });
+    },
+    syncFiltersToQuery() {
+      const query = Object.assign({}, this.$route.query, {
+        from: this.dateFrom || undefined,
+        to: this.dateTo || undefined,
+        flags: (this.auditFlagFilter && this.auditFlagFilter.length === 3)
+          ? undefined
+          : (this.auditFlagFilter || []).join(','),
+      });
+      // Avoid pushing identical queries (Vue Router emits a NavigationDuplicated warning otherwise)
+      const current = this.$route.query;
+      const same = current.from === query.from && current.to === query.to && current.flags === query.flags;
+      if (same) return;
+      this.$router.replace({ query }).catch(() => { /* NavigationDuplicated is benign */ });
     },
   },
 };
