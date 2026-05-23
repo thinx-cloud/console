@@ -240,6 +240,47 @@ Plans:
 
 ---
 
+## Phase 9 — Manual UAT Review
+
+**Status:** Pending
+**Effort:** M
+**Goal:** Close the loop on every human-only UAT item carried over from Phases 1–8 by walking the deployed `console.thinx.cloud` end-to-end with real accounts. Anything that automated/headless testing couldn't confirm gets a real-mouse, real-browser, real-backend check here.
+
+**Inputs (consolidated UAT backlog):**
+- `.planning/phase-3/03-HUMAN-UAT.md` (Transformers — UAT pending since 2026-05-19)
+- `.planning/phase-4/04-HUMAN-UAT.md` (Device Management — 8/12 browser-confirmed; 4 pending)
+- `.planning/phase-5/05-HUMAN-UAT.md` (Real Dashboard — 4 items; DASH-04 download already AI-verified end-to-end in 04f78e0)
+- `.planning/phase-6/06-HUMAN-UAT.md` (User Profile — 6 items; 5 of 6 AI-verified at code level, listed below)
+
+**Items carried in from Phase 6 AI-UAT (need a real-user pass):**
+- PROF-01: Profile field update + page reload (`saveProfile` data-loss fix `4afe3ad` is in)
+- PROF-02: Avatar tab — pick file, preview, save, reload, see avatar
+- PROF-03: Notifications save — verify the toggled value persists after a fresh login from another browser too
+- PROF-04: Admin tab visibility — confirm hidden for a non-admin account (test account is admin)
+- PROF-05: Delete account modal — exercise Cancel and (in a throwaway account) Confirm
+- PROF-06: Header My Account link — click in a real browser (Chrome DevTools click did not fire the b-dropdown-item; standard mouse click DOES because href is correct)
+- Profile.vue: Cypress test-tool quirks observed during AI UAT (b-button type=submit didn't fire on tool click; b-tab clicks didn't switch tab) — confirm these are tool-only quirks, not real-user issues
+
+**Delivers:**
+- Each `*-HUMAN-UAT.md` file updated with results (pass / issue + repro / skipped + reason)
+- Any new bugs surfaced get filed as Phase 9.N gap-closure plans
+- `REQUIREMENTS.md` traceability flipped from Pending → Verified once an item is confirmed
+- A `09-UAT-SUMMARY.md` aggregating outcomes
+
+**Cross-cutting context:**
+- Console URL: https://console.thinx.cloud (deploy via parent-repo submodule bump — see memory `deployment-console-thinx-cloud`)
+- Local dev: `yarn --cwd vue serve` against the live API (see memory `thinx-console-vue-conventions`)
+- Test credentials: `vue/cypress/fixtures/thinx.json` (admin) — bring a non-admin account separately for PROF-04
+- Tool quirks to watch: Chrome DevTools / Kapture `click` on `<b-button type="submit">` and `<b-tab>` doesn't always fire the Vue handlers; falling back to `evaluate_script` form/component dispatch works
+
+**UAT:**
+- Every item from `*-HUMAN-UAT.md` files marked `pass` or filed as a gap-closure plan
+- Each PROF-XX requirement traceability row flipped to Verified in `REQUIREMENTS.md`
+- No JS console errors during any flow on the deployed console.thinx.cloud
+- One end-to-end smoke: login → dashboard → devices → device-detail → profile → logout, with no errors
+
+---
+
 ## Phase Summary
 
 | Phase | Description | Effort | Requirements | Status |
@@ -248,12 +289,13 @@ Plans:
 | 2 | CRUD for Simple Management Pages | M×5 | AKEY, REPO, RKEY, ENVI, CHAN | Pending |
 | 3 | Transformers with Code Editor | L | TRAN-01–07 | Planned |
 | 4 | Device Management | XL | DEVI-01–11 | Complete (code) |
-| 5 | Real Dashboard | L | DASH-01–05 | In Progress |
-| 6 | User Profile & Account Settings | L | PROF-01–06 | Pending |
+| 5 | Real Dashboard | L | DASH-01–05 | Complete (2026-05-23) |
+| 6 | User Profile & Account Settings | L | PROF-01–06 | Code complete (verified; UAT folds into Phase 9) |
 | 7 | History Improvements | M | HIST-01–05 | Pending |
 | 8 | Authentication Extras | S | AUTH-01–02 | Pending |
+| 9 | Manual UAT Review | M | aggregate of carry-over UAT items | Pending |
 
-**Total v1 requirements:** 53 across 8 phases
+**Total v1 requirements:** 53 across 9 phases
 
 ---
 

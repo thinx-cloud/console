@@ -18,9 +18,9 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Current Status
 
-- **Active phase:** Phase 6 — User Profile & Account Settings (code complete; human UAT pending)
-- **Last action:** Phase 6 research + planning + execution + verification done in one session. 3 plans executed; verifier reports 8/8 must-haves; production build green. Includes G1 fix carried over from Phase 5. (2026-05-23)
-- **Next action:** Browser UAT of Phase 6 — see .planning/phase-6/06-HUMAN-UAT.md (6 items)
+- **Active phase:** Phase 6 — User Profile & Account Settings (code complete; UAT folded into Phase 9)
+- **Last action:** Phase 6 deployed via meta-repo bump (238f99ed). Chrome DevTools UAT against local dev caught a saveProfile data-loss bug (same merge-loss pattern as saveNotifications) — fixed in 4afe3ad. 5/6 PROF items AI-verified; remaining browser confirmations folded into the new Phase 9 (Manual UAT Review). (2026-05-23)
+- **Next action:** Push the saveProfile fix + redeploy; Phase 7 plan (or run Phase 9 first, your call)
 
 ## Phase Progress
 
@@ -31,9 +31,10 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 3 — Transformers with Code Editor | Complete (UAT pending — 2026-05-19) |
 | 4 — Device Management | Complete (code; deploy + final UAT pending — 2026-05-22) |
 | 5 — Real Dashboard | Complete (UAT 3/4 pass; G1 deferred — 2026-05-23) |
-| 6 — User Profile & Account Settings | Code complete (verified 8/8; human UAT pending — 2026-05-23) |
+| 6 — User Profile & Account Settings | Complete (code + AI-UAT; remaining browser items in Phase 9 — 2026-05-23) |
 | 7 — History Improvements | Pending |
 | 8 — Authentication Extras | Pending |
+| 9 — Manual UAT Review | Pending (aggregates UAT carry-over from phases 3, 4, 5, 6) |
 
 ### Quick Tasks Completed
 
