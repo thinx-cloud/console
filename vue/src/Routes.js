@@ -68,8 +68,12 @@ export default new Router({
         },
         {
           path: 'history',
-          name: 'History',
           component: HistoryManager, // History,
+          children: [
+            { path: '', redirect: 'audit' },
+            { path: 'audit', name: 'HistoryAudit', component: HistoryManager },
+            { path: 'builds', name: 'HistoryBuilds', component: HistoryManager },
+          ],
         },
 
         {
