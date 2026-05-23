@@ -94,8 +94,14 @@ export default {
         if (result.success) await dispatch('fetchProfile');
         return result;
       },
-      async deleteAccount() {
-        return await this.$api.$delete('/user', JSON.stringify({}));
+      async uploadAvatar({ dispatch }, base64String) {
+        const result = await this.$api.$post('/profile', JSON.stringify({ avatar: base64String }));
+        if (result.success) await dispatch('fetchProfile');
+        return result;
+      },
+      async deleteAccount({ state }) {
+        const owner = state.profile && state.profile.owner;
+        return await this.$api.$delete('/user', JSON.stringify({ owner }));
       },
     },
     getters: {
