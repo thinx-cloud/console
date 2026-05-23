@@ -54,7 +54,6 @@ export default {
     };
   },
   computed: {
-    ...mapGetters({ getBuildLog: 'buildlog/getItems' }),
     recentBuilds() {
       return (this.buildItems || [])
         .slice()
@@ -66,6 +65,7 @@ export default {
     this.loadNotifications();
   },
   methods: {
+    ...mapGetters({ getBuildLog: 'buildlog/getItems' }),
     ...mapActions({ fetchBuildLog: 'buildlog/fetchBuildLog' }),
     async loadNotifications() {
       Vue.set(this, 'isLoad', true);
