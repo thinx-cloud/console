@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 7 ready for research
-last_updated: "2026-05-23T20:00:00.000Z"
+stopped_at: Phase 7 Wave 0 complete (history.spec.js stub committed)
+last_updated: "2026-05-23T20:03:06.000Z"
 ---
 
 # Project State
@@ -18,9 +18,9 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Current Status
 
-- **Active phase:** Phase 7 — History Improvements (seed context written; ready for research)
-- **Last action:** Polish round deployed (meta-repo 8512a17a → console 99cadb6): removed "YOU ARE HERE" placeholder breadcrumb across 9 pages and replaced History "View" button + modal with an inline truncated build log. Session-expiry stale-localStorage finding deferred to Phase 8; DASH-04 no-artifact-account finding deferred to Phase 9. (2026-05-23)
-- **Next action:** Research → plan → execute Phase 7. Read `.planning/phase-7/07-CONTEXT.md` first — it captures the deliberate HIST-03 scope revision (modal was removed; do NOT re-add) and which HIST-XX items are already partially implemented.
+- **Active phase:** Phase 7 — History Improvements (Wave 0 complete; Waves 1 + 2 pending)
+- **Last action:** Phase 7 Wave 0 executed — added `vue/cypress/integration/history.spec.js` Cypress stub with `describe('History feature')` + `beforeEach` + 5 `it()` TODO blocks for HIST-01..05. No production code touched. Commit `9c86064`. (2026-05-23)
+- **Next action:** Execute Phase 7 Wave 1 (`.planning/phase-7/07-01-PLAN.md`) — router for HIST-02 (child routes `/app/history/audit` and `/app/history/builds`) + filter primitives for HIST-04/05. Note: a `feat(07-01)` commit `da6facb` already exists between the Phase 7 seed and Wave 0 — Wave 1 executor should reconcile (likely partial Wave 1 work was already started).
 
 ## Phase Progress
 
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 4 — Device Management | Complete (code; deploy + final UAT pending — 2026-05-22) |
 | 5 — Real Dashboard | Complete (UAT 3/4 pass; G1 deferred — 2026-05-23) |
 | 6 — User Profile & Account Settings | Complete (code + AI-UAT; remaining browser items in Phase 9 — 2026-05-23) |
-| 7 — History Improvements | Ready (seed context at .planning/phase-7/07-CONTEXT.md) |
+| 7 — History Improvements | In Progress (Wave 0 done — `9c86064`; Waves 1 + 2 pending) |
 | 8 — Authentication Extras | Pending (gained session-expiry timer fix per 06 UAT) |
 | 9 — Manual UAT Review | Pending (aggregates UAT carry-over from phases 3, 4, 5, 6) |
 
@@ -58,5 +58,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-20T22:17:26.000Z
-Stopped at: Phase 4 Plan 02 complete (Device Detail enhancements — DEVI-10, DEVI-11, D-08 through D-12)
+Last session: 2026-05-23T20:03:06.000Z
+Stopped at: Phase 7 Wave 0 complete (history.spec.js stub committed; SUMMARY at .planning/phase-7/07-00-SUMMARY.md)

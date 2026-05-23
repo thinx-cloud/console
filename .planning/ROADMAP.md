@@ -201,18 +201,23 @@ Plans:
 
 ## Phase 7 — History Improvements
 
-**Status:** Pending
+**Status:** In Progress (Wave 0 complete — 2026-05-23)
 **Effort:** M
 **Goal:** History page is a useful audit and debug tool, not just a flat dump.
 
 **Delivers:**
 - Split History into "Build Log" and "Audit Log" tabs
 - Tab state in URL: `/app/history/builds` and `/app/history/audit`
-- Build row click opens full log in modal (`<pre>` scrollable monospace)
+- Build row click opens full log in modal (`<pre>` scrollable monospace) — **HIST-03 scope revised 2026-05-23: modal removed; inline-expand variant chosen (see 07-CONTEXT.md)**
 - Date range filter on both tabs
 - Text search / flag filter on audit log
 
 **Requirements:** HIST-01–05
+
+**Plans:**
+- [x] 07-00-PLAN.md — Wave 0: Cypress stub `history.spec.js` (HIST-01..05 TODO it() blocks) — commit `9c86064`
+- [ ] 07-01-PLAN.md — Wave 1: router (HIST-02 child routes) + filter predicates (HIST-04 / HIST-05 enhancements)
+- [ ] 07-02-PLAN.md — Wave 2: UI (date range, flag filter, HIST-03 inline expand)
 
 **UAT:**
 - Navigating to `/app/history/builds` lands on Build Log tab
