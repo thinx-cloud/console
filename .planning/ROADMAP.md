@@ -201,7 +201,7 @@ Plans:
 
 ## Phase 7 — History Improvements
 
-**Status:** In Progress (Wave 0 complete — 2026-05-23)
+**Status:** Code complete (Waves 0+1+2 shipped — 2026-05-23; deploy + Phase 9 UAT pending)
 **Effort:** M
 **Goal:** History page is a useful audit and debug tool, not just a flat dump.
 
@@ -216,14 +216,14 @@ Plans:
 
 **Plans:**
 - [x] 07-00-PLAN.md — Wave 0: Cypress stub `history.spec.js` (HIST-01..05 TODO it() blocks) — commit `9c86064`
-- [ ] 07-01-PLAN.md — Wave 1: router (HIST-02 child routes) + filter predicates (HIST-04 / HIST-05 enhancements)
-- [ ] 07-02-PLAN.md — Wave 2: UI (date range, flag filter, HIST-03 inline expand)
+- [x] 07-01-PLAN.md — Wave 1: router (HIST-02 child routes — `da6facb`) + filter primitives (HIST-04 / HIST-05 data layer — `e21b111`)
+- [x] 07-02-PLAN.md — Wave 2: UI (date range, flag filter, HIST-03 inline Expand toggle — `d4d7513`)
 
 **UAT:**
 - Navigating to `/app/history/builds` lands on Build Log tab
-- Click a build row — full log modal opens with correct content
-- Set date range — list filters to that range
-- Search audit log for a keyword — only matching entries shown
+- Click "Expand" on a long build log row — full log shown inline (HIST-03 ships as inline expand, not modal — see `07-CONTEXT.md` for the deliberate scope revision and `07-HUMAN-UAT.md` for the rest)
+- Set date range — list filters to that range; URL query reflects state and survives reload
+- Search audit log for a keyword + uncheck a flag — only matching entries with kept flags shown
 
 ---
 
@@ -298,7 +298,7 @@ Plans:
 | 4 | Device Management | XL | DEVI-01–11 | Complete (code) |
 | 5 | Real Dashboard | L | DASH-01–05 | Complete (2026-05-23) |
 | 6 | User Profile & Account Settings | L | PROF-01–06 | Code complete (verified; UAT folds into Phase 9) |
-| 7 | History Improvements | M | HIST-01–05 | Pending |
+| 7 | History Improvements | M | HIST-01–05 | Code complete (UAT in Phase 9 — 2026-05-23) |
 | 8 | Authentication Extras | S | AUTH-01–02 | Pending |
 | 9 | Manual UAT Review | M | aggregate of carry-over UAT items | Pending |
 

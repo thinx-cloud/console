@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 7 Wave 0 complete (history.spec.js stub committed)
-last_updated: "2026-05-23T20:03:06.000Z"
+stopped_at: Phase 7 code complete (Waves 0+1+2 shipped on thinx-staging); deploy + Phase 9 UAT pending
+last_updated: "2026-05-23T20:15:00.000Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-23T20:03:06.000Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 7 — History Improvements (seed context written; ready for research)
+**Current focus:** Phase 8 — Authentication Extras (Phase 7 code-complete and ready to deploy)
 
 ## Current Status
 
-- **Active phase:** Phase 7 — History Improvements (Wave 0 complete; Waves 1 + 2 pending)
-- **Last action:** Phase 7 Wave 0 executed — added `vue/cypress/integration/history.spec.js` Cypress stub with `describe('History feature')` + `beforeEach` + 5 `it()` TODO blocks for HIST-01..05. No production code touched. Commit `9c86064`. (2026-05-23)
-- **Next action:** Execute Phase 7 Wave 1 (`.planning/phase-7/07-01-PLAN.md`) — router for HIST-02 (child routes `/app/history/audit` and `/app/history/builds`) + filter primitives for HIST-04/05. Note: a `feat(07-01)` commit `da6facb` already exists between the Phase 7 seed and Wave 0 — Wave 1 executor should reconcile (likely partial Wave 1 work was already started).
+- **Active phase:** Phase 7 — History Improvements (code complete; deploy + Phase 9 UAT pending)
+- **Last action:** Phase 7 Waves 0+1+2 shipped on `thinx-staging` — Cypress stub `history.spec.js` (`9c86064`); child routes `/app/history/audit` + `/app/history/builds` (`da6facb`); `<b-tabs>` v-model + filter primitives (`e21b111`); UI for date range + flag filter + per-row Expand toggle (`d4d7513`). HIST-03 ships as variant (b) — inline Expand toggle, NOT a modal (the modal was deliberately removed in `0ab3117`). `yarn build` green. Plan + research artifacts committed in `408e961`. (2026-05-23)
+- **Next action:** Deploy via parent meta-repo (`/Users/igraczech/Repositories/thinx-device-api`) submodule bump — push `thinx-staging` here, bump the `services/console` pointer in the parent, push the parent. Phase 9 (Manual UAT Review) absorbs the 5 HIST-XX human-walkthrough items in `07-HUMAN-UAT.md`.
 
 ## Phase Progress
 
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 4 — Device Management | Complete (code; deploy + final UAT pending — 2026-05-22) |
 | 5 — Real Dashboard | Complete (UAT 3/4 pass; G1 deferred — 2026-05-23) |
 | 6 — User Profile & Account Settings | Complete (code + AI-UAT; remaining browser items in Phase 9 — 2026-05-23) |
-| 7 — History Improvements | In Progress (Wave 0 done — `9c86064`; Waves 1 + 2 pending) |
+| 7 — History Improvements | Complete (code; deploy + Phase 9 UAT pending — 2026-05-23) |
 | 8 — Authentication Extras | Pending (gained session-expiry timer fix per 06 UAT) |
 | 9 — Manual UAT Review | Pending (aggregates UAT carry-over from phases 3, 4, 5, 6) |
 
@@ -58,5 +58,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-23T20:03:06.000Z
-Stopped at: Phase 7 Wave 0 complete (history.spec.js stub committed; SUMMARY at .planning/phase-7/07-00-SUMMARY.md)
+Last session: 2026-05-23T20:15:00.000Z
+Stopped at: Phase 7 code complete; ready for parent meta-repo deploy + Phase 9 UAT folds in 5 HIST-XX items from 07-HUMAN-UAT.md
