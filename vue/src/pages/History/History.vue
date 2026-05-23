@@ -1,7 +1,6 @@
 <template>
   <div>
     <b-breadcrumb>
-      <b-breadcrumb-item>YOU ARE HERE</b-breadcrumb-item>
       <b-breadcrumb-item active>History</b-breadcrumb-item>
     </b-breadcrumb>
     <h1 class="page-title">History</h1>
@@ -58,8 +57,13 @@
               <td>
                 <b-badge :variant="item.status === 'OK' ? 'success' : 'danger'">{{ item.status || '—' }}</b-badge>
               </td>
-              <td>
-                <b-button v-if="item.log" size="sm" variant="outline-secondary" @click="showLog(item)">View</b-button>
+              <td style="max-width:600px">
+                <pre
+                  v-if="item.log && (Array.isArray(item.log) ? item.log.length : item.log.length)"
+                  class="mb-0"
+                  style="white-space:pre-wrap;word-break:break-word;max-height:120px;overflow:hidden;font-size:11px;background:#f8f9fa;padding:6px;border-radius:3px;margin:0"
+                >{{ logSnippet(item) }}</pre>
+                <span v-else class="text-muted">—</span>
               </td>
             </tr>
           </tbody>
@@ -67,11 +71,6 @@
       </b-tab>
 
     </b-tabs>
-
-    <!-- Log Viewer Modal -->
-    <b-modal id="log-viewer-modal" :title="logTitle" ok-only ok-title="Close" size="xl">
-      <pre style="max-height:500px;overflow-y:auto;font-size:12px;background:#1e1e1e;color:#ddd;padding:1rem;border-radius:4px">{{ logContent }}</pre>
-    </b-modal>
   </div>
 </template>
 
@@ -93,8 +92,6 @@ export default {
       buildlog: [],
       auditSearch: '',
       buildSearch: '',
-      logTitle: '',
-      logContent: '',
     };
   },
   computed: {
@@ -133,10 +130,10 @@ export default {
       if (flag === 'info') return 'info';
       return 'secondary';
     },
-    showLog(item) {
-      this.logTitle = item.name || 'Build Log';
-      this.logContent = Array.isArray(item.log) ? item.log.join('\n') : (item.log || '');
-      this.$bvModal.show('log-viewer-modal');
+    logSnippet(item) {
+      const text = Array.isArray(item.log) ? item.log.join('\n') : (item.log || '');
+      const MAX = 400;
+      return text.length > MAX ? text.slice(0, MAX) + '…' : text;
     },
     loadData() {
       this.loading = true;
