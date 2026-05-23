@@ -177,12 +177,18 @@ export default {
     },
     async saveProfile() {
       this.saving = true;
-      const result = await this.updateProfile({
+      // Merge form fields into existing info — the backend writes the full info
+      // blob, so sending only form fields would wipe email, notifications,
+      // security, tags, transformers, goals, avatar. Same data-loss pattern as
+      // saveNotifications fixed in 06-02; missed there for saveProfile.
+      const existingInfo = (this.profile && this.profile.info) ? Object.assign({}, this.profile.info) : {};
+      const info = Object.assign(existingInfo, {
         first_name: this.form.first_name,
         last_name: this.form.last_name,
         mobile_phone: this.form.mobile_phone,
         timezone: this.form.timezone,
       });
+      const result = await this.updateProfile(info);
       this.saving = false;
       if (result.success) this.message = 'Profile updated.';
       else this.error = result.message || 'Failed to update profile.';
