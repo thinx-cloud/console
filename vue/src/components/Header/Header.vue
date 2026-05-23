@@ -50,7 +50,7 @@
         <template slot="button-content">
           <i class="fi flaticon-settings-10 px-2" />
         </template>
-        <b-dropdown-item><i class="la la-user" /> My Account</b-dropdown-item>
+        <b-dropdown-item to="/app/profile"><i class="la la-user" /> My Account</b-dropdown-item>
         <b-dropdown-divider />
         <b-dropdown-item>
           Inbox &nbsp;&nbsp;<b-badge
