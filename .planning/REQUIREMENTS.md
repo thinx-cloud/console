@@ -100,9 +100,9 @@
 
 ### Admin Features (v1.1 — Phase 10)
 
-- [ ] **ADMIN-01**: Admin users can view a paginated list of all platform users at `/app/admin/users` with `{ owner, username, email, admin, created, last_login, device_count }` per row. Non-admin users get 403 on `/api/v2/admin/users` and the route either redirects or shows an access-denied page. (`device_count: 0` placeholder for v1; real count is a v1.1 follow-up — locked 2026-05-24 OQ-B.)
-- [ ] **ADMIN-02**: Admin users can force-logout a specific non-admin user via a "Revoke sessions" per-row action. Backend writes a Redis blacklist entry keyed by `revoked:owner:{owner}` storing `Date.now()`; the auth middleware 401s any subsequent request whose JWT `iat * 1000 < blacklist_ts`. Each revocation emits a `flags: ['admin']` audit log via `alog.log()`.
-- [ ] **ADMIN-03**: Admin users can impersonate a non-admin user for 15 minutes. Backend `POST /api/v2/admin/impersonate` returns a JWT with `impersonator_owner` claim + 900s exp; rejects when target's `admin === true`. Frontend mounts an `ImpersonationBanner` above `<router-view>` showing the target username + MM:SS countdown + an Exit button. Every authenticated action under an impersonation token writes an audit-log entry with `flags: ['admin','impersonation']`. Exit clears the impersonation tokens and pushes `/login`.
+- [x] **ADMIN-01**: Admin users can view a paginated list of all platform users at `/app/admin/users` with `{ owner, username, email, admin, created, last_login, device_count }` per row. Non-admin users get 403 on `/api/v2/admin/users` and the route either redirects or shows an access-denied page. (`device_count: 0` placeholder for v1; real count is a v1.1 follow-up — locked 2026-05-24 OQ-B.)
+- [x] **ADMIN-02**: Admin users can force-logout a specific non-admin user via a "Revoke sessions" per-row action. Backend writes a Redis blacklist entry keyed by `revoked:owner:{owner}` storing `Date.now()`; the auth middleware 401s any subsequent request whose JWT `iat * 1000 < blacklist_ts`. Each revocation emits a `flags: ['admin']` audit log via `alog.log()`.
+- [x] **ADMIN-03**: Admin users can impersonate a non-admin user for 15 minutes. Backend `POST /api/v2/admin/impersonate` returns a JWT with `impersonator_owner` claim + 900s exp; rejects when target's `admin === true`. Frontend mounts an `ImpersonationBanner` above `<router-view>` showing the target username + MM:SS countdown + an Exit button. Every authenticated action under an impersonation token writes an audit-log entry with `flags: ['admin','impersonation']`. Exit clears the impersonation tokens and pushes `/login`.
 
 ## v2 Requirements
 
@@ -186,9 +186,9 @@
 | AUTH-01 | Phase 8 | Verified (Phase 9 live-walk 2026-05-24) |
 | AUTH-02 | Phase 8 | Page + both form modes + Login link verified; full email round-trip **FAILS** — `POST /api/v2/password/reset` returns 403 (gap **G8**) |
 | AUTH-03 | Phase 8 | Verified (teardown live; G5 router-guard `3e720d4`; foreground 1-hour timer confirmed Phase 9 user-walk 2026-05-24); laptop-sleep belt-and-suspenders walk still pending |
-| ADMIN-01 | Phase 10 | Pending (planning — research complete 2026-05-24) |
-| ADMIN-02 | Phase 10 | Pending (planning — research complete 2026-05-24) |
-| ADMIN-03 | Phase 10 | Pending (planning — research complete 2026-05-24) |
+| ADMIN-01 | Phase 10 | Verified (Wave 2 ship 2026-05-24 — Cypress ADMIN-01 green; admin user-list with custom pagination live-walked per 10-HUMAN-UAT.md) |
+| ADMIN-02 | Phase 10 | Code-verified (Wave 1 backend `87b748b3`..`0f93c58a` + Wave 2 frontend `782df94`..`358bd95`); live revoke-then-second-browser-401 walk HN-deferred (Cypress skipped to avoid locking out the CI fixture; safe walk per 10-HUMAN-UAT.md after fresh fixture seed) |
+| ADMIN-03 | Phase 10 | Code-verified (Wave 1 backend + Wave 2 frontend incl. ImpersonationBanner + countdown + exit-to-login); live impersonate walk HN-deferred (needs a non-admin target account); negative case (Impersonate hidden on admin rows) Verified via Cypress ADMIN-03 negative |
 
 **Coverage:**
 - v1 requirements: 54 total (AUTH-03 added during Phase 8 — session-hygiene timer was tracked in ROADMAP since Wave-0 plan but formalized as a v1 line item on 2026-05-24)
