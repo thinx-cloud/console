@@ -39,7 +39,16 @@ export default {
         } catch (error) {
             return false
         }
-      }
+      },
+      async requestPasswordReset(_, { email }) {
+        return await this.$api.$post('/password/reset', JSON.stringify({ email }));
+      },
+      async confirmPasswordReset(_, { owner, reset_key, activation, password, rpassword }) {
+        const body = { password, rpassword, owner };
+        if (reset_key) body.reset_key = reset_key;
+        if (activation) body.activation = activation;
+        return await this.$api.$post('/password/set', JSON.stringify(body));
+      },
     },
     getters: {
         isAuthenticated(state) {
