@@ -76,7 +76,7 @@
 </template>
 
 <script>
-import { mapState, mapActions, mapMutations, mapGetters } from "vuex";
+import { mapState, mapActions, mapGetters } from "vuex";
 import Notifications from "@/components/Notifications/Notifications";
 
 export default {
@@ -110,13 +110,7 @@ export default {
       fetchProfile: "profile/fetchProfile",
       switchSidebar: "layout/switchSidebar",
       changeSidebarActive: "layout/changeSidebarActive",
-      removeAccessToken: "auth/removeAccessToken",
-      removeRefreshToken: "auth/removeRefreshToken",
-    }),
-    ...mapMutations({ 
-      setAccessToken: "auth/setAccessToken", 
-      setRefreshToken: "auth/setRefreshToken", 
-      setUser: "auth/setUser" 
+      clearSession: "auth/clearSession",
     }),
     ...mapGetters({ getProfile: "profile/getProfile" }),
     switchSidebarMethod() {
@@ -130,11 +124,8 @@ export default {
         this.changeSidebarActive(paths.join("/"));
       }
     },
-    logout() {
-      window.localStorage.removeItem("authenticated");
-      this.setUser(null);
-      this.removeAccessToken();
-      this.removeRefreshToken();
+    async logout() {
+      await this.$store.dispatch('auth/clearSession');
       this.$router.push("/login");
     },
   },
