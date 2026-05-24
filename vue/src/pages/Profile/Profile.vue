@@ -136,11 +136,8 @@
             </table>
           </b-card>
           <b-card border-variant="secondary">
-            <p class="text-muted mb-0">
-              <i class="la la-info-circle mr-1"></i>
-              Admin-management features (user list, session revocation, impersonation) are not yet available in this API version.
-              This tab will be expanded when backend admin endpoints are implemented.
-            </p>
+            <p class="mb-2">Open the admin console to manage users, revoke sessions, and impersonate non-admin users for support.</p>
+            <router-link to="/app/admin/users" class="btn btn-primary btn-sm">Open Admin Console</router-link>
           </b-card>
         </div>
       </b-tab>
