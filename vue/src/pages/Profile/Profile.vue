@@ -81,7 +81,22 @@
             <table class="table table-sm table-borderless mb-0">
               <tr><td class="text-muted" style="width:120px">Username</td><td>{{ profile && profile.username }}</td></tr>
               <tr><td class="text-muted">Email</td><td>{{ profile && profile.info && profile.info.email }}</td></tr>
-              <tr><td class="text-muted">Owner ID</td><td><code style="font-size:11px">{{ profile && profile.owner }}</code></td></tr>
+              <tr>
+                <td class="text-muted">Owner ID</td>
+                <td>
+                  <div class="d-flex align-items-center" style="gap:6px">
+                    <code style="font-size:11px;word-break:break-all;flex:1;min-width:0">{{ profile && profile.owner }}</code>
+                    <b-button
+                      v-if="profile && profile.owner"
+                      size="sm"
+                      variant="link"
+                      class="p-0"
+                      title="Copy Owner ID to clipboard"
+                      @click="copyToClipboard(profile.owner)"
+                    ><i class="la la-copy"></i></b-button>
+                  </div>
+                </td>
+              </tr>
             </table>
           </b-card>
 
@@ -98,7 +113,22 @@
           <b-card title="Admin Status" class="mb-3">
             <table class="table table-sm table-borderless mb-0">
               <tr><td class="text-muted" style="width:140px">Username</td><td>{{ profile && profile.username }}</td></tr>
-              <tr><td class="text-muted">Owner ID</td><td><code style="font-size:11px">{{ profile && profile.owner }}</code></td></tr>
+              <tr>
+                <td class="text-muted">Owner ID</td>
+                <td>
+                  <div class="d-flex align-items-center" style="gap:6px">
+                    <code style="font-size:11px;word-break:break-all;flex:1;min-width:0">{{ profile && profile.owner }}</code>
+                    <b-button
+                      v-if="profile && profile.owner"
+                      size="sm"
+                      variant="link"
+                      class="p-0"
+                      title="Copy Owner ID to clipboard"
+                      @click="copyToClipboard(profile.owner)"
+                    ><i class="la la-copy"></i></b-button>
+                  </div>
+                </td>
+              </tr>
               <tr><td class="text-muted">Admin</td><td><b-badge variant="success">Yes</b-badge></td></tr>
             </table>
           </b-card>
@@ -230,6 +260,19 @@ export default {
       } else {
         this.error = (result && result.message) || 'Failed to upload avatar.';
       }
+    },
+    copyToClipboard(value) {
+      // Mirror the Apikeys.vue copy pattern — async clipboard API with a
+      // document.execCommand fallback, plus a toast confirmation.
+      navigator.clipboard.writeText(value).catch(() => {
+        const el = document.createElement('textarea');
+        el.value = value;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      });
+      this.$toasted.show('Copied to clipboard', { type: 'success', duration: 2000 });
     },
     async confirmDeleteAccount() {
       const confirmed = await this.$bvModal.msgBoxConfirm(
