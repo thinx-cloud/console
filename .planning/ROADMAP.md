@@ -293,6 +293,67 @@ Plans:
 
 ---
 
+## Phase 10 — Admin Features (v1.1)
+
+**Status:** Seed (decisions locked 2026-05-24; research complete 2026-05-24 — `10-RESEARCH.md`, 10 risks identified, 5 CONTEXT.md corrections)
+**Effort:** L
+**Goal:** Replace the Profile.vue Admin tab placeholder with three real capabilities (user list, session revocation, impersonation) so admins can manage the platform without ever opening the legacy console.
+
+**Delivers:**
+
+*Backend (parent monorepo `/Users/igraczech/Repositories/thinx-device-api/`):*
+- `lib/middleware/requireAdmin.js` — admin-gating middleware factory using `app.owner.profile(owner, ...)` for the `admin === true` check
+- `lib/router.admin.js` — `GET /api/v2/admin/users` (paginated `{owner, username, email, admin, created, last_login, device_count}` with `device_count: 0` placeholder for v1), `DELETE /api/v2/admin/session/:owner` (Redis blacklist write), `POST /api/v2/admin/impersonate` (15-min JWT with `impersonator_owner` claim; rejects admin targets)
+- `lib/thinx/jwtlogin.js` — new `sign_with_impersonation()` method
+- `lib/thinx/audit.js` — 1-line patch so `flags` accepts either a string or array (non-breaking)
+- `lib/router.js` — extend the JWT-verify block at 102-113 with Redis blacklist check + impersonation audit log + `req.session.impersonator_owner` injection
+- `thinx-core.js` — register the new admin router
+
+*Frontend (console submodule `services/console/vue/`):*
+- `/app/admin/users` route + `AdminUsers.vue` page using the project's plain `<table>` + custom-pagination convention (NOT `<b-table>` — that's the locked CONTEXT.md correction)
+- Per-row "Revoke sessions" + "Impersonate" actions with `$bvModal.msgBoxConfirm` confirmation (mirrors `Profile.vue#confirmDeleteAccount`)
+- `vue/src/store/admin.js` — Vuex module with `fetchUsers`, `revokeSession`, `impersonate` actions
+- `vue/src/components/ImpersonationBanner/ImpersonationBanner.vue` — sticky banner above `<router-view>` showing target username + MM:SS countdown + Exit button
+- `vue/src/components/Sidebar/Sidebar.vue` — conditional `<NavLink>` to `/app/admin/users` (visible only when `profile.admin === true`) — locked 2026-05-24 OQ-A
+- `vue/src/pages/Profile/Profile.vue` — replace lines 138-144 placeholder `<b-card>` with `<router-link>` to admin console
+- `vue/src/Routes.js` — add `/app/admin/users` route + extend `beforeEach` guard with admin-path check
+
+**Plans:** 4 plans
+
+**Wave 0** — Cypress spec stub (no production code):
+- [ ] 10-00-PLAN.md — `admin.spec.js` covering ADMIN-01..03 TODO `it()` blocks
+
+**Wave 1** *(parent-repo PR; blocked on Wave 0)*:
+- [ ] 10-01-PLAN.md — Backend: `requireAdmin` middleware + `router.admin.js` (3 endpoints) + Redis blacklist + `audit.js` flag-array patch + `sign_with_impersonation` JWT method + `router.js` blacklist check
+
+**Wave 2** *(submodule PR; blocked on Wave 1)*:
+- [ ] 10-02-PLAN.md — Frontend: `/app/admin/users` route + `AdminUsers.vue` + `ImpersonationBanner.vue` + `store/admin.js` + audit-log surfacing via existing History page
+
+**Wave 3** *(submodule PR; blocked on Wave 2)*:
+- [ ] 10-03-PLAN.md — Profile.vue Admin tab swap + Sidebar.vue conditional NavLink + Cypress green-flip
+
+**Requirements:** ADMIN-01, ADMIN-02, ADMIN-03
+
+**Cross-cutting constraints:**
+- **NO new npm packages** — keep `redis@5.8.2 (.legacy())` callbacks (NOT ioredis), `jsonwebtoken@9.0.3`, `nano@10.1.4`, Vue 2.6 + BootstrapVue 2.21.2 + Vuex
+- `mapGetters` MUST stay in `methods:` (Phase 6 G1 anti-regression)
+- Plain `<table class="table table-striped">` + custom pagination — `<b-table>` and `<b-pagination>` are not used anywhere in the project
+- Audit writes go through `alog.log()` (direct library call), NOT a POST endpoint — `router.logs.js` exposes GETs only
+- `req.session.owner` is the owner-ID string, NOT an object — `requireAdmin` must `userlib.get()` per request to check `admin`
+- Impersonate-an-admin returns 403 by spec (locked)
+- Cross-repo coupling: Wave 1 lands in the parent monorepo; Waves 2 + 3 land in the console submodule; deploy via parent submodule-bump per memory `deployment-console-thinx-cloud`
+
+**UAT:**
+- Admin logs in, opens sidebar Admin link → user list loads with N users; `device_count` shows 0 (v1 placeholder)
+- Click "Revoke sessions" on a non-admin row → confirm modal → success → that user's existing tokens are dead (their next API call returns 401)
+- Click "Impersonate" on a non-admin row → confirm modal → impersonation banner appears with the target's username + MM:SS countdown
+- Under impersonation: profile/devices/etc render the target's data; every action logs an audit entry with `flags: ['admin','impersonation']` visible in History
+- Click "Exit impersonation" → banner disappears; pushed to `/login`; re-login as admin works normally
+- Non-admin user gets 403 on every `/api/v2/admin/*` endpoint; visiting `/app/admin/users` redirects to dashboard
+- Impersonating an admin target → 403 returned, no token issued, UI shows error toast
+
+---
+
 ## Phase Summary
 
 | Phase | Description | Effort | Requirements | Status |
@@ -306,9 +367,9 @@ Plans:
 | 7 | History Improvements | M | HIST-01–05 | Code complete (UAT in Phase 9 — 2026-05-23) |
 | 8 | Authentication Extras | S | AUTH-01–03 | Complete (Phase 9 UAT 2026-05-24; G5 router-guard shipped `3e720d4`) |
 | 9 | Manual UAT Review | M | aggregate of carry-over UAT items | In progress (live-walked 2026-05-24) |
-| 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Seed (decisions locked 2026-05-24) |
+| 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Research complete (2026-05-24 — `10-RESEARCH.md` + locked OQ-A/OQ-B); planning next |
 
-**Total v1 requirements:** 54 across 9 phases (Phase 10 adds 3 v1.1 requirements: ADMIN-01..03)
+**Total v1 requirements:** 54 across 9 phases. Phase 10 adds 3 v1.1 requirements (ADMIN-01..03 — see `REQUIREMENTS.md`).
 
 ---
 

@@ -1,8 +1,10 @@
 ---
 phase: 10-admin-features
-status: seed (decisions locked)
+status: ready for planning (decisions locked, research complete)
 created: 2026-05-24
+updated: 2026-05-24 (research + OQ-A/OQ-B locked)
 seeded_from: .planning/admin-features-plan.md
+research: .planning/phase-10/10-RESEARCH.md
 ---
 
 # Phase 10 — Admin Features — Seed Context
@@ -22,8 +24,22 @@ Replace the Profile.vue Admin tab placeholder (lines 105-111: "Admin-management 
 | Question | Decision | Implication |
 |---|---|---|
 | Impersonate admins? | **Defer — non-admin only for v1 of Phase 10** | Backend `POST /api/v2/admin/impersonate` must reject when target's `admin === true`. UI hides the Impersonate action on admin rows. Plan a follow-up phase to add cross-admin impersonation behind a multi-admin approval gate if/when real demand surfaces. |
-| Session-revocation granularity? | **All sessions (coarse)** | Single "force logout user X" button. Redis blacklist keyed by `owner-id + issued-after-timestamp`; every authenticated request checks the blacklist. No session-tracking table needed. |
-| Audit-log shape for impersonation? | **Reuse `/logs/audit` with `flags: ['admin', 'impersonation']`** | Every action taken under an impersonation token logs to the existing audit endpoint with the impersonator's `owner` in the body. Surfaces automatically in the Phase-7 History page. No new endpoint / table for impersonation lifecycle. |
+| Session-revocation granularity? | **All sessions (coarse)** | Single "force logout user X" button. Redis blacklist keyed by `revoked:owner:{owner}` storing `Date.now()` (ms); every authenticated request gets a `redis.get` after JWT verify and 401s if `decoded.iat * 1000 < blacklist_ts`. No session-tracking table needed. |
+| Audit-log shape for impersonation? | **Use `alog.log()` directly with multi-flag `['admin', 'impersonation']` (NOT a POST endpoint — see correction §C3 below)** | Every action under an impersonation token calls `alog.log(impersonator_owner, message, ['admin','impersonation'], cb)`. Audit lib gets a 1-line patch so `flags` accepts either a string or an array; existing string-flag callers continue to work. Surfaces in the Phase-7 History page automatically. |
+| **OQ-A: Sidebar nav entry for the Admin Console?** | **Add conditional `<NavLink>` to `Sidebar.vue` (Wave 3)** — locked 2026-05-24 | Sidebar shows the link only when `profile.admin === true`. Zero impact on non-admins; big discoverability win for admins. Mirrors the existing conditional-nav pattern in `Sidebar.vue`. |
+| **OQ-B: Device-count column in user list?** | **Ship `device_count: 0` placeholder for v1** — locked 2026-05-24 | Backend `GET /api/v2/admin/users` returns `device_count: 0` for now. Real count is a v1.1 follow-up (CouchDB view or Redis cache once user count + traffic justify the work). Admins can still click into individual users for device details. |
+
+## Codebase corrections discovered during research (2026-05-24)
+
+These five corrections came out of direct code inspection. They **do NOT change the locked decisions above**, but they DO change implementation wording. The planner MUST honor them.
+
+| # | CONTEXT.md originally said | Actual codebase shape | Source |
+|---|---|---|---|
+| C1 | `<b-table>` mirroring Devices.vue | The project does NOT use `<b-table>` anywhere. Every list view uses plain `<table class="table table-striped">` + `v-for`. Custom pagination (two `<b-button>`s + a counter span); `<b-pagination>` also unused. | `10-RESEARCH.md §0.1`; `vue/src/pages/Devices/Devices.vue:47-92` |
+| C2 | "ioredis usage patterns" | Backend uses `redis@5.8.2` in `.legacy()` v3-callback mode. All ops are `redis.get(key, cb)`, `redis.set(key, val)` — NO async/await. | `10-RESEARCH.md §0.2`; `thinx-core.js:99-100`; `package.json:76` |
+| C3 | "POSTs to existing `/logs/audit`" | There is NO POST audit-log endpoint. Audit writes go through `alog.log(owner, message, flag, callback)` (direct library call). `router.logs.js` exposes GETs only. | `10-RESEARCH.md §0.3`; `lib/thinx/audit.js:13-29`; `lib/router.logs.js:137,148` |
+| C4 | `flags: ['admin', 'impersonation']` already supported | `alog.log()` currently stores `flags: [flag]` — always a single-element array. Needs a 1-line patch: `flags: Array.isArray(flag) ? flag : [flag]` (non-breaking — existing string-flag callers work unchanged). | `10-RESEARCH.md §0.4`; `lib/thinx/audit.js:13-29` |
+| C5 | `req.session.owner.admin === true` middleware | `req.session.owner` is a string (the owner ID), NOT an object. The auth middleware sets `req.session.owner = payload.username`. Admin gating MUST call `app.owner.profile(owner, cb)` and check `profile.admin === true`. | `10-RESEARCH.md §0.5`; `lib/router.js:102-113`; `lib/thinx/owner.js:296-322` |
 
 ## Scope locked
 
@@ -56,12 +72,14 @@ Replace the Profile.vue Admin tab placeholder (lines 105-111: "Admin-management 
 - Backend admin middleware should reuse the existing session-check helper from `lib/router.profile.js` / `lib/router.user.js` patterns.
 - JWT changes: add a `jti` claim to all newly-issued tokens (modify `lib/thinx/jwtlogin.js:83-115`). The session blacklist could key off `jti` alone, but the simpler `(owner, iat)` form requires no JWT-shape change for revocation and just an extra `iat` check in the auth middleware. Recommend the `(owner, iat)` form for Phase 10; add `jti` only if/when per-session revocation lands.
 
-## Suggested wave breakdown
+## Wave breakdown (confirmed by research 2026-05-24)
 
 - **Wave 0** — Cypress stub `vue/cypress/integration/admin.spec.js` covering the three capabilities. No production code.
-- **Wave 1** — Backend: `lib/router.admin.js` + admin middleware + Redis session blacklist + the three endpoints (`GET /admin/users`, `DELETE /admin/session/:owner`, `POST /admin/impersonate`).
-- **Wave 2** — Frontend: `/app/admin/users` route + `AdminUsers.vue` page + impersonation banner in Layout.vue + audit-log wiring for every admin action.
-- **Wave 3** — Profile.vue Admin tab: replace placeholder with a link to `/app/admin/users`; remove the "not yet available" text. Brief docs/UAT update.
+- **Wave 1** — Backend (**parent monorepo PR**): `lib/middleware/requireAdmin.js` + `lib/router.admin.js` + Redis session blacklist + the three endpoints (`GET /admin/users`, `DELETE /admin/session/:owner`, `POST /admin/impersonate`) + `audit.js` flag-array patch + `sign_with_impersonation` JWT method + `router.js` blacklist check.
+- **Wave 2** — Frontend (**submodule PR**): `/app/admin/users` route + `AdminUsers.vue` page (plain `<table>`) + `ImpersonationBanner.vue` mounted in Layout.vue + `store/admin.js` + extend `Routes.js#beforeEach` guard with admin-path check.
+- **Wave 3** — Submodule PR: Profile.vue Admin tab swap (`<router-link>` instead of placeholder `<b-card>`) + Sidebar.vue conditional Admin NavLink (per OQ-A) + Cypress green-flip + docs.
+
+Deploy via parent submodule-bump per memory `deployment-console-thinx-cloud`. Wave 1 must merge to parent `thinx-staging` BEFORE Wave 2 can be deployed (frontend needs the backend endpoints live).
 
 ## Inputs to read before research
 

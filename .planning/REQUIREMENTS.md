@@ -98,6 +98,12 @@
 - [x] **AUTH-02**: Password reset flow ports behaviour from `src/password.html` (code complete 2026-05-24; Phase 9 UAT pending)
 - [x] **AUTH-03**: Session-expiry timer clears localStorage and redirects to `/#/login` when access JWT `exp` is reached (code complete 2026-05-24; Phase 9 UAT pending)
 
+### Admin Features (v1.1 — Phase 10)
+
+- [ ] **ADMIN-01**: Admin users can view a paginated list of all platform users at `/app/admin/users` with `{ owner, username, email, admin, created, last_login, device_count }` per row. Non-admin users get 403 on `/api/v2/admin/users` and the route either redirects or shows an access-denied page. (`device_count: 0` placeholder for v1; real count is a v1.1 follow-up — locked 2026-05-24 OQ-B.)
+- [ ] **ADMIN-02**: Admin users can force-logout a specific non-admin user via a "Revoke sessions" per-row action. Backend writes a Redis blacklist entry keyed by `revoked:owner:{owner}` storing `Date.now()`; the auth middleware 401s any subsequent request whose JWT `iat * 1000 < blacklist_ts`. Each revocation emits a `flags: ['admin']` audit log via `alog.log()`.
+- [ ] **ADMIN-03**: Admin users can impersonate a non-admin user for 15 minutes. Backend `POST /api/v2/admin/impersonate` returns a JWT with `impersonator_owner` claim + 900s exp; rejects when target's `admin === true`. Frontend mounts an `ImpersonationBanner` above `<router-view>` showing the target username + MM:SS countdown + an Exit button. Every authenticated action under an impersonation token writes an audit-log entry with `flags: ['admin','impersonation']`. Exit clears the impersonation tokens and pushes `/login`.
+
 ## v2 Requirements
 
 ### GDPR
@@ -180,10 +186,14 @@
 | AUTH-01 | Phase 8 | Verified (Phase 9 live-walk 2026-05-24) |
 | AUTH-02 | Phase 8 | Page + both form modes + Login link verified; email round-trip deferred (HN) |
 | AUTH-03 | Phase 8 | Verified (teardown live 2026-05-24; G5 router.beforeEach guard shipped `3e720d4`); 1-hour real-time wait remains HN-deferred |
+| ADMIN-01 | Phase 10 | Pending (planning — research complete 2026-05-24) |
+| ADMIN-02 | Phase 10 | Pending (planning — research complete 2026-05-24) |
+| ADMIN-03 | Phase 10 | Pending (planning — research complete 2026-05-24) |
 
 **Coverage:**
 - v1 requirements: 54 total (AUTH-03 added during Phase 8 — session-hygiene timer was tracked in ROADMAP since Wave-0 plan but formalized as a v1 line item on 2026-05-24)
-- Mapped to phases: 54
+- v1.1 requirements: 3 (ADMIN-01..03 — Phase 10 Admin Features, locked decisions 2026-05-24)
+- Mapped to phases: 57
 - Unmapped: 0 ✓
 
 **Phase 9 verification status (2026-05-24 — Phase 8 closed):**
