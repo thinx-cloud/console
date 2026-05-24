@@ -229,7 +229,7 @@ Plans:
 
 ## Phase 8 — Authentication Extras
 
-**Status:** Complete (Waves 0+1+2 shipped 2026-05-24 — Wave 1 commits `28b7d2f`, `337429d`, `099cd66`, `8878ef1`; Wave 2 commits `0295a69`, `c5207b0`, `d5053e4`, `46f566a`; Phase 9 live-walk verified AUTH-01/02/03 on 2026-05-24; G5 router.beforeEach guard carried over to Phase 9 gap closure)
+**Status:** Complete (Waves 0+1+2 shipped 2026-05-24 — Wave 1 commits `28b7d2f`, `337429d`, `099cd66`, `8878ef1`; Wave 2 commits `0295a69`, `c5207b0`, `d5053e4`, `46f566a`; Phase 9 live-walk verified AUTH-01/02/03 on 2026-05-24; G5 router.beforeEach guard shipped at `3e720d4`)
 **Effort:** S
 **Goal:** Complete auth flows missing from Vue console.
 
@@ -304,7 +304,7 @@ Plans:
 | 5 | Real Dashboard | L | DASH-01–05 | Complete (2026-05-23) |
 | 6 | User Profile & Account Settings | L | PROF-01–06 | Code complete (verified; UAT folds into Phase 9) |
 | 7 | History Improvements | M | HIST-01–05 | Code complete (UAT in Phase 9 — 2026-05-23) |
-| 8 | Authentication Extras | S | AUTH-01–03 | Complete (Phase 9 UAT 2026-05-24; G5 router-guard follow-up tracked in Phase 9) |
+| 8 | Authentication Extras | S | AUTH-01–03 | Complete (Phase 9 UAT 2026-05-24; G5 router-guard shipped `3e720d4`) |
 | 9 | Manual UAT Review | M | aggregate of carry-over UAT items | In progress (live-walked 2026-05-24) |
 | 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Seed (decisions locked 2026-05-24) |
 

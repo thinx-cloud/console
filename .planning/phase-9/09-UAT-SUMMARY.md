@@ -48,7 +48,7 @@ Cypress stub. Not re-walked here.
 | AUTH-02 initiate | pass | No-query: email-only form |
 | AUTH-02 confirm | pass | `?reset_key=...`: two-password form (toggled by `hasResetToken`) |
 | AUTH-02 link | pass | "Forgot password?" router-link on Login (`href="#/password-reset"`) |
-| AUTH-03 timer | **partial — see G5** | localStorage clear works, /login redirect doesn't survive subsequent navigations |
+| AUTH-03 timer | pass | localStorage clear works live; G5 router.beforeEach guard (`3e720d4`) now keeps subsequent navigations bounced to /login |
 | AUTH-03 belt-and-suspenders | pass (observed live) | 10× 403 chain on the user's open session triggered the pre-request check, which cleared localStorage |
 
 ## Already-resolved before Phase 9
@@ -108,18 +108,19 @@ account or by accepting the test-account mutation.
 ## Gaps discovered during the live walk
 
 ### G5 — AUTH-03 redirect doesn't survive subsequent navigations
-status: open (Phase 8 follow-up — quick task scope, ~5 LOC)
-severity: medium
-file: `vue/src/Routes.js` (add `router.beforeEach`)
+status: **closed (`3e720d4`)** — shipped 2026-05-24
+severity: medium (was)
+file: `vue/src/Routes.js` (added `router.beforeEach`)
 detail: AUTH-03 correctly tears down the session (localStorage cleared,
 store tokens nulled), but `window.location.hash = '#/login'` is a
 one-shot side-effect. Any subsequent client-side `router.push` to
-`/app/*` succeeds and leaves the page in a "ghost" state — Vue router
-renders the page, every API call 403s, no UI feedback. Discovered
-directly during the live walk against the user's expired session.
-fix: add a global `router.beforeEach((to, from, next) => { ... })`
-guard checking `store.getters['auth/isAuthenticated']` for any path
-under `/app/` and pushing `/login` if false.
+`/app/*` succeeded and left the page in a "ghost" state — Vue router
+rendered the page, every API call 403'd, no UI feedback.
+fix: global `router.beforeEach` guard now bounces any `/app/*` nav
+to `/login` when no `accessToken` is found in either store state or
+localStorage. The localStorage fallback prevents cold-reload users
+with a still-valid session from being bounced before App.vue#created
+finishes rehydration.
 detail in: `.planning/phase-8/08-HUMAN-UAT.md#G5`
 
 ### G6 — buildHash on Login footer shows "dev" instead of git SHA

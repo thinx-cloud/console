@@ -179,18 +179,18 @@
 | HIST-05 | Phase 7 | Verified (Phase 9 live-walk 2026-05-24 — URL sync + deep-link hydration) |
 | AUTH-01 | Phase 8 | Verified (Phase 9 live-walk 2026-05-24) |
 | AUTH-02 | Phase 8 | Page + both form modes + Login link verified; email round-trip deferred (HN) |
-| AUTH-03 | Phase 8 | Partial — teardown verified (localStorage clear works live); /login redirect needs router.beforeEach guard (G5 follow-up) |
+| AUTH-03 | Phase 8 | Verified (teardown live 2026-05-24; G5 router.beforeEach guard shipped `3e720d4`); 1-hour real-time wait remains HN-deferred |
 
 **Coverage:**
 - v1 requirements: 54 total (AUTH-03 added during Phase 8 — session-hygiene timer was tracked in ROADMAP since Wave-0 plan but formalized as a v1 line item on 2026-05-24)
 - Mapped to phases: 54
 - Unmapped: 0 ✓
 
-**Phase 9 verification status (2026-05-24):**
-- Verified (full pass): 12 — DASH-01, DASH-02, DASH-03, DASH-05, PROF-03, HIST-01, HIST-02, HIST-04, HIST-05, AUTH-01 (+ DEVI-01..04, DEVI-07, DEVI-08, DEVI-10..12 from Phase 4 round-2)
-- Partial / widget-only: 4 — DASH-04 (no artifact zip), HIST-03 (no builds in account), AUTH-02 (no email round-trip), AUTH-03 (G5 router guard)
-- Deferred (AC-DEST + HN): 11 — PROF-01, PROF-02, PROF-04 (negative), PROF-05, PROF-06, DEVI-05, DEVI-06, DEVI-09
+**Phase 9 verification status (2026-05-24 — Phase 8 closed):**
+- Verified (full pass): 16 — DASH-01, DASH-02, DASH-03, DASH-05, PROF-01, PROF-02, PROF-03, PROF-04 (positive), HIST-01, HIST-02, HIST-04, HIST-05, AUTH-01, AUTH-03 (+ DEVI-01..04, DEVI-07, DEVI-08, DEVI-10..12 from Phase 4 round-2)
+- Partial / widget-only: 3 — DASH-04 (no artifact zip), HIST-03 (no builds in account), AUTH-02 (no email round-trip)
+- Deferred (AC-DEST + HN): 6 — PROF-04 (negative), PROF-05, PROF-06, DEVI-05, DEVI-06, DEVI-09
 
 ---
 *Requirements defined: 2026-05-18*
-*Last updated: 2026-05-24 after Phase 9 live walk*
+*Last updated: 2026-05-24 after Phase 8 closeout (G5 router-guard shipped `3e720d4`; AUTH-03 verified)*
