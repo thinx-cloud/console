@@ -23,8 +23,11 @@
           <b-form-group label="Mobile Phone">
             <b-form-input v-model="form.mobile_phone" type="tel" />
           </b-form-group>
-          <b-form-group label="Timezone">
-            <b-form-input v-model="form.timezone" placeholder="e.g. Europe/Prague" />
+          <b-form-group
+            label="Timezone"
+            description="IANA tz database name (e.g. Europe/Prague, America/Los_Angeles). The server computes the offset (with DST) when needed."
+          >
+            <b-form-input v-model="form.timezone_abbr" placeholder="e.g. Europe/Prague" />
           </b-form-group>
           <b-button type="submit" variant="primary" :disabled="saving">
             {{ saving ? 'Saving...' : 'Save Profile' }}
@@ -162,7 +165,12 @@ export default {
         first_name: '',
         last_name: '',
         mobile_phone: '',
-        timezone: '',
+        // Matches the legacy storage shape (lib/thinx/owner.js + device.js consume
+        // info.timezone_abbr; submitProfile in legacy thinx-api.js writes it).
+        // The bare `info.timezone` key that earlier Vue versions wrote is silently
+        // ignored by the device side — that was the persistence bug reported
+        // 2026-05-24.
+        timezone_abbr: '',
       },
       notifForm: {
         all: false,
@@ -196,7 +204,10 @@ export default {
         this.form.first_name = info.first_name || '';
         this.form.last_name = info.last_name || '';
         this.form.mobile_phone = info.mobile_phone || '';
-        this.form.timezone = info.timezone || '';
+        // Read `timezone_abbr` (canonical); fall back to the bare `timezone` key
+        // for accounts whose only timezone value came from the earlier broken
+        // Vue saveProfile path.
+        this.form.timezone_abbr = info.timezone_abbr || info.timezone || '';
         const notif = info.notifications || {};
         this.notifForm.all = !!notif.all;
         this.notifForm.important = !!notif.important;
@@ -215,12 +226,23 @@ export default {
         first_name: this.form.first_name,
         last_name: this.form.last_name,
         mobile_phone: this.form.mobile_phone,
-        timezone: this.form.timezone,
+        timezone_abbr: this.form.timezone_abbr,
       });
+      // Strip the legacy bare `timezone` key if present — it was the buggy field
+      // name Vue used briefly; legacy + device.js consumers only read
+      // timezone_abbr, so clearing it on save avoids two fields drifting out of
+      // sync in the stored info blob.
+      if (Object.prototype.hasOwnProperty.call(info, 'timezone')) delete info.timezone;
       const result = await this.updateProfile(info);
       this.saving = false;
-      if (result.success) this.message = 'Profile updated.';
-      else this.error = result.message || 'Failed to update profile.';
+      if (result.success) {
+        // Refresh the local copy so the form re-hydrates from the just-saved info
+        // on the next visit/reload without a fetchProfile round-trip.
+        this.profile = this.getProfile();
+        this.message = 'Profile updated.';
+      } else {
+        this.error = result.message || 'Failed to update profile.';
+      }
     },
     async saveNotifications() {
       this.saving = true;
