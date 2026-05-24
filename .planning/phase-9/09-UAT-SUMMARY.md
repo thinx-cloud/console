@@ -123,15 +123,12 @@ with a still-valid session from being bounced before App.vue#created
 finishes rehydration.
 detail in: `.planning/phase-8/08-HUMAN-UAT.md#G5`
 
-### G6 — buildHash on Login footer shows "dev" instead of git SHA
-status: open (CI config follow-up, cosmetic)
-severity: low
+### G6 — buildHash on Login footer shows empty instead of git SHA
+status: **closed** — console-side `a462ff8`, parent-side `d5169e61` (also the deploy commit landing G5 + G6)
+severity: low (was)
 file: parent `.circleci/config.yml` `build-vue-console` job and console
 repo `.circleci/config.yml` `vue` job
-fix: add `--build-arg VUE_APP_BUILD_HASH=$(echo $CIRCLE_SHA1 | cut -c -7)`
-to both jobs' `extra_build_args` so the Login page footer shows the
-real commit SHA (`Login.vue:110` already reads
-`process.env.VUE_APP_BUILD_HASH || 'dev'`).
+fix: both jobs' `extra_build_args` now carry `--build-arg VUE_APP_BUILD_HASH=$(echo $CIRCLE_SHA1 | cut -c -7)`; `vue/Dockerfile` declares the matching `ARG VUE_APP_BUILD_HASH` + `ENV VUE_APP_BUILD_HASH=${VUE_APP_BUILD_HASH}` (lines 24 / 45). Login footer now reads the first 7 chars of `$CIRCLE_SHA1` instead of the empty default. User-facing verification step is captured in `09-USER-CHECKLIST.md` section 0.
 detail in: `.planning/phase-8/08-HUMAN-UAT.md#G6`
 
 ## REQUIREMENTS.md traceability flips
