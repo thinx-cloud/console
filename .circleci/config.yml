@@ -194,17 +194,17 @@ workflows:
       #           - mainx
 
       # TODO: make sure thinx-docker-repo and sonarcloud exist; thinx-docker-repo should be called console-config-production and console-config-public
-      - legacy:
-          name: Release legacy console
-          context:
-            - dockerhub
-            - thinx-docker-repo
-            - sonarcloud
-            - console
-          filters:
-            branches:
-              only:
-                - thinx-staging
+      # - legacy:
+      #     name: Release legacy console
+      #     context:
+      #       - dockerhub
+      #       - thinx-docker-repo
+      #       - sonarcloud
+      #       - console
+      #     filters:
+      #       branches:
+      #         only:
+      #           - thinx-staging
 
       - vue:
           name: Build and Publish Vue console
