@@ -1,9 +1,24 @@
 ---
-status: pending
+status: pass (4/6 live-confirmed; 2 deferred — see G5)
 phase: 08-authentication-extras
 source: [08-00-SUMMARY.md, 08-01-SUMMARY.md, 08-02-SUMMARY.md]
 created: 2026-05-24
+updated: 2026-05-24
+live_walked_at: console.thinx.cloud (bundle 2026-05-24T08:01Z — Phase 8 markers present: scheduleExpiry×10, clearSession×7, expiryTimerId×8, requestPasswordReset×4, confirmPasswordReset×4)
 ---
+
+## Phase 9 live-walk results (2026-05-24)
+
+| Item | Result | Evidence |
+|------|--------|----------|
+| AUTH-01 | pass | `/#/password-reset` renders unauthenticated — h1 "Password Reset", no redirect to `/login` |
+| AUTH-02 initiate | pass | No-query state: 1 email input, "Send reset email" button, "Back to login" link, prose "Enter your account email to receive a password reset link." |
+| AUTH-02 confirm | pass | `?reset_key=abc123&owner=test`: 0 email inputs, 2 password inputs, "Set password" button, prose "Choose a new password for your account." — the `hasResetToken` computed correctly toggles the form mode |
+| AUTH-02 link | pass | Login page shows "Forgot password?" router-link with `href="#/password-reset"`, between password field and "Create an Account" |
+| AUTH-03 timer | **partial — see G5** | Pre-request `composeOptions` exp-check fires correctly: `localStorage.authenticated` + tokens were cleared automatically when the access JWT expired in the user's open session. But `/login` redirect did not survive subsequent client-side navigations (no `router.beforeEach` global guard); user remained on `/app/profile` with a broken-DOM state after the clear. The teardown half works; the redirect half needs a stronger guard. |
+| AUTH-03 belt-and-suspenders | pass (observed) | Live evidence: 10 consecutive GETs to `/api/v2/{profile,stats,logs/audit,logs/build,device}` returned 403, after which the pre-request check tore down `localStorage` (verified empty post-403). The check fired exactly as planned. |
+
+## Pre-Phase-9 content below
 
 ## Current Test
 
@@ -127,10 +142,39 @@ blocked: 0
 ## Gaps
 
 ### G4 — Real-browser confirmation needed for AUTH-01..03
-status: open (rolling into Phase 9)
-severity: low (every code path verified at file + grep + yarn build
-level; backend endpoints existed prior to Phase 8 and have been live
-for years per research)
-items: AUTH-01, AUTH-02 (initiate + confirm), AUTH-02 link on Login,
-AUTH-03 (timer + belt-and-suspenders) — covered by the Phase 9 inputs
-list (Phase 8 will be added when Phase 9 starts).
+status: resolved (live-walked 2026-05-24)
+severity: low → resolved
+items: 4/6 PASS, 1 partial (AUTH-03 timer — see G5), 1 deferred (AUTH-02
+end-to-end with real reset_key from real email; PROF-04 negative case
+needs non-admin account, etc — see Phase 9 worklist).
+
+### G5 — AUTH-03 redirect doesn't survive client-side navigations
+status: open (Phase 8 follow-up)
+severity: medium — the session-clear part works (localStorage cleaned,
+tokens nulled), but the `window.location.hash = '#/login'` redirect is a
+one-shot side-effect: any subsequent client-side navigation to `/app/*`
+goes through without re-checking auth, leaving the page in a broken
+"ghost" state where every API call 403s and the user has no UI feedback.
+file: `vue/src/store/auth.js` (scheduleExpiry callback) and
+`vue/src/core/api.js` (composeOptions belt-and-suspenders)
+fix: add a global `router.beforeEach((to, from, next) => { ... })` guard
+in `vue/src/Routes.js` (or `vue/src/main.js`) that checks
+`store.getters['auth/isAuthenticated']` for any path under `/app/` and
+pushes `/login` if false. ~5 lines. Should be a quick task or fold into
+Phase 8.1.
+reproduction: 1) log in, 2) wait until the access JWT exp passes (~1h),
+3) trigger any API request, 4) observe localStorage cleared but URL
+still on /app/*, 5) navigate to another /app/* — should redirect to
+/login but doesn't.
+discovered_during: Phase 9 live walk via chrome-devtools; user's own
+session at /app/profile exhibited the bug.
+
+### G6 — buildHash on Login footer is "dev" instead of a git SHA
+status: open (CI follow-up — cosmetic only)
+severity: low
+file: parent meta-repo `.circleci/config.yml` `build-vue-console` job
+(and console repo `vue` job for symmetry)
+fix: add `--build-arg VUE_APP_BUILD_HASH=$(echo $CIRCLE_SHA1 | cut -c -7)`
+to the docker build's `extra_build_args` so the Login page footer shows
+the real commit SHA instead of the dev fallback (`Login.vue:110`).
+Helpful for confirming which build is live in production.

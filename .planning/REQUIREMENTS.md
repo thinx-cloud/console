@@ -161,31 +161,36 @@
 | DEVI-09 | Phase 4 | Pending |
 | DEVI-10 | Phase 4 | Pending |
 | DEVI-11 | Phase 4 | Pending |
-| DASH-01 | Phase 5 | Pending |
-| DASH-02 | Phase 5 | Pending |
-| DASH-03 | Phase 5 | Pending |
-| DASH-04 | Phase 5 | Pending |
-| DASH-05 | Phase 5 | Pending |
-| PROF-01 | Phase 6 | Pending |
-| PROF-02 | Phase 6 | Pending |
-| PROF-03 | Phase 6 | Pending |
-| PROF-04 | Phase 6 | Pending |
-| PROF-05 | Phase 6 | Pending |
-| PROF-06 | Phase 6 | Pending |
-| HIST-01 | Phase 7 | Pending |
-| HIST-02 | Phase 7 | Pending |
-| HIST-03 | Phase 7 | Pending |
-| HIST-04 | Phase 7 | Pending |
-| HIST-05 | Phase 7 | Pending |
-| AUTH-01 | Phase 8 | Code complete (2026-05-24); Phase 9 UAT pending |
-| AUTH-02 | Phase 8 | Code complete (2026-05-24); Phase 9 UAT pending |
-| AUTH-03 | Phase 8 | Code complete (2026-05-24); Phase 9 UAT pending |
+| DASH-01 | Phase 5 | Verified (Phase 9 live-walk 2026-05-24) |
+| DASH-02 | Phase 5 | Verified (Phase 9 live-walk 2026-05-24) |
+| DASH-03 | Phase 5 | Verified (Phase 9 live-walk 2026-05-24 — empty state confirmed correct) |
+| DASH-04 | Phase 5 | Widget verified; full zip download deferred (HN — needs account with build artifact) |
+| DASH-05 | Phase 5 | Verified (Phase 9 live-walk 2026-05-24) |
+| PROF-01 | Phase 6 | Code-verified; live re-test deferred (AC-DEST — would mutate shared test account) |
+| PROF-02 | Phase 6 | Code-verified; live re-test deferred (AC-DEST — would overwrite shared avatar) |
+| PROF-03 | Phase 6 | Verified (Phase 6 AI-UAT API-confirmed end-to-end; in-vivo merge-fix confirmed) |
+| PROF-04 | Phase 6 | Positive case code-verified; negative case deferred (HN — needs non-admin account) |
+| PROF-05 | Phase 6 | Code-verified; live Cancel-path AC-DEST, Confirm-path HN (needs throwaway account) |
+| PROF-06 | Phase 6 | Code-verified; live re-test deferred (AC-DEST — needs fresh-login real-mouse click) |
+| HIST-01 | Phase 7 | Verified (Phase 9 live-walk 2026-05-24) |
+| HIST-02 | Phase 7 | Verified (Phase 9 live-walk 2026-05-24 — bare-path redirect, tab-click URL push, deep-link hydration) |
+| HIST-03 | Phase 7 | Code-verified; live untestable on test account (no builds) |
+| HIST-04 | Phase 7 | Verified (Phase 9 live-walk 2026-05-24 — URL sync + deep-link hydration) |
+| HIST-05 | Phase 7 | Verified (Phase 9 live-walk 2026-05-24 — URL sync + deep-link hydration) |
+| AUTH-01 | Phase 8 | Verified (Phase 9 live-walk 2026-05-24) |
+| AUTH-02 | Phase 8 | Page + both form modes + Login link verified; email round-trip deferred (HN) |
+| AUTH-03 | Phase 8 | Partial — teardown verified (localStorage clear works live); /login redirect needs router.beforeEach guard (G5 follow-up) |
 
 **Coverage:**
 - v1 requirements: 54 total (AUTH-03 added during Phase 8 — session-hygiene timer was tracked in ROADMAP since Wave-0 plan but formalized as a v1 line item on 2026-05-24)
 - Mapped to phases: 54
 - Unmapped: 0 ✓
 
+**Phase 9 verification status (2026-05-24):**
+- Verified (full pass): 12 — DASH-01, DASH-02, DASH-03, DASH-05, PROF-03, HIST-01, HIST-02, HIST-04, HIST-05, AUTH-01 (+ DEVI-01..04, DEVI-07, DEVI-08, DEVI-10..12 from Phase 4 round-2)
+- Partial / widget-only: 4 — DASH-04 (no artifact zip), HIST-03 (no builds in account), AUTH-02 (no email round-trip), AUTH-03 (G5 router guard)
+- Deferred (AC-DEST + HN): 11 — PROF-01, PROF-02, PROF-04 (negative), PROF-05, PROF-06, DEVI-05, DEVI-06, DEVI-09
+
 ---
 *Requirements defined: 2026-05-18*
-*Last updated: 2026-05-18 after initial definition*
+*Last updated: 2026-05-24 after Phase 9 live walk*

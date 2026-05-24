@@ -1,9 +1,26 @@
 ---
-status: pending
+status: pass (4/5 live-confirmed; HIST-03 untestable on test account — no builds)
 phase: 07-history-improvements
 source: [07-00-SUMMARY.md, 07-01-SUMMARY.md, 07-02-SUMMARY.md]
 created: 2026-05-23
+updated: 2026-05-24
+live_walked_at: console.thinx.cloud (bundle 2026-05-24T08:01Z)
 ---
+
+## Phase 9 live-walk results (2026-05-24)
+
+All HIST-XX items re-tested on the deployed `console.thinx.cloud` after the
+2026-05-24 CI fix landed the Vue image rebuild + swarm pull.
+
+| Item | Result | Evidence |
+|------|--------|----------|
+| HIST-01 | pass | `/#/app/history/audit` renders `h1: History`, `tabTitles: ['Audit Log','Build Log']` |
+| HIST-02 | pass | Bare `/#/app/history` redirects to `/#/app/history/audit`; clicking "Build Log" tab pushes URL to `/#/app/history/builds`; deep-link to `/#/app/history/audit?from=...&to=...&flags=warning,info` hydrates date inputs + flag checkboxes correctly |
+| HIST-03 | untestable | Test account has zero builds (`No build logs.`) — the Expand toggle code path can't be exercised without a build with a long log. Code-level verified during Phase 7 Wave 2; no live regression possible since the UI element doesn't render in the empty state. |
+| HIST-04 | pass | Date inputs accept From=2026-01-01 / To=2026-12-31; URL syncs to `?from=2026-01-01&to=2026-12-31`; deep-link reload preserves the values |
+| HIST-05 | pass | Unchecking "Danger" toggles checkbox state `[false,true,true]`; URL syncs to `&flags=warning,info`; deep-link reload preserves the unchecked Danger state |
+
+## Pre-Phase-9 content below
 
 ## Current Test
 

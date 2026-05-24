@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 8 Wave 2 complete (AUTH-03 session-expiry timer + clearSession chokepoint + api.js belt-and-suspenders backstop shipped on thinx-staging; commits 0295a69, c5207b0, d5053e4, 46f566a). Phase 8 code complete (Waves 0+1+2). Deploy gated on parent meta-repo submodule bump; Phase 9 Manual UAT picks up AUTH-01/02/03 browser round-trip.
-last_updated: "2026-05-24T07:43:00Z"
+stopped_at: Phase 9 live-walk complete (AC items pass; AC-DEST + HN deferred to user). Two gaps surfaced — G5 (AUTH-03 missing router.beforeEach guard, ~5 LOC quick task) and G6 (buildHash 'dev' cosmetic CI gap).
+last_updated: "2026-05-24T08:30:00Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-24T07:43:00Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 8 — Authentication Extras code complete (Waves 0+1+2 shipped 2026-05-24). Next live work is Phase 9 Manual UAT.
+**Current focus:** Phase 9 Manual UAT — AC items live-walked; AC-DEST + HN items deferred to user-driven walks.
 
 ## Current Status
 
-- **Active phase:** Phase 8 — Authentication Extras (Waves 0+1+2 complete; code complete pending Phase 9 UAT and submodule-bump deploy)
-- **Last action:** Phase 8 Wave 2 shipped on `thinx-staging` — AUTH-03 session-expiry timer with single clear-session chokepoint. `auth/clearSession` and `auth/scheduleExpiry` actions added to `vue/src/store/auth.js` (commit `0295a69`); `scheduleExpiry` wired at all three access-token write boundaries — Login.vue login-success + rehydrate, App.vue cold-boot rehydrate (`c5207b0`); Header.vue `logout()` refactored to dispatch `auth/clearSession` instead of inlining the four-op wipe (`d5053e4`); optional belt-and-suspenders pre-request exp check added to `api.js#composeOptions` using platform atob + JSON.parse (`46f566a`). `yarn build` succeeds; no new npm packages; mapActions stays in `methods:` (Phase 6 G1 anti-regression preserved); token-name swap in api.js untouched. Module-private `expiryTimerId` lives outside Vuex export so it's not committed via mutation; redirect from store uses `window.location.hash = '#/login'` because actions have no $router. Deploy gated on parent meta-repo submodule bump. (2026-05-24)
-- **Next action:** Phase 9 Manual UAT covers AUTH-01 / AUTH-02 / AUTH-03 browser round-trip on the deployed `console.thinx.cloud` once the submodule bump lands. Locally, the manual flows from `08-02-PLAN.md#verification` can be exercised with `yarn --cwd vue serve`: (1) log in, confirm a ~3.6M ms setTimeout was registered; (2) click Logout, confirm three localStorage keys cleared + nav to `/#/login`; (3) paste an `exp:1` JWT into localStorage, reload, confirm immediate redirect; (4) mint a 15s-TTL JWT, confirm auto-redirect after ~15 s. Deploy still gated on parent meta-repo submodule bump — user handles that separately, do NOT push.
+- **Active phase:** Phase 9 — Manual UAT Review (AC items live-walked 2026-05-24; AC-DEST + HN deferred)
+- **Last action:** Phase 9 live walk against deployed `console.thinx.cloud` (bundle `last-modified: Sun, 24 May 2026 08:01:25 GMT` — Phase 6+7+8 markers all present). Confirmed live: DASH-01/02/03/05, HIST-01/02/04/05, AUTH-01, AUTH-02 (page + both form modes + Login link), AUTH-03 belt-and-suspenders (observed mid-walk on the user's expired session). Deferred: PROF-01/02/05/06 (AC-DEST — mutate shared test account), PROF-04 negative + DASH-04 zip + AUTH-02 email round-trip + AUTH-03 1-hour wait (HN). Discovered G5 (AUTH-03 redirect doesn't survive client-side navigations — needs router.beforeEach guard, ~5 LOC) and G6 (buildHash shows 'dev' in production — CI build-arg gap). Worklist at `.planning/phase-9/09-WORKLIST.md`; summary at `.planning/phase-9/09-UAT-SUMMARY.md`; per-phase HUMAN-UAT files updated. REQUIREMENTS.md traceability flipped Pending → Verified for 12 items. (2026-05-24)
+- **Next action:** (1) User-driven walk of the 11 AC-DEST / HN items on a throwaway account (or accept shared-account mutations on the test account). (2) Quick task G5 — add `router.beforeEach` auth guard so AUTH-03's session-clear actually redirects (5 LOC in `vue/src/Routes.js`). (3) Quick task G6 — add `--build-arg VUE_APP_BUILD_HASH=$(echo $CIRCLE_SHA1 | cut -c -7)` to both CI jobs so production shows a real commit SHA in the Login footer.
 
 ## Phase Progress
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 6 — User Profile & Account Settings | Complete (code + AI-UAT; remaining browser items in Phase 9 — 2026-05-23) |
 | 7 — History Improvements | Complete (code; deploy + Phase 9 UAT pending — 2026-05-23) |
 | 8 — Authentication Extras | Code complete (Waves 0+1+2 shipped 2026-05-24; deploy + Phase 9 UAT pending) |
-| 9 — Manual UAT Review | Pending (aggregates UAT carry-over from phases 3, 4, 5, 6) |
+| 9 — Manual UAT Review | In progress (AC items live-walked 2026-05-24; AC-DEST + HN deferred to user) |
 
 ### Quick Tasks Completed
 
