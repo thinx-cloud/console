@@ -10,6 +10,7 @@ import rsakeys from './rsakeys';
 import enviros from './enviros';
 import devices from './devices';
 import profile from './profile';
+import admin from './admin';
 
 import transformers from './transformers';
 import buildlog from './buildlog';
@@ -37,6 +38,7 @@ export default new Vuex.Store({
     buildlog,
     auditlog,
 
-    stats
+    stats,
+    admin
   }
 });
