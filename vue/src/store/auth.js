@@ -1,5 +1,10 @@
 import VueJwtDecode from "vue-jwt-decode";
 
+// Module-private setTimeout id for the session-expiry watcher (AUTH-03).
+// Kept outside Vuex state so we can clear/replace it across action dispatches
+// without triggering reactivity overhead or committing a mutation.
+let expiryTimerId = null;
+
 export default {
     namespaced: true,
     state: {
@@ -38,6 +43,45 @@ export default {
             return decoded.exp <= nowUnixtime ? false : true;
         } catch (error) {
             return false
+        }
+      },
+      clearSession({ commit }) {
+        if (expiryTimerId) {
+          clearTimeout(expiryTimerId);
+          expiryTimerId = null;
+        }
+        window.localStorage.removeItem('accessToken');
+        window.localStorage.removeItem('refreshToken');
+        window.localStorage.removeItem('authenticated');
+        commit('setAccessToken', null);
+        commit('setRefreshToken', null);
+        commit('setUser', null);
+      },
+      scheduleExpiry({ dispatch }, token) {
+        if (expiryTimerId) {
+          clearTimeout(expiryTimerId);
+          expiryTimerId = null;
+        }
+        if (!token) return;
+        try {
+          const decoded = VueJwtDecode.decode(token);
+          if (!decoded || typeof decoded.exp !== 'number') return;
+          const msUntilExpiry = decoded.exp * 1000 - Date.now();
+          if (msUntilExpiry <= 0) {
+            dispatch('clearSession');
+            if (typeof window !== 'undefined') window.location.hash = '#/login';
+            return;
+          }
+          expiryTimerId = setTimeout(() => {
+            dispatch('clearSession');
+            if (typeof window !== 'undefined') window.location.hash = '#/login';
+          }, msUntilExpiry);
+        } catch (e) {
+          // Bad token shape — let the normal auth flow (next API call → 401) handle it.
+          // No need to dispatch clearSession here; the user has not yet logged in or the rehydrate
+          // path is about to bail anyway.
+          // eslint-disable-next-line no-console
+          console.warn('[auth] scheduleExpiry decode failed', e);
         }
       },
       async requestPasswordReset(_, { email }) {
