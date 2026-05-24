@@ -96,6 +96,7 @@
 
 - [x] **AUTH-01**: Password reset page exists at `/password-reset` (code complete 2026-05-24; Phase 9 UAT pending)
 - [x] **AUTH-02**: Password reset flow ports behaviour from `src/password.html` (code complete 2026-05-24; Phase 9 UAT pending)
+- [x] **AUTH-03**: Session-expiry timer clears localStorage and redirects to `/#/login` when access JWT `exp` is reached (code complete 2026-05-24; Phase 9 UAT pending)
 
 ## v2 Requirements
 
@@ -178,10 +179,11 @@
 | HIST-05 | Phase 7 | Pending |
 | AUTH-01 | Phase 8 | Code complete (2026-05-24); Phase 9 UAT pending |
 | AUTH-02 | Phase 8 | Code complete (2026-05-24); Phase 9 UAT pending |
+| AUTH-03 | Phase 8 | Code complete (2026-05-24); Phase 9 UAT pending |
 
 **Coverage:**
-- v1 requirements: 53 total
-- Mapped to phases: 53
+- v1 requirements: 54 total (AUTH-03 added during Phase 8 — session-hygiene timer was tracked in ROADMAP since Wave-0 plan but formalized as a v1 line item on 2026-05-24)
+- Mapped to phases: 54
 - Unmapped: 0 ✓
 
 ---

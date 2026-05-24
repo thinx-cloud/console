@@ -229,16 +229,21 @@ Plans:
 
 ## Phase 8 — Authentication Extras
 
-**Status:** In progress (Waves 0+1 complete 2026-05-24 — Wave 1 commits `28b7d2f`, `337429d`, `099cd66`, `8878ef1`; Wave 2 pending)
+**Status:** Code complete (Waves 0+1+2 shipped 2026-05-24 — Wave 1 commits `28b7d2f`, `337429d`, `099cd66`, `8878ef1`; Wave 2 commits `0295a69`, `c5207b0`, `d5053e4`, `46f566a`; deploy + Phase 9 UAT pending)
 **Effort:** S
 **Goal:** Complete auth flows missing from Vue console.
 
 **Delivers:**
-- `/password-reset` route and `PasswordReset.vue` page
-- Port reset flow logic from `src/password.html`
-- **Session-state hygiene fix (carry-over found during Phase 6 UAT, 2026-05-23):** `localStorage.authenticated:true` outlives the actual session cookie / JWT. Vue router happily keeps the user on the dashboard after the cookie is invalidated server-side, while every API call silently 403s. Schedule a timer (e.g. `setTimeout` keyed to `accessToken`/`refreshToken` `exp` claim) to clear `localStorage.authenticated` (and tokens) when the JWT expires. Reschedule on each successful token fetch/refresh. On clear, redirect to `/#/login`. Until then the documented workaround is `localStorage.clear() + cookie wipe` (saved in memory).
+- `/password-reset` route and `PasswordReset.vue` page (AUTH-01, AUTH-02 — Wave 1)
+- Port reset flow logic from `src/password.html` (Wave 1)
+- **Session-state hygiene fix (AUTH-03 — Wave 2):** `localStorage.authenticated:true` no longer outlives the access JWT. `auth/scheduleExpiry` arms a `setTimeout` keyed to the JWT `exp` claim at every access-token write boundary (login-success, Login.vue rehydrate, App.vue cold-boot rehydrate). On fire it dispatches `auth/clearSession` (single chokepoint that wipes three localStorage keys + commits null to three pieces of Vuex state + cancels any pending timer) and navigates to `/#/login` via `window.location.hash` (the store has no `$router`). Header.vue `logout()` now dispatches the same `clearSession` action — manual logout and timer-triggered logout share one teardown path. Optional belt-and-suspenders pre-request `exp` check in `api.js#composeOptions` covers the laptop-sleep edge case using platform `atob` + `JSON.parse` (no JWT library import in the API client).
 
-**Requirements:** AUTH-01–02 (+ AUTH-03 session-hygiene timer)
+**Plans:**
+- [x] 08-00-PLAN.md — Wave 0: Cypress spec stub (auth-extras.spec.js) — already shipped pre-08-01
+- [x] 08-01-PLAN.md — Wave 1: PasswordReset.vue + route + 2 Vuex actions + Forgot-password link (AUTH-01, AUTH-02)
+- [x] 08-02-PLAN.md — Wave 2: scheduleExpiry timer + clearSession chokepoint + Header logout refactor + api.js backstop (AUTH-03)
+
+**Requirements:** AUTH-01, AUTH-02, AUTH-03
 
 **UAT:**
 - Navigate to `/password-reset` — page renders without errors
@@ -299,7 +304,7 @@ Plans:
 | 5 | Real Dashboard | L | DASH-01–05 | Complete (2026-05-23) |
 | 6 | User Profile & Account Settings | L | PROF-01–06 | Code complete (verified; UAT folds into Phase 9) |
 | 7 | History Improvements | M | HIST-01–05 | Code complete (UAT in Phase 9 — 2026-05-23) |
-| 8 | Authentication Extras | S | AUTH-01–03 | Waves 0+1 complete (2026-05-24); Wave 2 pending |
+| 8 | Authentication Extras | S | AUTH-01–03 | Code complete (Waves 0+1+2 — 2026-05-24); deploy + Phase 9 UAT pending |
 | 9 | Manual UAT Review | M | aggregate of carry-over UAT items | Pending |
 
 **Total v1 requirements:** 53 across 9 phases

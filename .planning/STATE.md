@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 8 Wave 1 complete (AUTH-01 + AUTH-02 shipped on thinx-staging — page + route + store actions + Login link; commits 28b7d2f, 337429d, 099cd66, 8878ef1); Wave 2 (08-02 — AUTH-03 session-expiry timer) ready to begin. Deploy gated on parent meta-repo submodule bump.
-last_updated: "2026-05-24T07:35:00Z"
+stopped_at: Phase 8 Wave 2 complete (AUTH-03 session-expiry timer + clearSession chokepoint + api.js belt-and-suspenders backstop shipped on thinx-staging; commits 0295a69, c5207b0, d5053e4, 46f566a). Phase 8 code complete (Waves 0+1+2). Deploy gated on parent meta-repo submodule bump; Phase 9 Manual UAT picks up AUTH-01/02/03 browser round-trip.
+last_updated: "2026-05-24T07:43:00Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-24T07:35:00Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 8 — Authentication Extras (Waves 0 + 1 complete; Wave 2 AUTH-03 session-expiry timer next)
+**Current focus:** Phase 8 — Authentication Extras code complete (Waves 0+1+2 shipped 2026-05-24). Next live work is Phase 9 Manual UAT.
 
 ## Current Status
 
-- **Active phase:** Phase 8 — Authentication Extras (Waves 0 + 1 complete; Wave 2 pending)
-- **Last action:** Phase 8 Wave 1 shipped on `thinx-staging` — AUTH-01 + AUTH-02 end-to-end. New unauthenticated `/password-reset` page (`28b7d2f` — Task 1, manually committed by orchestrator after a prior executor died with a socket error mid-task); top-level route registered (`337429d` — Task 2); `requestPasswordReset` + `confirmPasswordReset` Vuex actions appended to `auth.js` (`099cd66` — Tasks 3+4); "Forgot password?" router-link added to Login page (`8878ef1` — Task 5). `yarn build` succeeds; no new warnings. Phase 6 G1 anti-regression preserved (mapActions in `methods:`). No new npm packages. Deploy gated on parent meta-repo submodule bump. (2026-05-24)
-- **Next action:** Begin Wave 2 (`08-02-PLAN.md`) — AUTH-03 `scheduleExpiry` JWT-decoded timer + boot wiring. Uses already-installed vue-jwt-decode dependency. After Wave 2, Phase 8 enters Phase 9 Manual UAT scope (AUTH-01/02/03 browser round-trip against real backend). Deploy still gated on parent meta-repo submodule bump — user handles that separately, do NOT push.
+- **Active phase:** Phase 8 — Authentication Extras (Waves 0+1+2 complete; code complete pending Phase 9 UAT and submodule-bump deploy)
+- **Last action:** Phase 8 Wave 2 shipped on `thinx-staging` — AUTH-03 session-expiry timer with single clear-session chokepoint. `auth/clearSession` and `auth/scheduleExpiry` actions added to `vue/src/store/auth.js` (commit `0295a69`); `scheduleExpiry` wired at all three access-token write boundaries — Login.vue login-success + rehydrate, App.vue cold-boot rehydrate (`c5207b0`); Header.vue `logout()` refactored to dispatch `auth/clearSession` instead of inlining the four-op wipe (`d5053e4`); optional belt-and-suspenders pre-request exp check added to `api.js#composeOptions` using platform atob + JSON.parse (`46f566a`). `yarn build` succeeds; no new npm packages; mapActions stays in `methods:` (Phase 6 G1 anti-regression preserved); token-name swap in api.js untouched. Module-private `expiryTimerId` lives outside Vuex export so it's not committed via mutation; redirect from store uses `window.location.hash = '#/login'` because actions have no $router. Deploy gated on parent meta-repo submodule bump. (2026-05-24)
+- **Next action:** Phase 9 Manual UAT covers AUTH-01 / AUTH-02 / AUTH-03 browser round-trip on the deployed `console.thinx.cloud` once the submodule bump lands. Locally, the manual flows from `08-02-PLAN.md#verification` can be exercised with `yarn --cwd vue serve`: (1) log in, confirm a ~3.6M ms setTimeout was registered; (2) click Logout, confirm three localStorage keys cleared + nav to `/#/login`; (3) paste an `exp:1` JWT into localStorage, reload, confirm immediate redirect; (4) mint a 15s-TTL JWT, confirm auto-redirect after ~15 s. Deploy still gated on parent meta-repo submodule bump — user handles that separately, do NOT push.
 
 ## Phase Progress
 
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 5 — Real Dashboard | Complete (UAT 3/4 pass; G1 deferred — 2026-05-23) |
 | 6 — User Profile & Account Settings | Complete (code + AI-UAT; remaining browser items in Phase 9 — 2026-05-23) |
 | 7 — History Improvements | Complete (code; deploy + Phase 9 UAT pending — 2026-05-23) |
-| 8 — Authentication Extras | In progress (Waves 0+1 complete 2026-05-24; Wave 2 pending) |
+| 8 — Authentication Extras | Code complete (Waves 0+1+2 shipped 2026-05-24; deploy + Phase 9 UAT pending) |
 | 9 — Manual UAT Review | Pending (aggregates UAT carry-over from phases 3, 4, 5, 6) |
 
 ### Quick Tasks Completed
@@ -58,5 +58,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-24T07:35:00Z
-Stopped at: Phase 8 Wave 1 complete (commits 28b7d2f → 337429d → 099cd66 → 8878ef1 — PasswordReset.vue + route + 2 Vuex actions + Forgot-password link); ready to start Wave 2 (08-02 — AUTH-03 scheduleExpiry timer + boot wiring). Phase 7 + Phase 8 Waves 0/1 all pending deploy via parent meta-repo submodule bump.
+Last session: 2026-05-24T07:43:00Z
+Stopped at: Phase 8 Wave 2 complete (commits 0295a69 → c5207b0 → d5053e4 → 46f566a — auth/clearSession + auth/scheduleExpiry actions, scheduleExpiry wired at all 3 access-token write sites, Header.vue logout refactored to dispatch clearSession, optional api.js pre-request exp check). Phase 8 code complete (Waves 0+1+2 all shipped today on `thinx-staging`). Phase 7 + all of Phase 8 pending deploy via parent meta-repo submodule bump; Phase 9 Manual UAT picks up AUTH-01/02/03 + carry-overs from earlier phases.
