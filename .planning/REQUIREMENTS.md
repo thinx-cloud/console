@@ -166,8 +166,8 @@
 | DASH-03 | Phase 5 | Verified (Phase 9 live-walk 2026-05-24 — empty state confirmed correct) |
 | DASH-04 | Phase 5 | Widget verified; full zip download deferred (HN — needs account with build artifact) |
 | DASH-05 | Phase 5 | Verified (Phase 9 live-walk 2026-05-24) |
-| PROF-01 | Phase 6 | Code-verified; live re-test deferred (AC-DEST — would mutate shared test account) |
-| PROF-02 | Phase 6 | Code-verified; live re-test deferred (AC-DEST — would overwrite shared avatar) |
+| PROF-01 | Phase 6 | Verified (Phase 9 user-walk 2026-05-24) |
+| PROF-02 | Phase 6 | Verified (Phase 9 user-walk 2026-05-24) |
 | PROF-03 | Phase 6 | Verified (Phase 6 AI-UAT API-confirmed end-to-end; in-vivo merge-fix confirmed) |
 | PROF-04 | Phase 6 | Positive case code-verified; negative case deferred (HN — needs non-admin account) |
 | PROF-05 | Phase 6 | Code-verified; live Cancel-path AC-DEST, Confirm-path HN (needs throwaway account) |
