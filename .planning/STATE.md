@@ -34,7 +34,8 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 6 — User Profile & Account Settings | Complete (code + AI-UAT; remaining browser items in Phase 9 — 2026-05-23) |
 | 7 — History Improvements | Complete (code; deploy + Phase 9 UAT pending — 2026-05-23) |
 | 8 — Authentication Extras | Code complete (Waves 0+1+2 shipped 2026-05-24; deploy + Phase 9 UAT pending) |
-| 9 — Manual UAT Review | In progress (AC items live-walked 2026-05-24; AC-DEST + HN deferred to user) |
+| 9 — Manual UAT Review | In progress (AC items live-walked 2026-05-24; AC-DEST + HN deferred to user; PROF-01/02 verified) |
+| 10 — Admin Features | Seed (decisions locked 2026-05-24; `.planning/phase-10/10-CONTEXT.md` ready for research) |
 
 ### Quick Tasks Completed
 
