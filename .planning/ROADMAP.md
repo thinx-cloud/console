@@ -305,9 +305,10 @@ Plans:
 | 6 | User Profile & Account Settings | L | PROF-01–06 | Code complete (verified; UAT folds into Phase 9) |
 | 7 | History Improvements | M | HIST-01–05 | Code complete (UAT in Phase 9 — 2026-05-23) |
 | 8 | Authentication Extras | S | AUTH-01–03 | Code complete (Waves 0+1+2 — 2026-05-24); deploy + Phase 9 UAT pending |
-| 9 | Manual UAT Review | M | aggregate of carry-over UAT items | Pending |
+| 9 | Manual UAT Review | M | aggregate of carry-over UAT items | In progress (live-walked 2026-05-24) |
+| 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Seed (decisions locked 2026-05-24) |
 
-**Total v1 requirements:** 53 across 9 phases
+**Total v1 requirements:** 54 across 9 phases (Phase 10 adds 3 v1.1 requirements: ADMIN-01..03)
 
 ---
 
