@@ -57,6 +57,7 @@
               />
             </b-input-group>
           </b-form-group>
+          <router-link class="d-block text-center mb-2" to="/password-reset">Forgot password?</router-link>
           <div class="bg-widget auth-widget-footer">
             <b-button type="submit" variant="danger" class="auth-btn" size="sm">
               Login
