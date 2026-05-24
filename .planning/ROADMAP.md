@@ -321,7 +321,7 @@ Plans:
 **Plans:** 4 plans (planning complete 2026-05-24 — plan-checker verdict PASS-WITH-NOTES at `10-PLAN-REVIEW.md`)
 
 **Wave 0** — Cypress spec stub (no production code):
-- [ ] 10-00-PLAN.md (215 LOC) — `admin.spec.js` covering ADMIN-01..03 TODO `it()` blocks
+- [x] 10-00-PLAN.md (215 LOC) — `admin.spec.js` covering ADMIN-01..03 TODO `it()` blocks (executed 2026-05-24 — see `10-00-SUMMARY.md`)
 
 **Wave 1** *(parent-repo PR; blocked on Wave 0)*:
 - [ ] 10-01-PLAN.md (731 LOC) — Backend: `requireAdmin` middleware + `router.admin.js` (3 endpoints) + Redis blacklist + `audit.js` flag-array patch + `sign_with_impersonation` JWT method + `router.js` blacklist check
