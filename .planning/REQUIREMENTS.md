@@ -94,8 +94,8 @@
 
 ### Authentication Extras
 
-- [ ] **AUTH-01**: Password reset page exists at `/password-reset`
-- [ ] **AUTH-02**: Password reset flow ports behaviour from `src/password.html`
+- [x] **AUTH-01**: Password reset page exists at `/password-reset` (code complete 2026-05-24; Phase 9 UAT pending)
+- [x] **AUTH-02**: Password reset flow ports behaviour from `src/password.html` (code complete 2026-05-24; Phase 9 UAT pending)
 
 ## v2 Requirements
 
@@ -176,8 +176,8 @@
 | HIST-03 | Phase 7 | Pending |
 | HIST-04 | Phase 7 | Pending |
 | HIST-05 | Phase 7 | Pending |
-| AUTH-01 | Phase 8 | Pending |
-| AUTH-02 | Phase 8 | Pending |
+| AUTH-01 | Phase 8 | Code complete (2026-05-24); Phase 9 UAT pending |
+| AUTH-02 | Phase 8 | Code complete (2026-05-24); Phase 9 UAT pending |
 
 **Coverage:**
 - v1 requirements: 53 total

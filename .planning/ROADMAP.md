@@ -229,7 +229,7 @@ Plans:
 
 ## Phase 8 — Authentication Extras
 
-**Status:** In progress (Wave 0 complete 2026-05-24 — commit `8bf3024`; Waves 1+2 pending)
+**Status:** In progress (Waves 0+1 complete 2026-05-24 — Wave 1 commits `28b7d2f`, `337429d`, `099cd66`, `8878ef1`; Wave 2 pending)
 **Effort:** S
 **Goal:** Complete auth flows missing from Vue console.
 
@@ -299,7 +299,7 @@ Plans:
 | 5 | Real Dashboard | L | DASH-01–05 | Complete (2026-05-23) |
 | 6 | User Profile & Account Settings | L | PROF-01–06 | Code complete (verified; UAT folds into Phase 9) |
 | 7 | History Improvements | M | HIST-01–05 | Code complete (UAT in Phase 9 — 2026-05-23) |
-| 8 | Authentication Extras | S | AUTH-01–03 | Wave 0 complete (2026-05-24); Waves 1+2 pending |
+| 8 | Authentication Extras | S | AUTH-01–03 | Waves 0+1 complete (2026-05-24); Wave 2 pending |
 | 9 | Manual UAT Review | M | aggregate of carry-over UAT items | Pending |
 
 **Total v1 requirements:** 53 across 9 phases
