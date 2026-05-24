@@ -327,7 +327,7 @@ Plans:
 - [x] 10-01-PLAN.md (731 LOC) — Backend: `requireAdmin` middleware + `router.admin.js` (3 endpoints) + Redis blacklist + `audit.js` flag-array patch + `sign_with_impersonation` JWT method + `router.js` blacklist check (executed 2026-05-24 — 6 commits in parent on `thinx-staging` `87b748b3`..`0f93c58a`; see `10-01-SUMMARY.md`)
 
 **Wave 2** *(submodule PR; blocked on Wave 1 being live in parent `thinx-staging`)*:
-- [ ] 10-02-PLAN.md (974 LOC) — Frontend: `/app/admin/users` route + `AdminUsers.vue` (plain `<table>` + custom pagination) + `ImpersonationBanner.vue` + `store/admin.js` + audit-log surfacing via existing History page
+- [x] 10-02-PLAN.md (974 LOC) — Frontend: `/app/admin/users` route + `AdminUsers.vue` (plain `<table>` + custom pagination) + `ImpersonationBanner.vue` + `store/admin.js` + audit-log surfacing via existing History page (executed 2026-05-24 — 6 submodule commits `782df94`..`358bd95`; `yarn build` OK; see `10-02-SUMMARY.md`)
 
 **Wave 3** *(submodule PR; blocked on Wave 2)*:
 - [ ] 10-03-PLAN.md (714 LOC) — Profile.vue Admin tab swap + Sidebar.vue conditional NavLink (OQ-A) + Cypress green-flip + REQUIREMENTS traceability flip
