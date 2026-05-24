@@ -22,6 +22,7 @@ import TransformerEditor from '@/pages/Transformers/TransformerEditor';
 
 import HistoryManager from '@/pages/History/History';
 import ProfilePage from '@/pages/Profile/Profile';
+import AdminUsersPage from '@/pages/AdminUsers/AdminUsers';
 
 
 Vue.use(Router);
@@ -117,6 +118,11 @@ const router = new Router({
           name: 'Profile',
           component: ProfilePage,
         },
+        {
+          path: 'admin/users',
+          name: 'AdminUsers',
+          component: AdminUsersPage,
+        },
 
       ],
     },
@@ -133,6 +139,7 @@ const router = new Router({
 // Reads in-memory store first; falls back to localStorage for the cold-reload
 // path where App.vue.created hasn't yet rehydrated the store.
 const PUBLIC_PATHS = ['/login', '/password-reset', '/error'];
+const ADMIN_PATHS = ['/app/admin'];
 router.beforeEach((to, from, next) => {
   if (PUBLIC_PATHS.includes(to.path)) return next();
   if (!to.path.startsWith('/app')) return next();
@@ -140,6 +147,10 @@ router.beforeEach((to, from, next) => {
     !!(store && store.state && store.state.auth && store.state.auth.accessToken) ||
     !!(typeof window !== 'undefined' && window.localStorage.getItem('accessToken'));
   if (!authed) return next('/login');
+  if (ADMIN_PATHS.some(p => to.path.startsWith(p))) {
+    const profile = (store && store.state && store.state.profile && store.state.profile.profile);
+    if (!profile || profile.admin !== true) return next('/app/dashboard');
+  }
   next();
 });
 
