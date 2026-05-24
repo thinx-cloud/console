@@ -169,7 +169,7 @@
 | PROF-01 | Phase 6 | Verified (Phase 9 user-walk 2026-05-24) |
 | PROF-02 | Phase 6 | Verified (Phase 9 user-walk 2026-05-24) |
 | PROF-03 | Phase 6 | Verified (Phase 6 AI-UAT API-confirmed end-to-end; in-vivo merge-fix confirmed) |
-| PROF-04 | Phase 6 | Positive case code-verified; negative case deferred (HN — needs non-admin account) |
+| PROF-04 | Phase 6 | Positive case Verified (Phase 9 live-walk 2026-05-24 — 5 tabs incl. Admin); negative case deferred (HN — needs non-admin account) |
 | PROF-05 | Phase 6 | Code-verified; live Cancel-path AC-DEST, Confirm-path HN (needs throwaway account) |
 | PROF-06 | Phase 6 | Code-verified; live re-test deferred (AC-DEST — needs fresh-login real-mouse click) |
 | HIST-01 | Phase 7 | Verified (Phase 9 live-walk 2026-05-24) |
