@@ -57,7 +57,16 @@
             { header: 'My Profile', link: '/app/profile' },
           ]"
         />
-        
+        <template v-if="isAdmin">
+          <h5 class="navTitle">ADMIN</h5>
+          <NavLink
+            header="Admin Users"
+            link="/app/admin/users"
+            iconName="flaticon-list-3"
+            index="admin users"
+            isHeader
+          />
+        </template>
 
       </ul>
     </nav>
@@ -65,7 +74,7 @@
 </template>
 
 <script>
-import { mapState, mapActions } from "vuex";
+import { mapState, mapActions, mapGetters } from "vuex";
 import NavLink from "./NavLink/NavLink";
 
 export default {
@@ -73,6 +82,7 @@ export default {
   components: { NavLink },
   methods: {
     ...mapActions("layout", ["changeSidebarActive", "switchSidebar"]),
+    ...mapGetters({ getProfile: "profile/getProfile" }),
     setActiveByRoute() {
       const paths = this.$route.fullPath.split("/");
       paths.pop();
@@ -87,6 +97,10 @@ export default {
       sidebarOpened: (state) => !state.sidebarClose,
       activeItem: (state) => state.sidebarActiveElement,
     }),
+    isAdmin() {
+      const p = this.getProfile();
+      return !!(p && p.admin === true);
+    },
   },
 };
 </script>
