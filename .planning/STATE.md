@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 7 code complete (Waves 0+1+2 shipped on thinx-staging); deploy + Phase 9 UAT pending
-last_updated: "2026-05-23T20:15:00.000Z"
+stopped_at: Phase 8 Wave 0 complete (Cypress stub auth-extras.spec.js shipped on thinx-staging, commit 8bf3024); Wave 1 (08-01 — page+route+store) ready to begin
+last_updated: "2026-05-24T07:26:09Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-23T20:15:00.000Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 8 — Authentication Extras (Phase 7 code-complete and ready to deploy)
+**Current focus:** Phase 8 — Authentication Extras (Wave 0 stub committed; Wave 1 page+route+store next)
 
 ## Current Status
 
-- **Active phase:** Phase 7 — History Improvements (code complete; deploy + Phase 9 UAT pending)
-- **Last action:** Phase 7 Waves 0+1+2 shipped on `thinx-staging` — Cypress stub `history.spec.js` (`9c86064`); child routes `/app/history/audit` + `/app/history/builds` (`da6facb`); `<b-tabs>` v-model + filter primitives (`e21b111`); UI for date range + flag filter + per-row Expand toggle (`d4d7513`). HIST-03 ships as variant (b) — inline Expand toggle, NOT a modal (the modal was deliberately removed in `0ab3117`). `yarn build` green. Plan + research artifacts committed in `408e961`. (2026-05-23)
-- **Next action:** Deploy via parent meta-repo (`/Users/igraczech/Repositories/thinx-device-api`) submodule bump — push `thinx-staging` here, bump the `services/console` pointer in the parent, push the parent. Phase 9 (Manual UAT Review) absorbs the 5 HIST-XX human-walkthrough items in `07-HUMAN-UAT.md`.
+- **Active phase:** Phase 8 — Authentication Extras (Wave 0 complete; Wave 1 + Wave 2 pending)
+- **Last action:** Phase 8 Wave 0 stub shipped on `thinx-staging` — Cypress spec `auth-extras.spec.js` (`8bf3024`) with 4 pending it() blocks covering AUTH-01 (page renders unauthenticated), AUTH-02 (initiate + confirm form states), and AUTH-03 (session-expiry redirect). Structural variant: `cy.login()` lives inside the AUTH-03 it() body, NOT in `beforeEach`, because three of four specs target the unauthenticated `/#/password-reset` route. No production code touched. (2026-05-24)
+- **Next action:** Begin Wave 1 (`08-01-PLAN.md`) — add top-level `/password-reset` route in `Routes.js`, create `vue/src/pages/PasswordReset/PasswordReset.vue` two-state page (initiate email form + confirm two-password form), and `requestPasswordReset` + `confirmPasswordReset` store actions in `auth.js`. Wave 2 (`08-02-PLAN.md`) follows with AUTH-03 `scheduleExpiry` timer + boot wiring. Deploy still gated on parent meta-repo submodule bump — user handles that separately, do NOT push.
 
 ## Phase Progress
 
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 5 — Real Dashboard | Complete (UAT 3/4 pass; G1 deferred — 2026-05-23) |
 | 6 — User Profile & Account Settings | Complete (code + AI-UAT; remaining browser items in Phase 9 — 2026-05-23) |
 | 7 — History Improvements | Complete (code; deploy + Phase 9 UAT pending — 2026-05-23) |
-| 8 — Authentication Extras | Pending (gained session-expiry timer fix per 06 UAT) |
+| 8 — Authentication Extras | In progress (Wave 0 complete 2026-05-24; Waves 1+2 pending) |
 | 9 — Manual UAT Review | Pending (aggregates UAT carry-over from phases 3, 4, 5, 6) |
 
 ### Quick Tasks Completed
@@ -58,5 +58,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-23T20:15:00.000Z
-Stopped at: Phase 7 code complete; ready for parent meta-repo deploy + Phase 9 UAT folds in 5 HIST-XX items from 07-HUMAN-UAT.md
+Last session: 2026-05-24T07:26:09Z
+Stopped at: Phase 8 Wave 0 complete (commit 8bf3024 — auth-extras.spec.js stub with 4 pending it() blocks for AUTH-01/02/03); ready to start Wave 1 (08-01 — page + route + store actions). Phase 7 deploy still pending via parent meta-repo submodule bump.
