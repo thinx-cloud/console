@@ -318,19 +318,19 @@ Plans:
 - `vue/src/pages/Profile/Profile.vue` — replace lines 138-144 placeholder `<b-card>` with `<router-link>` to admin console
 - `vue/src/Routes.js` — add `/app/admin/users` route + extend `beforeEach` guard with admin-path check
 
-**Plans:** 4 plans
+**Plans:** 4 plans (planning complete 2026-05-24 — plan-checker verdict PASS-WITH-NOTES at `10-PLAN-REVIEW.md`)
 
 **Wave 0** — Cypress spec stub (no production code):
-- [ ] 10-00-PLAN.md — `admin.spec.js` covering ADMIN-01..03 TODO `it()` blocks
+- [ ] 10-00-PLAN.md (215 LOC) — `admin.spec.js` covering ADMIN-01..03 TODO `it()` blocks
 
 **Wave 1** *(parent-repo PR; blocked on Wave 0)*:
-- [ ] 10-01-PLAN.md — Backend: `requireAdmin` middleware + `router.admin.js` (3 endpoints) + Redis blacklist + `audit.js` flag-array patch + `sign_with_impersonation` JWT method + `router.js` blacklist check
+- [ ] 10-01-PLAN.md (731 LOC) — Backend: `requireAdmin` middleware + `router.admin.js` (3 endpoints) + Redis blacklist + `audit.js` flag-array patch + `sign_with_impersonation` JWT method + `router.js` blacklist check
 
-**Wave 2** *(submodule PR; blocked on Wave 1)*:
-- [ ] 10-02-PLAN.md — Frontend: `/app/admin/users` route + `AdminUsers.vue` + `ImpersonationBanner.vue` + `store/admin.js` + audit-log surfacing via existing History page
+**Wave 2** *(submodule PR; blocked on Wave 1 being live in parent `thinx-staging`)*:
+- [ ] 10-02-PLAN.md (974 LOC) — Frontend: `/app/admin/users` route + `AdminUsers.vue` (plain `<table>` + custom pagination) + `ImpersonationBanner.vue` + `store/admin.js` + audit-log surfacing via existing History page
 
 **Wave 3** *(submodule PR; blocked on Wave 2)*:
-- [ ] 10-03-PLAN.md — Profile.vue Admin tab swap + Sidebar.vue conditional NavLink + Cypress green-flip
+- [ ] 10-03-PLAN.md (714 LOC) — Profile.vue Admin tab swap + Sidebar.vue conditional NavLink (OQ-A) + Cypress green-flip + REQUIREMENTS traceability flip
 
 **Requirements:** ADMIN-01, ADMIN-02, ADMIN-03
 
@@ -367,7 +367,7 @@ Plans:
 | 7 | History Improvements | M | HIST-01–05 | Code complete (UAT in Phase 9 — 2026-05-23) |
 | 8 | Authentication Extras | S | AUTH-01–03 | Complete (Phase 9 UAT 2026-05-24; G5 router-guard shipped `3e720d4`) |
 | 9 | Manual UAT Review | M | aggregate of carry-over UAT items | In progress (live-walked 2026-05-24) |
-| 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Research complete (2026-05-24 — `10-RESEARCH.md` + locked OQ-A/OQ-B); planning next |
+| 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Planned (2026-05-24 — 4 wave plans, 18 tasks, 2,634 LOC; plan-check PASS-WITH-NOTES) |
 
 **Total v1 requirements:** 54 across 9 phases. Phase 10 adds 3 v1.1 requirements (ADMIN-01..03 — see `REQUIREMENTS.md`).
 

@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 9 engineering complete — both G5 (`3e720d4`) and G6 (`a462ff8` + parent `d5169e61`) were already shipped + deployed; trackers were stale and have been reconciled. Only the user-driven AC-DEST/HN UAT walks remain before Phase 9 can be marked Complete; then Phase 10 (Admin Features) is next.
-last_updated: "2026-05-24T11:30:00Z"
+stopped_at: Phase 10 planning complete (4 wave plans, 18 tasks, 2,634 LOC; plan-checker verdict PASS-WITH-NOTES; F-1/F-2/F-5 polish applied inline). Ready for /gsd-execute-phase 10. Phase 9 user-driven AC-DEST/HN UAT walks remain outstanding but do not block Phase 10 execution.
+last_updated: "2026-05-24T12:00:00Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-24T11:30:00Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 9 user-driven UAT walks — engineering side is complete (G5 + G6 both shipped + deployed); the remaining 6 AC-DEST/HN items need user action before Phase 9 closes and Phase 10 opens.
+**Current focus:** Phase 10 planning complete (PASS-WITH-NOTES); ready for execution. Phase 9 user UAT walks remain outstanding in parallel.
 
 ## Current Status
 
-- **Active phase:** Phase 9 — Manual UAT Review (engineering complete; user UAT walks remain)
-- **Last action:** Phase 9 engineering gaps reconciled — both G5 (`3e720d4`, `vue/src/Routes.js` router.beforeEach) and G6 (`a462ff8` console-side + `d5169e61` parent-side, CIRCLE_SHA1 → VUE_APP_BUILD_HASH) were already shipped and deployed via the parent submodule bump on 2026-05-24 at 10:32. Trackers (REQUIREMENTS.md, ROADMAP.md, 09-UAT-SUMMARY.md, STATE.md) updated to reflect the real status: 16 verified / 3 partial / 6 deferred. (2026-05-24)
-- **Next action:** (1) User-driven walk of the 9 items in `.planning/phase-9/09-USER-CHECKLIST.md` (G5/G6 in-prod confirmation + 4 PROF items + PROF-04 negative + DASH-04 + AUTH-02 email round-trip + AUTH-03 1-hour timer + 3 DEVI destructive ops). (2) Once those flip in REQUIREMENTS.md, mark Phase 9 Complete. (3) Resume Phase 10 planning — `/gsd-plan-phase 10` (CONTEXT.md is seeded with locked decisions).
+- **Active phase:** Phase 10 — Admin Features (planning complete; ready to execute)
+- **Last action:** Phase 10 fully planned — research (`10-RESEARCH.md`, 1476 LOC, 10 risks) + 4 wave plans (10-00 through 10-03, 2,634 LOC, 18 tasks) + plan-check (`10-PLAN-REVIEW.md`, PASS-WITH-NOTES, 6 low findings; F-1/F-2/F-5 applied inline). User locked OQ-A (Sidebar conditional Admin NavLink, Wave 3) and OQ-B (`device_count: 0` placeholder for v1). REQUIREMENTS.md gained ADMIN-01..03 in a v1.1 section + traceability rows. ROADMAP.md gained the full Phase 10 section mirroring Phase 8 structure. CONTEXT.md amended with 5 codebase corrections (C1-C5) from research. (2026-05-24)
+- **Next action:** (1) `/gsd-execute-phase 10 --wave 0` to ship the Cypress stub (single submodule commit). (2) Then `--wave 1` against the parent monorepo for the backend. (3) After Wave 1 lands in parent `thinx-staging`, deploy and run `--wave 2` for the frontend. (4) Finally `--wave 3` for the Profile-tab swap + Sidebar NavLink + close-out. (Side track: the 9 Phase 9 user-driven UAT items in `09-USER-CHECKLIST.md` remain — they can run in parallel with Phase 10 execution.)
 
 ## Phase Progress
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 7 — History Improvements | Complete (code; deploy + Phase 9 UAT pending — 2026-05-23) |
 | 8 — Authentication Extras | Complete (2026-05-24 — Waves 0+1+2 + Phase 9 UAT; G5 carry-over tracked in Phase 9) |
 | 9 — Manual UAT Review | In progress (16 verified; G5 + G6 shipped + deployed; only user-driven AC-DEST/HN UAT walks remain) |
-| 10 — Admin Features | Seed (decisions locked 2026-05-24; `.planning/phase-10/10-CONTEXT.md` ready for research) |
+| 10 — Admin Features | Planned (2026-05-24 — 4 wave plans, 18 tasks; ready for execute-phase) |
 
 ### Quick Tasks Completed
 
@@ -59,5 +59,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-24T11:30:00Z
-Stopped at: Phase 9 engineering side fully reconciled — G5 (`3e720d4`) + G6 (console `a462ff8`, parent `d5169e61`) had both already shipped and were live in the deployed bundle, but trackers still listed them as open. All planning docs now consistent. Phase 9 ready to flip to Complete once the user walks the 9 items in `09-USER-CHECKLIST.md`; Phase 10 (Admin Features) is next.
+Last session: 2026-05-24T12:00:00Z
+Stopped at: Phase 10 planning complete and committed (`b03b442`) — 4 wave plans + plan-review on disk; ROADMAP/REQUIREMENTS/CONTEXT updated. Two genuine OQs locked by user (sidebar NavLink, device_count placeholder). Ready for `/gsd-execute-phase 10` starting with Wave 0 (Cypress stub).
