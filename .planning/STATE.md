@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 10 Wave 0 shipped (`2fae585`) — admin.spec.js Cypress stub with 4 it() blocks (ADMIN-01..03 positive + ADMIN-03 negative); all 7 plan acceptance gates pass. Waves 1 (backend) and 2 (frontend) unblocked. Phase 9 second user-walk reconciliation committed (`96581db`); 5 engineering follow-ups (G7-G11) tracked for v1 GA but not blocking Phase 10.
-last_updated: "2026-05-24T12:45:00Z"
+stopped_at: Phase 10 Wave 1 shipped in parent monorepo on `thinx-staging` (6 commits `87b748b3`..`0f93c58a`) — requireAdmin middleware + router.admin.js (3 endpoints) + Redis blacklist hook in router.js + sign_with_impersonation JWT method + audit.js flag-array patch + thinx-core registration. All 6 files pass node --check; no new npm deps. Waiting on parent deploy pipeline so Wave 2 (frontend) can hit live endpoints. Phase 9 G7-G11 follow-ups still outstanding for v1 GA.
+last_updated: "2026-05-24T13:30:00Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-24T12:45:00Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 10 Wave 0 shipped; Wave 1 (backend, parent monorepo) is the next dispatch.
+**Current focus:** Phase 10 Wave 1 backend shipped in parent; awaiting parent CI deploy before Wave 2 (frontend) can run.
 
 ## Current Status
 
-- **Active phase:** Phase 10 — Admin Features (Wave 0 complete; Wave 1 backend up next)
-- **Last action:** Phase 10 Wave 0 executed inline — `vue/cypress/integration/admin.spec.js` created (18 LOC, 4 it() blocks: ADMIN-01 user-list, ADMIN-02 revoke confirm, ADMIN-03 impersonate confirm, ADMIN-03 negative). All 7 plan acceptance gates pass (node --check OK, 4 it() blocks, 0 it.only, 1 cy.login, 1 describe header, 4 TODO ADMIN- entries, 1 cy.visit /app/admin/users). Single submodule commit `2fae585`; SUMMARY at `.planning/phase-10/10-00-SUMMARY.md`; ROADMAP 10-00 checkbox flipped. (2026-05-24)
-- **Next action:** (1) `/gsd-execute-phase 10 --wave 1` against the parent monorepo (`/Users/igraczech/Repositories/thinx-device-api`) for the backend: `requireAdmin` middleware + `lib/router.admin.js` (3 endpoints) + Redis blacklist + `audit.js` flag-array patch + `sign_with_impersonation` JWT method + `router.js` blacklist check. (2) After Wave 1 lands in parent `thinx-staging` and deploys, run `--wave 2` for the frontend route + `AdminUsers.vue` + `ImpersonationBanner.vue` + `store/admin.js`. (3) Finally `--wave 3` for the Profile-tab swap + Sidebar NavLink (OQ-A) + Cypress green-flip + REQUIREMENTS traceability flip. (Side track A — Phase 9 G7–G10 remain open as v1 GA follow-ups; G11 routes to v1.1 as AUTH-04. Side track B — DASH-04 + AUTH-03 laptop-sleep UAT walks blocked on external state.)
+- **Active phase:** Phase 10 — Admin Features (Waves 0 + 1 complete; Wave 2 blocked on parent deploy)
+- **Last action:** Phase 10 Wave 1 executed inline against the parent monorepo (`/Users/igraczech/Repositories/thinx-device-api/`). Six atomic commits on `thinx-staging` (`87b748b3`, `cfc4fecb`, `86022ed6`, `0acc95d4`, `0652c127`, `0f93c58a`): requireAdmin middleware factory + 1-line audit.js flag-array patch + JWTLogin.sign_with_impersonation + router.js JWT-verify blacklist + impersonation injection + audit hook + router.admin.js with three endpoints (GET users, DELETE session, POST impersonate) + thinx-core registration. All `node --check` gates pass; no new npm deps. Console submodule clean except for `10-01-SUMMARY.md` + ROADMAP checkbox flip. (2026-05-24)
+- **Next action:** (1) Push parent `thinx-staging` so CI picks up the 6 backend commits, runs `npm test` under docker-compose, and deploys the new `/api/v2/admin/*` endpoints to staging. Optional: run the curl smoke matrix from the plan's <verification> §3 against the deployed staging API (admin lists, non-admin 403, revoke + iat check, impersonate + impersonate-admin 403, audit-log surface). (2) Once staging is live, `/gsd-execute-phase 10 --wave 2` runs in the console submodule for the frontend route + `AdminUsers.vue` + `ImpersonationBanner.vue` + `store/admin.js`. (3) Then `--wave 3` for the Profile-tab swap + Sidebar NavLink (OQ-A) + Cypress green-flip + REQUIREMENTS traceability flip. (Side track A — Phase 9 G7–G10 remain open as v1 GA follow-ups; G11 routes to v1.1 as AUTH-04. Side track B — DASH-04 + AUTH-03 laptop-sleep UAT walks blocked on external state.)
 
 ## Phase Progress
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 7 — History Improvements | Complete (code; deploy + Phase 9 UAT pending — 2026-05-23) |
 | 8 — Authentication Extras | Complete (2026-05-24 — Waves 0+1+2 + Phase 9 UAT; G5 carry-over tracked in Phase 9) |
 | 9 — Manual UAT Review | In progress (20 verified after 2nd user-walk; new gaps G7–G11 filed; 2 walks still pending — DASH-04 + AUTH-03 laptop-sleep) |
-| 10 — Admin Features | In progress — Wave 0 shipped 2026-05-24 (`2fae585`); Waves 1/2/3 pending |
+| 10 — Admin Features | In progress — Wave 0 + Wave 1 shipped 2026-05-24 (Wave 1 = 6 parent-repo commits `87b748b3`..`0f93c58a`); Wave 2 blocked on parent deploy |
 
 ### Quick Tasks Completed
 
@@ -59,5 +59,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-24T12:45:00Z
-Stopped at: Phase 10 Wave 0 shipped (`2fae585`) — admin.spec.js Cypress stub created and committed. Acceptance gates all pass; SUMMARY on disk; ROADMAP checkbox flipped. Next dispatch is `/gsd-execute-phase 10 --wave 1` against the parent monorepo for the backend.
+Last session: 2026-05-24T13:30:00Z
+Stopped at: Phase 10 Wave 1 shipped — 6 atomic commits in parent monorepo on `thinx-staging` (`87b748b3`..`0f93c58a`). Backend half of Admin Features complete. SUMMARY at `.planning/phase-10/10-01-SUMMARY.md`. Next dispatch is `/gsd-execute-phase 10 --wave 2` (frontend) after parent deploy lands the new endpoints on staging.

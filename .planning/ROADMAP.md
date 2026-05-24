@@ -324,7 +324,7 @@ Plans:
 - [x] 10-00-PLAN.md (215 LOC) — `admin.spec.js` covering ADMIN-01..03 TODO `it()` blocks (executed 2026-05-24 — see `10-00-SUMMARY.md`)
 
 **Wave 1** *(parent-repo PR; blocked on Wave 0)*:
-- [ ] 10-01-PLAN.md (731 LOC) — Backend: `requireAdmin` middleware + `router.admin.js` (3 endpoints) + Redis blacklist + `audit.js` flag-array patch + `sign_with_impersonation` JWT method + `router.js` blacklist check
+- [x] 10-01-PLAN.md (731 LOC) — Backend: `requireAdmin` middleware + `router.admin.js` (3 endpoints) + Redis blacklist + `audit.js` flag-array patch + `sign_with_impersonation` JWT method + `router.js` blacklist check (executed 2026-05-24 — 6 commits in parent on `thinx-staging` `87b748b3`..`0f93c58a`; see `10-01-SUMMARY.md`)
 
 **Wave 2** *(submodule PR; blocked on Wave 1 being live in parent `thinx-staging`)*:
 - [ ] 10-02-PLAN.md (974 LOC) — Frontend: `/app/admin/users` route + `AdminUsers.vue` (plain `<table>` + custom pagination) + `ImpersonationBanner.vue` + `store/admin.js` + audit-log surfacing via existing History page
