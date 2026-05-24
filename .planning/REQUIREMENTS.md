@@ -160,11 +160,11 @@
 | DEVI-02 | Phase 4 | Pending |
 | DEVI-03 | Phase 4 | Pending |
 | DEVI-04 | Phase 4 | Pending |
-| DEVI-05 | Phase 4 | Pending |
-| DEVI-06 | Phase 4 | Pending |
+| DEVI-05 | Phase 4 | Code-verified; live walk 2026-05-24 revealed **bulk-action counter stays at count(1)** after single-row Revoke (gap **G9**) |
+| DEVI-06 | Phase 4 | Verified (Phase 9 user-walk 2026-05-24 — bulk Revoke removed selected devices) |
 | DEVI-07 | Phase 4 | Pending |
 | DEVI-08 | Phase 4 | Pending |
-| DEVI-09 | Phase 4 | Pending |
+| DEVI-09 | Phase 4 | Verified narrow Pass (Phase 9 user-walk 2026-05-24 — `POST /api/v2/build` returns 200, build entry appears in history); worker silently fails downstream — separate infrastructure gap **G10** |
 | DEVI-10 | Phase 4 | Pending |
 | DEVI-11 | Phase 4 | Pending |
 | DASH-01 | Phase 5 | Verified (Phase 9 live-walk 2026-05-24) |
@@ -175,17 +175,17 @@
 | PROF-01 | Phase 6 | Verified (Phase 9 user-walk 2026-05-24) |
 | PROF-02 | Phase 6 | Verified (Phase 9 user-walk 2026-05-24) |
 | PROF-03 | Phase 6 | Verified (Phase 6 AI-UAT API-confirmed end-to-end; in-vivo merge-fix confirmed) |
-| PROF-04 | Phase 6 | Positive case Verified (Phase 9 live-walk 2026-05-24 — 5 tabs incl. Admin); negative case deferred (HN — needs non-admin account) |
-| PROF-05 | Phase 6 | Code-verified; live Cancel-path AC-DEST, Confirm-path HN (needs throwaway account) |
-| PROF-06 | Phase 6 | Code-verified; live re-test deferred (AC-DEST — needs fresh-login real-mouse click) |
+| PROF-04 | Phase 6 | Verified (Phase 9 user-walk 2026-05-24 — positive 5 tabs incl. Admin; negative non-admin account confirmed no Admin tab) |
+| PROF-05 | Phase 6 | Cancel path Verified (Phase 9 user-walk 2026-05-24); Confirm path **FAILS** — account is deleted but no redirect to /login and localStorage not cleared (gap **G7**) |
+| PROF-06 | Phase 6 | Verified (Phase 9 user-walk 2026-05-24 — header dropdown → My Account → `/#/app/profile`) |
 | HIST-01 | Phase 7 | Verified (Phase 9 live-walk 2026-05-24) |
 | HIST-02 | Phase 7 | Verified (Phase 9 live-walk 2026-05-24 — bare-path redirect, tab-click URL push, deep-link hydration) |
 | HIST-03 | Phase 7 | Code-verified; live untestable on test account (no builds) |
 | HIST-04 | Phase 7 | Verified (Phase 9 live-walk 2026-05-24 — URL sync + deep-link hydration) |
 | HIST-05 | Phase 7 | Verified (Phase 9 live-walk 2026-05-24 — URL sync + deep-link hydration) |
 | AUTH-01 | Phase 8 | Verified (Phase 9 live-walk 2026-05-24) |
-| AUTH-02 | Phase 8 | Page + both form modes + Login link verified; email round-trip deferred (HN) |
-| AUTH-03 | Phase 8 | Verified (teardown live 2026-05-24; G5 router.beforeEach guard shipped `3e720d4`); 1-hour real-time wait remains HN-deferred |
+| AUTH-02 | Phase 8 | Page + both form modes + Login link verified; full email round-trip **FAILS** — `POST /api/v2/password/reset` returns 403 (gap **G8**) |
+| AUTH-03 | Phase 8 | Verified (teardown live; G5 router-guard `3e720d4`; foreground 1-hour timer confirmed Phase 9 user-walk 2026-05-24); laptop-sleep belt-and-suspenders walk still pending |
 | ADMIN-01 | Phase 10 | Pending (planning — research complete 2026-05-24) |
 | ADMIN-02 | Phase 10 | Pending (planning — research complete 2026-05-24) |
 | ADMIN-03 | Phase 10 | Pending (planning — research complete 2026-05-24) |
@@ -196,11 +196,14 @@
 - Mapped to phases: 57
 - Unmapped: 0 ✓
 
-**Phase 9 verification status (2026-05-24 — Phase 8 closed):**
-- Verified (full pass): 16 — DASH-01, DASH-02, DASH-03, DASH-05, PROF-01, PROF-02, PROF-03, PROF-04 (positive), HIST-01, HIST-02, HIST-04, HIST-05, AUTH-01, AUTH-03 (+ DEVI-01..04, DEVI-07, DEVI-08, DEVI-10..12 from Phase 4 round-2)
-- Partial / widget-only: 3 — DASH-04 (no artifact zip), HIST-03 (no builds in account), AUTH-02 (no email round-trip)
-- Deferred (AC-DEST + HN): 6 — PROF-04 (negative), PROF-05, PROF-06, DEVI-05, DEVI-06, DEVI-09
+**Phase 9 verification status (2026-05-24 — second user-walk):**
+- Verified (full pass): 20 — DASH-01, DASH-02, DASH-03, DASH-05, PROF-01, PROF-02, PROF-03, PROF-04, PROF-06, HIST-01, HIST-02, HIST-04, HIST-05, AUTH-01, AUTH-03, DEVI-06, DEVI-09 narrow (+ DEVI-01..04, DEVI-07, DEVI-08, DEVI-10..12 from Phase 4 round-2)
+- Partial / widget-only: 2 — DASH-04 (no artifact zip account), HIST-03 (no builds in account)
+- **Failed in live walk** (engineering follow-ups required): 3 — PROF-05 Confirm path (**G7**), AUTH-02 email round-trip (**G8**), DEVI-05 bulk-counter (**G9**)
+- Infrastructure gap surfaced by DEVI-09: thinx_worker silently loops on `docker pull` despite manual image pull (**G10**)
+- Out-of-scope side-finding: Vue console has no signup flow — account creation only works in legacy console (**G11**)
+- Pending walk: AUTH-03 laptop-sleep belt-and-suspenders edge case
 
 ---
 *Requirements defined: 2026-05-18*
-*Last updated: 2026-05-24 after Phase 8 closeout (G5 router-guard shipped `3e720d4`; AUTH-03 verified)*
+*Last updated: 2026-05-24 after second Phase 9 user-walk (G7–G11 gaps filed; PROF-04/06, DEVI-06/09, AUTH-03 fully verified)*
