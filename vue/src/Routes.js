@@ -3,6 +3,7 @@ import Router from 'vue-router';
 
 import Layout from '@/components/Layout/Layout';
 import Login from '@/pages/Login/Login';
+import PasswordResetPage from '@/pages/PasswordReset/PasswordReset';
 import ErrorPage from '@/pages/Error/Error';
 
 import Dashboard from '@/pages/Visits/Visits';
@@ -30,6 +31,11 @@ export default new Router({
       path: '/login',
       name: 'Login',
       component: Login,
+    },
+    {
+      path: '/password-reset',
+      name: 'PasswordReset',
+      component: PasswordResetPage,
     },
     {
       path: '/error',
