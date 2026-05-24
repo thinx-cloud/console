@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 10 Wave 2 frontend shipped in console submodule on `thinx-staging` (6 commits `782df94`..`358bd95`) — store/admin.js Vuex module + AdminUsers.vue page (plain table + custom pagination) + ImpersonationBanner.vue (sticky countdown + Exit) + Routes.js /app/admin/users + ADMIN_PATHS guard + Layout.vue banner mount. `yarn build` clean. Wave 1 backend commits still local on parent — Wave 3 (close-out) can proceed in parallel; end-to-end live test waits on parent deploy + submodule bump.
-last_updated: "2026-05-24T14:30:00Z"
+stopped_at: Phase 10 SHIPPED (code + docs complete). All 4 waves landed 2026-05-24 across 17 atomic commits + 3 bookkeeping commits. Final close-out (Wave 3) added Profile.vue admin-tab swap + Sidebar conditional Admin NavLink + Cypress assertion flip + REQUIREMENTS.md ADMIN-01..03 traceability + ROADMAP.md Phase 10 Complete. `yarn build` clean. Operational steps remaining: push parent `thinx-staging` (deploys Wave 1 backend); bump parent submodule pointer (rebuilds Vue image + swarm redeploy); live-walk per 10-HUMAN-UAT.md to flip ADMIN-02/03 from Code-verified to Verified.
+last_updated: "2026-05-24T15:30:00Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-24T14:30:00Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 10 Wave 2 frontend shipped; Wave 3 (close-out) can run now in parallel with parent backend deploy.
+**Current focus:** Phase 10 code + docs shipped. Operational deploy steps remain (parent push + submodule bump + live-walk).
 
 ## Current Status
 
-- **Active phase:** Phase 10 — Admin Features (Waves 0 + 1 + 2 complete; Wave 3 close-out next)
-- **Last action:** Phase 10 Wave 2 executed inline in console submodule. Six atomic commits on `thinx-staging` (`782df94`, `dd19a68`, `733d73f`, `7939853`, `dea8390`, `358bd95`): store/admin.js Vuex module + store/index.js registration + AdminUsers.vue page (plain `<table class="table table-striped">` + custom Prev/Next pagination + per-row Revoke/Impersonate with `$bvModal.msgBoxConfirm`; Impersonate hidden via `v-if="!user.admin"`; impersonate flow writes localStorage.accessToken + removes refreshToken + commits auth/setAccessToken + dispatches auth/scheduleExpiry + pushes /app/dashboard) + ImpersonationBanner.vue (sticky bg-warning banner, MM:SS countdown via 1s setInterval cleared in beforeDestroy, watch `$route` re-decode, exit dispatches auth/clearSession then $router.push('/login')) + Routes.js /app/admin/users child route + ADMIN_PATHS guard (prefix-match against `store.state.profile.profile.admin`; falsy → next('/app/dashboard')) + Layout.vue banner mount between Sidebar and content. `yarn build` clean (17.86s). Anti-regressions hold: no `<b-table>` in vue/src; no `mapGetters` in `computed:` in the new files; vue/package.json unchanged. (2026-05-24)
-- **Next action:** (1) `/gsd-execute-phase 10 --wave 3` for the Profile.vue Admin-tab placeholder swap + Sidebar.vue conditional Admin NavLink (OQ-A) + Cypress assertion flip on admin.spec.js + REQUIREMENTS.md ADMIN-01..03 Pending → Verified + ROADMAP Phase 10 row bump. (2) Push parent `thinx-staging` so CI deploys the Wave 1 backend (`87b748b3`..`0f93c58a`) to staging. (3) After parent deploys + the console submodule pointer is bumped (which also rebuilds & ships the Vue console image via parent CI per memory `deployment-console-thinx-cloud`), exercise the manual matrix from 10-02-PLAN.md `<verification>` §3 against `console.thinx.cloud`. (Side track A — Phase 9 G7–G10 remain open as v1 GA follow-ups; G11 routes to v1.1 as AUTH-04. Side track B — DASH-04 + AUTH-03 laptop-sleep UAT walks blocked on external state.)
+- **Active phase:** Phase 10 — Admin Features (SHIPPED — code + docs complete)
+- **Last action:** Phase 10 Wave 3 executed inline in console submodule. Five atomic commits on `thinx-staging` (`91a37c3`, `9cf5a48`, `e6dab88`, `9dc9d84`, `1a7b0be`): Profile.vue admin-tab placeholder swap to a `router-link to="/app/admin/users"` Open Admin Console button + Sidebar.vue conditional ADMIN section with NavLink (gated by `isAdmin` computed → `getProfile()` mapping in `methods:` per Phase 6 G1) + admin.spec.js assertion flip (ADMIN-01 + ADMIN-03-negative now real assertions; ADMIN-02 + ADMIN-03-positive use runtime `this.skip()` with HN-deferred justifications pointing at 10-HUMAN-UAT.md) + REQUIREMENTS.md ADMIN-01 Verified / ADMIN-02 + ADMIN-03 Code-verified with documented HN-deferred facets + ROADMAP.md Phase 10 row Complete (2026-05-24) with all 4 wave commit refs. `yarn build` clean (17.50s, hash `1a932347152d1191`). All anti-regressions hold. (2026-05-24)
+- **Next action:** Operational, not engineering. (1) Push parent `thinx-staging` so CI deploys Wave 1 backend (`87b748b3`..`0f93c58a`) — runs `npm test` under docker-compose then deploys `/api/v2/admin/*` to staging. (2) Bump the parent meta-repo submodule pointer to include Waves 0/2/3 (per memory `deployment-console-thinx-cloud` — single push rebuilds the Vue image at `registry.thinx.cloud:5000/thinx/console:vue` AND triggers swarm redeploy). (3) Live-walk the 10-02-PLAN.md `<verification>` §3 manual matrix against `console.thinx.cloud` (admin lists, non-admin route guard, non-admin 403, Revoke + second-browser 401, Impersonate + banner + countdown + Exit-to-login, admin row no-Impersonate-button) — when ADMIN-02 + ADMIN-03 pass live, flip those rows in REQUIREMENTS.md from Code-verified to Verified. (Side track A — Phase 9 G7–G10 remain open as v1 GA follow-ups; G11 routes to v1.1 as AUTH-04. Side track B — DASH-04 + AUTH-03 laptop-sleep UAT walks blocked on external state.)
 
 ## Phase Progress
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 7 — History Improvements | Complete (code; deploy + Phase 9 UAT pending — 2026-05-23) |
 | 8 — Authentication Extras | Complete (2026-05-24 — Waves 0+1+2 + Phase 9 UAT; G5 carry-over tracked in Phase 9) |
 | 9 — Manual UAT Review | In progress (20 verified after 2nd user-walk; new gaps G7–G11 filed; 2 walks still pending — DASH-04 + AUTH-03 laptop-sleep) |
-| 10 — Admin Features | In progress — Waves 0/1/2 shipped 2026-05-24 (Wave 2 = 6 submodule commits `782df94`..`358bd95`, `yarn build` clean); Wave 3 close-out next |
+| 10 — Admin Features | Complete (2026-05-24 — all 4 waves shipped; Wave 3 = 5 submodule commits `91a37c3`..`1a7b0be`; ADMIN-01 Verified, ADMIN-02/03 Code-verified pending live UAT) |
 
 ### Quick Tasks Completed
 
@@ -59,5 +59,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-24T14:30:00Z
-Stopped at: Phase 10 Wave 2 frontend shipped — 6 atomic commits in console submodule on `thinx-staging` (`782df94`..`358bd95`). `yarn build` clean; anti-regressions hold. SUMMARY at `.planning/phase-10/10-02-SUMMARY.md`. Next dispatch is `/gsd-execute-phase 10 --wave 3` for the close-out (Profile tab swap + Sidebar NavLink + Cypress green-flip + REQUIREMENTS / ROADMAP bumps).
+Last session: 2026-05-24T15:30:00Z
+Stopped at: Phase 10 SHIPPED — 17 atomic commits + 3 bookkeeping commits across the four waves. Wave 3 final close-out at `91a37c3`..`1a7b0be`; SUMMARY at `.planning/phase-10/10-03-SUMMARY.md`. ROADMAP Phase 10 row: Complete (2026-05-24). REQUIREMENTS: ADMIN-01 Verified; ADMIN-02/03 Code-verified with HN-deferred live-walk facets. Remaining steps are operational only — parent push + submodule bump + live UAT walk per 10-HUMAN-UAT.md.
