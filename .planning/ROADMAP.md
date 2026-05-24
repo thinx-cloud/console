@@ -295,7 +295,7 @@ Plans:
 
 ## Phase 10 — Admin Features (v1.1)
 
-**Status:** Seed (decisions locked 2026-05-24; research complete 2026-05-24 — `10-RESEARCH.md`, 10 risks identified, 5 CONTEXT.md corrections)
+**Status:** Complete (2026-05-24) — Wave 0 stub `2fae585`; Wave 1 backend `87b748b3`..`0f93c58a` (parent monorepo `thinx-staging`); Wave 2 frontend `782df94`..`358bd95` (submodule `thinx-staging`); Wave 3 close-out `91a37c3`..HEAD; live-walk per `10-HUMAN-UAT.md`
 **Effort:** L
 **Goal:** Replace the Profile.vue Admin tab placeholder with three real capabilities (user list, session revocation, impersonation) so admins can manage the platform without ever opening the legacy console.
 
@@ -330,7 +330,7 @@ Plans:
 - [x] 10-02-PLAN.md (974 LOC) — Frontend: `/app/admin/users` route + `AdminUsers.vue` (plain `<table>` + custom pagination) + `ImpersonationBanner.vue` + `store/admin.js` + audit-log surfacing via existing History page (executed 2026-05-24 — 6 submodule commits `782df94`..`358bd95`; `yarn build` OK; see `10-02-SUMMARY.md`)
 
 **Wave 3** *(submodule PR; blocked on Wave 2)*:
-- [ ] 10-03-PLAN.md (714 LOC) — Profile.vue Admin tab swap + Sidebar.vue conditional NavLink (OQ-A) + Cypress green-flip + REQUIREMENTS traceability flip
+- [x] 10-03-PLAN.md (714 LOC) — Profile.vue Admin tab swap + Sidebar.vue conditional NavLink (OQ-A) + Cypress green-flip + REQUIREMENTS traceability flip (executed 2026-05-24 — 5 submodule commits `91a37c3`..HEAD; see `10-03-SUMMARY.md`)
 
 **Requirements:** ADMIN-01, ADMIN-02, ADMIN-03
 
@@ -367,7 +367,7 @@ Plans:
 | 7 | History Improvements | M | HIST-01–05 | Code complete (UAT in Phase 9 — 2026-05-23) |
 | 8 | Authentication Extras | S | AUTH-01–03 | Complete (Phase 9 UAT 2026-05-24; G5 router-guard shipped `3e720d4`) |
 | 9 | Manual UAT Review | M | aggregate of carry-over UAT items | In progress (live-walked 2026-05-24) |
-| 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Planned (2026-05-24 — 4 wave plans, 18 tasks, 2,634 LOC; plan-check PASS-WITH-NOTES) |
+| 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Complete (2026-05-24) |
 
 **Total v1 requirements:** 54 across 9 phases. Phase 10 adds 3 v1.1 requirements (ADMIN-01..03 — see `REQUIREMENTS.md`).
 
