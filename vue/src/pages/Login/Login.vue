@@ -120,6 +120,7 @@ export default {
     ...mapActions({
       fetchProfile: "profile/fetchProfile",
       isTokenValid: "auth/isTokenValid",
+      scheduleExpiry: "auth/scheduleExpiry",
     }),
     ...mapGetters({
       isAuthenticated: "auth/isAuthenticated",
@@ -198,6 +199,7 @@ export default {
       ) {
         this.setAccessToken(access_token);
         this.setRefreshToken(refresh_token);
+        this.scheduleExpiry(access_token);
       }
 
       if (this.isAuthenticated()) {
@@ -222,6 +224,7 @@ export default {
     if (authenticated && accessToken) {
       this.setAccessToken(accessToken);
       this.setRefreshToken(refreshToken);
+      this.scheduleExpiry(accessToken);
       void this.pushIfNeeded("/app/dashboard");
     }
   },

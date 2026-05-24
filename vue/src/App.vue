@@ -17,7 +17,10 @@ export default {
       setAccessToken: "auth/setAccessToken",
       setRefreshToken: "auth/setRefreshToken",
     }),
-    ...mapActions({ isTokenValid: "auth/isTokenValid" }),
+    ...mapActions({
+      isTokenValid: "auth/isTokenValid",
+      scheduleExpiry: "auth/scheduleExpiry",
+    }),
     async pushIfNeeded(location) {
       if (this.$route.fullPath === location) {
         return;
@@ -51,6 +54,7 @@ export default {
       if (await this.isTokenValid(storedAccessToken) && await this.isTokenValid(storedRefreshToken)) {
         this.setAccessToken(storedAccessToken);
         this.setRefreshToken(storedRefreshToken);
+        this.scheduleExpiry(storedAccessToken);
       }
 
       // concat default paths
