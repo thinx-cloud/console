@@ -312,6 +312,8 @@ export default {
       const result = await this.revokeDevices([udid]);
       if (result.success) {
         this.message = 'Device revoked.';
+        const i = this.selectedUdids.indexOf(udid);
+        if (i > -1) this.selectedUdids.splice(i, 1);
         this.loadData();
       } else {
         this.error = result.message || 'Failed to revoke device.';
