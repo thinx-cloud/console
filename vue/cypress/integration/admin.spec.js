@@ -1,9 +1,20 @@
 
 describe('Admin Features feature', function() {
 
-  beforeEach(() => {
+  beforeEach(function() {
+    // The leaked test/tset fixture must stay non-admin forever. Admin specs
+    // require a separate Throw Away admin account, provisioned via
+    // CYPRESS_ADMIN_USER / CYPRESS_ADMIN_PASS env vars in the CircleCI
+    // `console` context. When those creds aren't set (local dev, forks),
+    // skip the whole admin suite gracefully.
+    const adminUser = Cypress.env('ADMIN_USER');
+    const adminPass = Cypress.env('ADMIN_PASS');
+    if (!adminUser || !adminPass) {
+      cy.log('skipping admin suite — CYPRESS_ADMIN_USER / CYPRESS_ADMIN_PASS not set');
+      this.skip();
+    }
     cy.viewport(1536, 754);
-    cy.login();
+    cy.loginAsAdmin();
     cy.visit('http://localhost:3000/#/app/admin/users');
   });
 

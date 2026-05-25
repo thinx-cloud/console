@@ -49,4 +49,22 @@ Cypress.Commands.add('login', (user, password) => {
     cy.wait(2000);
 });
 
+// Admin-credentials login. Reads CYPRESS_ADMIN_USER / CYPRESS_ADMIN_PASS
+// (auto-promoted to Cypress.env('ADMIN_USER' / 'ADMIN_PASS')) so the leaked
+// test/tset fixture account never has to be granted admin rights.
+//
+// Note: this command does NOT skip on missing creds — `this.skip()` cannot run
+// from inside a cy.* chain (wrong `this` context). Spec files MUST gate in
+// their own beforeEach via Cypress.env(...) checks before calling this.
+Cypress.Commands.add('loginAsAdmin', () => {
+    const user = Cypress.env('ADMIN_USER');
+    const password = Cypress.env('ADMIN_PASS');
+    cy.viewport(fixtures.viewport[0], fixtures.viewport[1]);
+    cy.visit('/');
+    cy.get('#username').type(user);
+    cy.get('#password').type(password, { log: false });
+    cy.get('button').contains('login', { matchCase: false }).click();
+    cy.wait(2000);
+});
+
 
