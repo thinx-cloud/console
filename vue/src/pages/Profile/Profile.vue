@@ -191,7 +191,7 @@ export default {
   },
   methods: {
     ...mapGetters({ getProfile: 'profile/getProfile' }),
-    ...mapActions({ fetchProfile: 'profile/fetchProfile', updateProfile: 'profile/updateProfile', deleteAccount: 'profile/deleteAccount', uploadAvatar: 'profile/uploadAvatar' }),
+    ...mapActions({ fetchProfile: 'profile/fetchProfile', updateProfile: 'profile/updateProfile', deleteAccount: 'profile/deleteAccount', uploadAvatar: 'profile/uploadAvatar', clearSession: 'auth/clearSession' }),
     async loadProfile() {
       this.loading = true;
       await this.fetchProfile();
@@ -301,6 +301,12 @@ export default {
       if (!confirmed) return;
       const result = await this.deleteAccount();
       if (result.success) {
+        // G7 fix: account is gone server-side, so tear down the local session
+        // (3 localStorage keys + 3 Vuex slots + cancel expiry timer) BEFORE
+        // routing. Without this, localStorage.authenticated lingers and the
+        // router.beforeEach guard treats the orphaned page as still logged in
+        // (same chokepoint as Header.vue#logout — Phase 8 Wave 2, 0295a69).
+        await this.$store.dispatch('auth/clearSession');
         this.$router.push('/login');
       } else {
         this.error = result.message || 'Failed to delete account.';
