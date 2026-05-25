@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 10 SHIPPED (code + docs complete). All 4 waves landed 2026-05-24 across 17 atomic commits + 3 bookkeeping commits. Final close-out (Wave 3) added Profile.vue admin-tab swap + Sidebar conditional Admin NavLink + Cypress assertion flip + REQUIREMENTS.md ADMIN-01..03 traceability + ROADMAP.md Phase 10 Complete. `yarn build` clean. Operational steps remaining: push parent `thinx-staging` (deploys Wave 1 backend); bump parent submodule pointer (rebuilds Vue image + swarm redeploy); live-walk per 10-HUMAN-UAT.md to flip ADMIN-02/03 from Code-verified to Verified.
-last_updated: "2026-05-24T15:30:00Z"
+stopped_at: Phase 10 SHIPPED and LIVE on console.thinx.cloud. Parent push + submodule bump landed 2026-05-24 22:52 CET (parent commit `55312da6` bumped services/console e0a860e2 → 350a7eb4, single push rebuilt Vue image AND triggered swarm redeploy). Verified live 2026-05-25: bundle last-modified today 12:50 UTC, `GET /api/v2/admin/users` returns 401 (endpoint reachable, auth-gated as designed). Additional defense-in-depth security fix landed today on parent: `96e8e144 fix(security): block admin/owner/_id in managed_users edit design fn`. Only remaining Phase 10 work is the live UAT walk per `10-HUMAN-UAT.md` to flip ADMIN-02/03 from Code-verified → Verified.
+last_updated: "2026-05-25T20:05:00Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-24T15:30:00Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 10 code + docs shipped. Operational deploy steps remain (parent push + submodule bump + live-walk).
+**Current focus:** Phase 10 SHIPPED and LIVE. Only human live UAT walk remains to flip ADMIN-02/03 → Verified.
 
 ## Current Status
 
-- **Active phase:** Phase 10 — Admin Features (SHIPPED — code + docs complete)
-- **Last action:** Phase 10 Wave 3 executed inline in console submodule. Five atomic commits on `thinx-staging` (`91a37c3`, `9cf5a48`, `e6dab88`, `9dc9d84`, `1a7b0be`): Profile.vue admin-tab placeholder swap to a `router-link to="/app/admin/users"` Open Admin Console button + Sidebar.vue conditional ADMIN section with NavLink (gated by `isAdmin` computed → `getProfile()` mapping in `methods:` per Phase 6 G1) + admin.spec.js assertion flip (ADMIN-01 + ADMIN-03-negative now real assertions; ADMIN-02 + ADMIN-03-positive use runtime `this.skip()` with HN-deferred justifications pointing at 10-HUMAN-UAT.md) + REQUIREMENTS.md ADMIN-01 Verified / ADMIN-02 + ADMIN-03 Code-verified with documented HN-deferred facets + ROADMAP.md Phase 10 row Complete (2026-05-24) with all 4 wave commit refs. `yarn build` clean (17.50s, hash `1a932347152d1191`). All anti-regressions hold. (2026-05-24)
-- **Next action:** Operational, not engineering. (1) Push parent `thinx-staging` so CI deploys Wave 1 backend (`87b748b3`..`0f93c58a`) — runs `npm test` under docker-compose then deploys `/api/v2/admin/*` to staging. (2) Bump the parent meta-repo submodule pointer to include Waves 0/2/3 (per memory `deployment-console-thinx-cloud` — single push rebuilds the Vue image at `registry.thinx.cloud:5000/thinx/console:vue` AND triggers swarm redeploy). (3) Live-walk the 10-02-PLAN.md `<verification>` §3 manual matrix against `console.thinx.cloud` (admin lists, non-admin route guard, non-admin 403, Revoke + second-browser 401, Impersonate + banner + countdown + Exit-to-login, admin row no-Impersonate-button) — when ADMIN-02 + ADMIN-03 pass live, flip those rows in REQUIREMENTS.md from Code-verified to Verified. (Side track A — Phase 9 G7–G10 remain open as v1 GA follow-ups; G11 routes to v1.1 as AUTH-04. Side track B — DASH-04 + AUTH-03 laptop-sleep UAT walks blocked on external state.)
+- **Active phase:** Phase 10 — Admin Features (SHIPPED + DEPLOYED — only human UAT walk remains)
+- **Last action:** Confirmed Phase 10 is live on `console.thinx.cloud` (2026-05-25). Parent deploy commit `55312da6` (2026-05-24 22:52 CET) bumped `services/console` from `e0a860e2` → `350a7eb4`, which per memory `deployment-console-thinx-cloud` rebuilt `registry.thinx.cloud:5000/thinx/console:vue` AND triggered swarm redeploy in one push. Live probes today: bundle `last-modified: 2026-05-25 12:50 UTC` (fresh), `GET /api/v2/admin/users` → `401` (endpoint reachable, auth-gated as designed). Also noticed unrelated defense-in-depth security fix landed today on parent: `96e8e144 fix(security): block admin/owner/_id in managed_users edit design fn` (CouchDB users/edit mass-assignment guard). (2026-05-25)
+- **Next action:** Human-only — live UAT walk against `console.thinx.cloud` per `.planning/phase-10/10-HUMAN-UAT.md` / `10-02-PLAN.md` §3 manual matrix: admin list loads, non-admin route guard, non-admin 403, Revoke + second-browser 401, Impersonate + banner + countdown + Exit-to-login, admin row hides Impersonate. When passes confirm, flip ADMIN-02 + ADMIN-03 in REQUIREMENTS.md from Code-verified → Verified. (Side track A — Phase 9 G7–G10 remain open as v1 GA follow-ups; G11 routes to v1.1 as AUTH-04. Side track B — DASH-04 + AUTH-03 laptop-sleep UAT walks blocked on external state.)
 
 ## Phase Progress
 
@@ -59,5 +59,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-24T15:30:00Z
-Stopped at: Phase 10 SHIPPED — 17 atomic commits + 3 bookkeeping commits across the four waves. Wave 3 final close-out at `91a37c3`..`1a7b0be`; SUMMARY at `.planning/phase-10/10-03-SUMMARY.md`. ROADMAP Phase 10 row: Complete (2026-05-24). REQUIREMENTS: ADMIN-01 Verified; ADMIN-02/03 Code-verified with HN-deferred live-walk facets. Remaining steps are operational only — parent push + submodule bump + live UAT walk per 10-HUMAN-UAT.md.
+Last session: 2026-05-25T20:05:00Z
+Stopped at: Phase 10 SHIPPED + DEPLOYED. Parent push + submodule bump landed 2026-05-24 22:52 CET (commit `55312da6`). Production bundle on `console.thinx.cloud` last-modified 2026-05-25 12:50 UTC; `GET /api/v2/admin/users` → 401 (reachable, auth-gated). Only remaining Phase 10 work is the human live UAT walk per `10-HUMAN-UAT.md` to flip ADMIN-02/03 from Code-verified → Verified.
