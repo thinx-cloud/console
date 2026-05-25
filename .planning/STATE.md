@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 10 CLOSED 2026-05-26 — live UAT walk accepted against bundle `26c910a` on console.thinx.cloud (last-modified 2026-05-25 21:56 UTC). All 11 walk items pass (ADMIN-01 page + table + pagination, ADMIN-02 revoke + cross-browser 401, ADMIN-03 impersonate + banner + countdown + render-target + reload-survival + exit-to-login + route guard + curl 403 + admin-row hides Impersonate, audit-log surfacing). REQUIREMENTS.md ADMIN-01/02/03 all flipped to Verified. One acceptance note captured: admin user-list **search/filter** as v1.x backlog item. Two operational facts worth keeping in mind: (a) swarm-side auto-pull stopped working after 14:44 CET on 2026-05-25 — manual `./scripts/stack-deploy` worked but the auto mechanism root cause is unknown; (b) `cy.login(user, pass)` ignores its arguments (latent bug at commands.ts:43, harmless today). Phase 9 carry-overs G7..G10 + AUTH-04 (signup) remain as v1 GA / v1.1 follow-ups.
-last_updated: "2026-05-26T20:10:00Z"
+stopped_at: Phase 11 narrowed to Wave 1 only — G9 (Devices.vue per-row Revoke selection-prune) shipped as quick task `260526-2d3` (commit `4be39f3`, unsigned per user authorization; GPG pinentry unavailable). Phase 11 Wave 2 is now complete; Wave 1 (G8 backend `POST /api/v2/password/reset` 403) is still untouched and lives in the parent monorepo, not this submodule. Phase 10 remains CLOSED (live UAT accepted 2026-05-26 against bundle `26c910a`; ADMIN-01/02/03 Verified). v1.x backlog unchanged. Operational facts still in play: (a) swarm auto-pull broken since 14:44 CET 2026-05-25, manual `./scripts/stack-deploy` needed; (b) `cy.login(user, pass)` ignores its arguments at commands.ts:43 (latent bug).
+last_updated: "2026-05-26T23:50:00Z"
 ---
 
 # Project State
@@ -18,9 +18,9 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Current Status
 
-- **Active phase:** Phase 11 — v1 GA Gap Closures (Pending; just added 2026-05-26)
-- **Last action:** Phase 10 closed (live UAT accepted against bundle `26c910a`). Phase 11 added to ROADMAP covering G8 + G9 (Wave 1 backend + Wave 2 frontend; G7 already shipped at submodule `0ac0811`; G10 noted as external). Created `.planning/v1.x-backlog.md` with 6 items deferred to v1.1+: ADMIN-search, AUTH-04 (signup), ADMIN-devcount, HIST-flags, OPS-swarmpull, CY-loginargs. REQUIREMENTS.md v1.x section now indexes the backlog file. Committed `scripts/set-admin.sh` in parent as `1586c941` — operational helper validated in production today (Throw Away promotion enabled Phase 10 UAT). (2026-05-26)
-- **Next action:** Phase 11 needs context-gathering or planning. Two independent waves: (1) G8 backend investigation in parent monorepo — `POST /api/v2/password/reset` returns 403 against rtm; legacy console hit the same endpoint without auth, so it's likely a middleware regression rather than a route redesign. (2) G9 frontend in console submodule — one-line splice in `Devices.vue` per-row Revoke success handler. Suggest `/gsd:discuss-phase 11` to gather context (the G8 investigation is the unknown) before `/gsd:plan-phase 11`. Side track — DASH-04 + AUTH-03 laptop-sleep walks remain pending on external state (not in Phase 11). v1.x backlog separate from Phase 11 and tracked in `.planning/v1.x-backlog.md`.
+- **Active phase:** Phase 11 — v1 GA Gap Closures (Wave 2 shipped 2026-05-26 via quick task `260526-2d3`; Wave 1 still Pending in parent monorepo)
+- **Last action:** Phase 11 Wave 2 (G9) shipped as quick task `260526-2d3` (commit `4be39f3`, **unsigned** — user authorized `--no-gpg-sign` once because GPG pinentry was unavailable in the session; amend with `-S` later if signing matters for downstream tooling). Two-line splice in `vue/src/pages/Devices/Devices.vue` `revokeRow` success branch — mirrors the in-file `toggleDevice` `indexOf`+`splice` pattern. Deployment rides the standard parent-submodule-bump path; manual `./scripts/stack-deploy` may still be needed until swarm auto-pull is diagnosed. UAT walk per ROADMAP.md L393 still owed against the next deployed bundle. (2026-05-26)
+- **Next action:** Two parallel tracks. (1) **Phase 11 Wave 1 (G8)** — `POST /api/v2/password/reset` returns 403 against rtm; investigation + fix lives in the parent monorepo (`/Users/igraczech/Repositories/thinx-device-api/`), not this submodule. Suggest `/gsd:discuss-phase` or `/gsd:plan-phase` from the parent repo. (2) **G9 live UAT** — after the next deploy, walk the ROADMAP.md L393 scenario (`/#/app/devices` → tick row → per-row Revoke → counter drops to `(0)`). Side track — DASH-04 + AUTH-03 laptop-sleep walks remain pending on external state. v1.x backlog tracked separately in `.planning/v1.x-backlog.md`.
 
 ## Phase Progress
 
@@ -36,13 +36,14 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 8 — Authentication Extras | Complete (2026-05-24 — Waves 0+1+2 + Phase 9 UAT; G5 carry-over tracked in Phase 9) |
 | 9 — Manual UAT Review | In progress (20 verified after 2nd user-walk; new gaps G7–G11 filed; 2 walks still pending — DASH-04 + AUTH-03 laptop-sleep) |
 | 10 — Admin Features | **Verified (2026-05-26 — live UAT accepted against bundle `26c910a`; ADMIN-01/02/03 all Verified; one v1.x backlog note: admin user-list search/filter)** |
-| 11 — v1 GA Gap Closures | Pending (added 2026-05-26 — covers G8 backend + G9 frontend; G7 already shipped at `0ac0811`; G10 external) |
+| 11 — v1 GA Gap Closures | Wave 2 (G9) shipped 2026-05-26 via quick `260526-2d3` (`4be39f3`); Wave 1 (G8 backend) Pending in parent monorepo |
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260520-w52 | Fix secondary button background color to darker blue | 2026-05-20 | 1bcd6c3 | [260520-w52-fix-secondary-button-background-color-to](.planning/quick/260520-w52-fix-secondary-button-background-color-to/) |
+| 260526-2d3 | G9 — Devices.vue per-row Revoke: splice udid from selection before refetch (Phase 11 Wave 2) | 2026-05-26 | 4be39f3 | [260526-2d3-g9-revoke-selection-prune](.planning/quick/260526-2d3-g9-revoke-selection-prune/) |
 
 ## Key Files
 
@@ -60,5 +61,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-26T20:10:00Z
-Stopped at: Phase 10 CLOSED. Live UAT walk accepted against bundle `26c910a`. ADMIN-01/02/03 all Verified in REQUIREMENTS.md. Admin user-list search/filter captured as v1.x backlog note. Phase 9 G7 redirect fix already shipped at submodule `0ac0811`. Remaining work: v1 GA polish (G8 backend, G9 selection-prune, G10 worker infra) + v1.x backlog. No phase is currently in progress.
+Last session: 2026-05-26T23:50:00Z
+Stopped at: Phase 11 Wave 2 (G9) shipped via quick task `260526-2d3` (commit `4be39f3`, unsigned per user authorization). `Devices.vue` `revokeRow` now splices the revoked udid out of `selectedUdids[]` before refetch — toolbar counter will drop correctly on per-row revoke. Live UAT pending the next deploy. Phase 11 Wave 1 (G8 backend 403 on `/api/v2/password/reset`) remains untouched and lives in the parent monorepo. Phase 10 still CLOSED. v1.x backlog unchanged.
