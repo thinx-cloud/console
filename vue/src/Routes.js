@@ -9,6 +9,7 @@ import PasswordResetPage from '@/pages/PasswordReset/PasswordReset';
 import ErrorPage from '@/pages/Error/Error';
 
 import Dashboard from '@/pages/Visits/Visits';
+import CostAttribution from '@/pages/CostAttribution/CostAttribution';
 
 import RepoManager from '@/pages/Repositories/Repositories';
 import ApikeyManager from '@/pages/Apikeys/Apikeys';
@@ -54,6 +55,11 @@ const router = new Router({
           path: 'dashboard',
           name: 'Dashboard',
           component: Dashboard,
+        },
+        {
+          path: 'cost-attribution',
+          name: 'CostAttribution',
+          component: CostAttribution,
         },
         {
           path: 'devices',

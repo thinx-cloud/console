@@ -17,6 +17,7 @@ import buildlog from './buildlog';
 import auditlog from './auditlog.js';
 
 import stats from './stats.js';
+import costAttribution from './costAttribution';
 
 Vue.use(Vuex);
 
@@ -39,6 +40,7 @@ export default new Vuex.Store({
     auditlog,
 
     stats,
+    costAttribution,
     admin
   }
 });

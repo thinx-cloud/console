@@ -37,35 +37,30 @@ export default {
   },
   async created() {
     const currentPath = this.$router.history.current.path;
-    const authenticated = this.isAuthenticated;// (window.localStorage.getItem("authenticated") === 'true');
+    let authenticated = this.isAuthenticated;
+    const storedAccessToken = window.localStorage.getItem("accessToken");
+    const storedRefreshToken = window.localStorage.getItem("refreshToken");
+    const storedAuthenticated = window.localStorage.getItem("authenticated") === "true";
+
+    if (!authenticated && storedAuthenticated && storedAccessToken && storedRefreshToken) {
+      if (await this.isTokenValid(storedAccessToken) && await this.isTokenValid(storedRefreshToken)) {
+        this.setAccessToken(storedAccessToken);
+        this.setRefreshToken(storedRefreshToken);
+        this.scheduleExpiry(storedAccessToken);
+        authenticated = this.isAuthenticated;
+      }
+    }
 
     if (!authenticated) {
       if (currentPath !== "/login") {
         await this.pushIfNeeded("/login");
       }
+      return;
     }
 
-    if (authenticated) {
-      // init auth in vuex
-
-      let storedAccessToken = window.localStorage.getItem("accessToken");
-      let storedRefreshToken = window.localStorage.getItem("refreshToken");
-
-      if (await this.isTokenValid(storedAccessToken) && await this.isTokenValid(storedRefreshToken)) {
-        this.setAccessToken(storedAccessToken);
-        this.setRefreshToken(storedRefreshToken);
-        this.scheduleExpiry(storedAccessToken);
-      }
-
-      // concat default paths
-      if (currentPath === "/" || currentPath === "/app") {
-        await this.pushIfNeeded("/app/dashboard");
-      }
-
-      /*
-        TODO unwrap and check validity of this JWT token
-        retrieve accessToken from localstorage, if present
-      */
+    // concat default paths
+    if (currentPath === "/" || currentPath === "/app") {
+      await this.pushIfNeeded("/app/dashboard");
     }
   },
 };

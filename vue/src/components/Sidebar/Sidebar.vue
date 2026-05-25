@@ -15,6 +15,13 @@
           index="dashboard"
           isHeader
         />
+        <NavLink
+          header="Cost Attribution"
+          link="/app/cost-attribution"
+          iconName="flaticon-list-3"
+          index="cost-attribution"
+          isHeader
+        />
         <h5 class="navTitle">MANAGEMENT</h5>
         <NavLink
           header="Devices"
