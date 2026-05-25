@@ -186,9 +186,9 @@
 | AUTH-01 | Phase 8 | Verified (Phase 9 live-walk 2026-05-24) |
 | AUTH-02 | Phase 8 | Page + both form modes + Login link verified; full email round-trip **FAILS** — `POST /api/v2/password/reset` returns 403 (gap **G8**) |
 | AUTH-03 | Phase 8 | Verified (teardown live; G5 router-guard `3e720d4`; foreground 1-hour timer confirmed Phase 9 user-walk 2026-05-24); laptop-sleep belt-and-suspenders walk still pending |
-| ADMIN-01 | Phase 10 | Verified (Wave 2 ship 2026-05-24 — Cypress ADMIN-01 green; admin user-list with custom pagination live-walked per 10-HUMAN-UAT.md) |
-| ADMIN-02 | Phase 10 | Code-verified (Wave 1 backend `87b748b3`..`0f93c58a` + Wave 2 frontend `782df94`..`358bd95`); live revoke-then-second-browser-401 walk HN-deferred (Cypress skipped to avoid locking out the CI fixture; safe walk per 10-HUMAN-UAT.md after fresh fixture seed) |
-| ADMIN-03 | Phase 10 | Code-verified (Wave 1 backend + Wave 2 frontend incl. ImpersonationBanner + countdown + exit-to-login); live impersonate walk HN-deferred (needs a non-admin target account); negative case (Impersonate hidden on admin rows) Verified via Cypress ADMIN-03 negative |
+| ADMIN-01 | Phase 10 | Verified (Wave 2 ship 2026-05-24 — Cypress ADMIN-01 green; admin user-list with custom pagination live-walked + accepted 2026-05-26; user-list **search/filter** captured as a v1.x enhancement — see backlog note below) |
+| ADMIN-02 | Phase 10 | Verified (Phase 10 live UAT 2026-05-26 — revoke + cross-browser 401 + audit-log surfacing all confirmed against bundle `26c910a` on `console.thinx.cloud`); Cypress destructive path stays `this.skip()` per design |
+| ADMIN-03 | Phase 10 | Verified (Phase 10 live UAT 2026-05-26 — impersonate modal + banner + countdown + render-target's-data + reload-survival + exit-to-login + non-admin route guard + non-admin curl 403 + admin row hides Impersonate all confirmed against bundle `26c910a`); destructive positive Cypress path stays `this.skip()` per design |
 
 **Coverage:**
 - v1 requirements: 54 total (AUTH-03 added during Phase 8 — session-hygiene timer was tracked in ROADMAP since Wave-0 plan but formalized as a v1 line item on 2026-05-24)
@@ -204,6 +204,9 @@
 - Out-of-scope side-finding: Vue console has no signup flow — account creation only works in legacy console (**G11**)
 - Pending walk: AUTH-03 laptop-sleep belt-and-suspenders edge case
 
+**v1.x backlog notes (deferred, not yet phased):**
+- Admin user-list search/filter (acceptance note 2026-05-26 — Phase 10 UAT). Today the list is paginated only; for large fleets a search/filter input on `AdminUsers.vue` (across `username` / `email`, server-side query param on `/api/v2/admin/users`) would scale better. Estimate: S — add `q=` param to the GET handler + a debounced search input.
+
 ---
 *Requirements defined: 2026-05-18*
-*Last updated: 2026-05-24 after second Phase 9 user-walk (G7–G11 gaps filed; PROF-04/06, DEVI-06/09, AUTH-03 fully verified)*
+*Last updated: 2026-05-26 — Phase 10 live UAT accepted; ADMIN-01/02/03 fully Verified; admin user-list search captured as v1.x backlog note*

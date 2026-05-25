@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Phase 10 SHIPPED and LIVE on console.thinx.cloud. Parent push + submodule bump landed 2026-05-24 22:52 CET (parent commit `55312da6` bumped services/console e0a860e2 → 350a7eb4, single push rebuilt Vue image AND triggered swarm redeploy). Verified live 2026-05-25: bundle last-modified today 12:50 UTC, `GET /api/v2/admin/users` returns 401 (endpoint reachable, auth-gated as designed). Additional defense-in-depth security fix landed today on parent: `96e8e144 fix(security): block admin/owner/_id in managed_users edit design fn`. Only remaining Phase 10 work is the live UAT walk per `10-HUMAN-UAT.md` to flip ADMIN-02/03 from Code-verified → Verified.
-last_updated: "2026-05-25T20:05:00Z"
+stopped_at: Phase 10 CLOSED 2026-05-26 — live UAT walk accepted against bundle `26c910a` on console.thinx.cloud (last-modified 2026-05-25 21:56 UTC). All 11 walk items pass (ADMIN-01 page + table + pagination, ADMIN-02 revoke + cross-browser 401, ADMIN-03 impersonate + banner + countdown + render-target + reload-survival + exit-to-login + route guard + curl 403 + admin-row hides Impersonate, audit-log surfacing). REQUIREMENTS.md ADMIN-01/02/03 all flipped to Verified. One acceptance note captured: admin user-list **search/filter** as v1.x backlog item. Two operational facts worth keeping in mind: (a) swarm-side auto-pull stopped working after 14:44 CET on 2026-05-25 — manual `./scripts/stack-deploy` worked but the auto mechanism root cause is unknown; (b) `cy.login(user, pass)` ignores its arguments (latent bug at commands.ts:43, harmless today). Phase 9 carry-overs G7..G10 + AUTH-04 (signup) remain as v1 GA / v1.1 follow-ups.
+last_updated: "2026-05-26T20:10:00Z"
 ---
 
 # Project State
@@ -14,13 +14,13 @@ last_updated: "2026-05-25T20:05:00Z"
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Device owners can fully manage their IoT fleet through the Vue console without ever needing the legacy AngularJS UI.
-**Current focus:** Phase 10 SHIPPED and LIVE. Only human live UAT walk remains to flip ADMIN-02/03 → Verified.
+**Current focus:** Phase 10 CLOSED (live UAT accepted 2026-05-26). Remaining: Phase 9 G7..G10 v1 GA follow-ups + a small v1.x backlog (admin user-list search/filter, signup form, swarm auto-pull diagnosis).
 
 ## Current Status
 
-- **Active phase:** Phase 10 — Admin Features (SHIPPED + DEPLOYED — only human UAT walk remains)
-- **Last action:** Confirmed Phase 10 is live on `console.thinx.cloud` (2026-05-25). Parent deploy commit `55312da6` (2026-05-24 22:52 CET) bumped `services/console` from `e0a860e2` → `350a7eb4`, which per memory `deployment-console-thinx-cloud` rebuilt `registry.thinx.cloud:5000/thinx/console:vue` AND triggered swarm redeploy in one push. Live probes today: bundle `last-modified: 2026-05-25 12:50 UTC` (fresh), `GET /api/v2/admin/users` → `401` (endpoint reachable, auth-gated as designed). Also noticed unrelated defense-in-depth security fix landed today on parent: `96e8e144 fix(security): block admin/owner/_id in managed_users edit design fn` (CouchDB users/edit mass-assignment guard). (2026-05-25)
-- **Next action:** Human-only — live UAT walk against `console.thinx.cloud` per `.planning/phase-10/10-HUMAN-UAT.md` / `10-02-PLAN.md` §3 manual matrix: admin list loads, non-admin route guard, non-admin 403, Revoke + second-browser 401, Impersonate + banner + countdown + Exit-to-login, admin row hides Impersonate. When passes confirm, flip ADMIN-02 + ADMIN-03 in REQUIREMENTS.md from Code-verified → Verified. (Side track A — Phase 9 G7–G10 remain open as v1 GA follow-ups; G11 routes to v1.1 as AUTH-04. Side track B — DASH-04 + AUTH-03 laptop-sleep UAT walks blocked on external state.)
+- **Active phase:** Phase 10 — Admin Features (CLOSED 2026-05-26 — code + docs + live UAT all accepted)
+- **Last action:** Phase 10 live UAT walk accepted on `console.thinx.cloud` against bundle `26c910a`. Parent commit chain that landed the close-out: submodule `ba13b451` (test fix for admin.spec.js — gates on CYPRESS_ADMIN_USER/PASS via new `cy.loginAsAdmin()`) ← `20e5eebc` (docs reconcile + write 10-HUMAN-UAT.md) ← `0ac0811` (Phase 9 G7 PROF-05 delete-success redirect fix). Parent commit `26c910ad chore: sync console at ba13b451`. Manual swarm pull via `./scripts/stack-deploy` was needed because the auto-pull mechanism stopped working after 14:44 CET on 2026-05-25 (root cause not yet diagnosed). Operational helper added in parent (uncommitted): `scripts/set-admin.sh` — POSIX `sh` for promoting/demoting CouchDB admin flag from inside any container on the docker network (used to promote Throw Away for UAT; works with `curl + jq`). One v1.x backlog item captured from acceptance: admin user-list **search/filter**. (2026-05-26)
+- **Next action:** Phase 10 is done. Remaining work is non-blocking v1 GA polish + v1.x backlog. Side track A — Phase 9 G7..G10 are the v1 GA follow-ups (G7 redirect fix already shipped at `0ac0811`; G8 `/password/reset 403` is backend; G9 `DEVI-05` selection-prune is a one-line splice; G10 worker infra is outside this repo). Side track B — DASH-04 + AUTH-03 laptop-sleep UAT walks blocked on external state. v1.x backlog (admin search, signup form / AUTH-04, swarm auto-pull diagnosis, `cy.login` argument-ignoring latent bug at `commands.ts:43`) tracked in REQUIREMENTS.md and `10-HUMAN-UAT.md`.
 
 ## Phase Progress
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 7 — History Improvements | Complete (code; deploy + Phase 9 UAT pending — 2026-05-23) |
 | 8 — Authentication Extras | Complete (2026-05-24 — Waves 0+1+2 + Phase 9 UAT; G5 carry-over tracked in Phase 9) |
 | 9 — Manual UAT Review | In progress (20 verified after 2nd user-walk; new gaps G7–G11 filed; 2 walks still pending — DASH-04 + AUTH-03 laptop-sleep) |
-| 10 — Admin Features | Complete (2026-05-24 — all 4 waves shipped; Wave 3 = 5 submodule commits `91a37c3`..`1a7b0be`; ADMIN-01 Verified, ADMIN-02/03 Code-verified pending live UAT) |
+| 10 — Admin Features | **Verified (2026-05-26 — live UAT accepted against bundle `26c910a`; ADMIN-01/02/03 all Verified; one v1.x backlog note: admin user-list search/filter)** |
 
 ### Quick Tasks Completed
 
@@ -59,5 +59,5 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Session Continuity
 
-Last session: 2026-05-25T20:05:00Z
-Stopped at: Phase 10 SHIPPED + DEPLOYED. Parent push + submodule bump landed 2026-05-24 22:52 CET (commit `55312da6`). Production bundle on `console.thinx.cloud` last-modified 2026-05-25 12:50 UTC; `GET /api/v2/admin/users` → 401 (reachable, auth-gated). Only remaining Phase 10 work is the human live UAT walk per `10-HUMAN-UAT.md` to flip ADMIN-02/03 from Code-verified → Verified.
+Last session: 2026-05-26T20:10:00Z
+Stopped at: Phase 10 CLOSED. Live UAT walk accepted against bundle `26c910a`. ADMIN-01/02/03 all Verified in REQUIREMENTS.md. Admin user-list search/filter captured as v1.x backlog note. Phase 9 G7 redirect fix already shipped at submodule `0ac0811`. Remaining work: v1 GA polish (G8 backend, G9 selection-prune, G10 worker infra) + v1.x backlog. No phase is currently in progress.

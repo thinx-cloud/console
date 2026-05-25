@@ -1,36 +1,40 @@
 ---
-status: pending (ADMIN-02 + ADMIN-03 + ADMIN-03 audit-log walks outstanding; ADMIN-01 + ADMIN-03-negative already covered by admin.spec.js assertions)
+status: pass (live UAT accepted 2026-05-26 — ADMIN-01/02/03 all confirmed against bundle `26c910a`; one v1.x backlog note captured for admin user-list search/filter)
 phase: 10-admin-features
 source: [10-00-SUMMARY.md, 10-01-SUMMARY.md, 10-02-SUMMARY.md, 10-03-SUMMARY.md]
 created: 2026-05-25
-updated: 2026-05-25
-live_walked_at: TBD
-deploy_confirmed: console.thinx.cloud bundle last-modified 2026-05-25 12:50 UTC; GET /api/v2/admin/users → 401 (endpoint reachable, auth-gated); parent deploy commit 55312da6 (2026-05-24 22:52 CET) bumped services/console e0a860e2 → 350a7eb4
+updated: 2026-05-26
+live_walked_at: console.thinx.cloud 2026-05-26 (bundle `26c910a`, last-modified 2026-05-25 21:56 UTC)
+deploy_confirmed: console.thinx.cloud bundle last-modified 2026-05-25 21:56 UTC; buildHash "26c910a" matches parent commit `26c910ad` (sync console at ba13b451). Manual `./scripts/stack-deploy` on swarm manager was required to force the pull — auto-pull mechanism stopped working after 14:44 CET on 2026-05-25 (not yet diagnosed; tracked as separate operational follow-up).
 ---
 
-## Walk results (fill in during live UAT)
+## Walk results (live UAT 2026-05-26)
 
 | Item | Result | Evidence |
 |------|--------|----------|
-| ADMIN-01 page + table + pagination | pending | (Cypress already asserts this — confirm in browser to flip REQUIREMENTS) |
-| ADMIN-02 revoke modal + force-logout | pending | |
-| ADMIN-02 second-browser 401 after revoke | pending | |
-| ADMIN-03 impersonate modal + banner + countdown | pending | |
-| ADMIN-03 impersonation render (target's profile) | pending | |
-| ADMIN-03 banner survives reload | pending | |
-| ADMIN-03 exit-to-login + localStorage clear | pending | |
-| ADMIN-03 negative — non-admin route guard redirect | pending | |
-| ADMIN-03 negative — non-admin curl → 403 | pending | |
-| ADMIN-03 negative — admin row hides Impersonate (Cypress asserted) | pending | (confirm in browser) |
-| Audit-log surfacing under "admin" flag | pending | |
+| ADMIN-01 page + table + pagination | pass | live walk on console.thinx.cloud (also asserted by Cypress ADMIN-01) |
+| ADMIN-02 revoke modal + force-logout | pass | live walk |
+| ADMIN-02 second-browser 401 after revoke | pass | live walk |
+| ADMIN-03 impersonate modal + banner + countdown | pass | live walk |
+| ADMIN-03 impersonation render (target's profile) | pass | live walk |
+| ADMIN-03 banner survives reload | pass | live walk |
+| ADMIN-03 exit-to-login + localStorage clear | pass | live walk |
+| ADMIN-03 negative — non-admin route guard redirect | pass | live walk |
+| ADMIN-03 negative — non-admin curl → 403 | pass | live walk |
+| ADMIN-03 negative — admin row hides Impersonate | pass | live walk (also Cypress ADMIN-03-neg) |
+| Audit-log surfacing under "admin" flag | pass | live walk |
+
+## Acceptance note (2026-05-26)
+
+User accepted Phase 10 with one **future enhancement** request: the admin user list should be **searchable/filterable**. Today the list is paginated only; for larger fleets a search input (across `username` / `email`, with a `q=` query param on the server) would scale better. Captured in `REQUIREMENTS.md` v1.x backlog notes — not a blocker for Phase 10 close-out.
 
 ## Prerequisites
 
 - **URL:** https://console.thinx.cloud (NOT localhost — Phase 10 is deployed)
-- **Admin account:** `vue/cypress/fixtures/thinx.json` (`test` user — `admin === true`)
-- **Non-admin account:** bring a second account (or create one via the legacy console — Vue console signup is G11 / future AUTH-04)
-- **Second browser:** for the ADMIN-02 force-logout cross-check (a private/incognito window also works)
-- **DevTools:** Console + Application/Storage tabs open throughout
+- **Admin account:** Throw Away — manually promoted via `scripts/set-admin.sh` (parent monorepo). **The `test`/`tset` Cypress fixture must NEVER be promoted to admin** — those credentials have leaked, and they stay non-admin forever. CI's `admin.spec.js` reads dedicated admin creds from `Cypress.env('ADMIN_USER' / 'ADMIN_PASS')` (CYPRESS_* context env vars on `gh/thinx-cloud/console`).
+- **Non-admin account:** the `test`/`tset` fixture (or any other non-admin) for the Revoke + Impersonate targets.
+- **Second browser:** for the ADMIN-02 force-logout cross-check (a private/incognito window also works).
+- **DevTools:** Console + Application/Storage tabs open throughout.
 
 ## Tests
 
@@ -150,12 +154,15 @@ result: code pass (`audit.js` patch in commit `cfc4fecb` enables flag-array writ
 
 ---
 
-## Wrap-up
+## Wrap-up — CLOSED 2026-05-26
 
-When tests 2-7 + 9 pass live, flip ADMIN-02 + ADMIN-03 in `REQUIREMENTS.md` from `Code-verified (Phase 10 — pending live UAT)` → `Verified (Phase 10 live UAT 2026-MM-DD)`. Update this file's frontmatter `status: pass` + `live_walked_at:` with the date. Then close out Phase 10 — ROADMAP.md is already `Complete (2026-05-24)`.
+ADMIN-01 + ADMIN-02 + ADMIN-03 all flipped to `Verified` in `REQUIREMENTS.md` against bundle `26c910a`. ROADMAP.md remained `Complete (2026-05-24)` from the code-ship date; this file's frontmatter now `status: pass`. Phase 10 closed.
 
-## Out-of-scope / known follow-ups (not Phase 10 closure items)
+## Out-of-scope / known follow-ups (deferred to v1.x — not Phase 10 closure items)
 
-- Real `device_count` aggregation per user — locked OQ-B, v1.1 follow-up.
+- Admin user-list **search/filter** — captured 2026-05-26 from this UAT acceptance. Server-side `q=` param + debounced input on `AdminUsers.vue`.
+- Real `device_count` aggregation per user — locked OQ-B.
 - History page `flagFilterOptions` extension to natively include `admin` + `impersonation` chips — research §A9 footnote; polish, not blocking.
 - Vue console signup form — Phase 9 gap G11, routes to v1.1 as AUTH-04.
+- Diagnose swarm-side auto-pull failure that started ~2026-05-25 evening (manual `./scripts/stack-deploy` worked; root cause unknown).
+- `cy.login(user, pass)` ignores its arguments (commands.ts:43) — latent bug surfaced during Phase 10 Wave 3 fix; harmless today since all 7 non-admin specs rely on current fixture-only behavior, but should be fixed before any future cred-parameterized test.
