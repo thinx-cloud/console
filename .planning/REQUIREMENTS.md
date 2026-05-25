@@ -204,8 +204,16 @@
 - Out-of-scope side-finding: Vue console has no signup flow — account creation only works in legacy console (**G11**)
 - Pending walk: AUTH-03 laptop-sleep belt-and-suspenders edge case
 
-**v1.x backlog notes (deferred, not yet phased):**
-- Admin user-list search/filter (acceptance note 2026-05-26 — Phase 10 UAT). Today the list is paginated only; for large fleets a search/filter input on `AdminUsers.vue` (across `username` / `email`, server-side query param on `/api/v2/admin/users`) would scale better. Estimate: S — add `q=` param to the GET handler + a debounced search input.
+**v1.x backlog notes (deferred to v1.1+):**
+
+One-line index — full per-item context in [.planning/v1.x-backlog.md](.planning/v1.x-backlog.md).
+
+- **ADMIN-search** — Admin user-list search/filter (Phase 10 UAT acceptance 2026-05-26). Est. S.
+- **AUTH-04** — Vue console signup form (Phase 9 G11). Est. M.
+- **ADMIN-devcount** — Real `device_count` per user (Phase 10 locked OQ-B). Est. S–M.
+- **HIST-flags** — Native admin/impersonation flag chips on History page (Phase 10 research §A9). Est. XS.
+- **OPS-swarmpull** — Diagnose swarm auto-pull failure (2026-05-25 incident). Est. unknown.
+- **CY-loginargs** — `cy.login(user, pass)` ignores its args at `commands.ts:43` (Phase 10 close-out finding). Est. XS.
 
 ---
 *Requirements defined: 2026-05-18*

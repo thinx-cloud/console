@@ -354,6 +354,46 @@ Plans:
 
 ---
 
+## Phase 11 — v1 GA Gap Closures
+
+**Status:** Pending
+**Effort:** S
+**Goal:** Close the engineering follow-ups surfaced during Phase 9 live UAT (G7..G10) so v1.0 can ship without outstanding GA debt.
+
+**Delivers:**
+
+*Wave 1 — Backend (parent monorepo `/Users/igraczech/Repositories/thinx-device-api/`):*
+- **G8 fix**: `POST /api/v2/password/reset` returns 403 on live API; legacy console hit the same endpoint successfully without auth. Investigation: confirm `/password/reset` is a public route (no session/CSRF middleware in front of it), verify the request validator matches the body, check that the rate-limit / CORS / Helmet config didn't change the route's response behaviour. Likely a middleware misconfig; could also be a routing regression. Fix + a regression test if the integration suite covers public routes.
+
+*Wave 2 — Frontend (console submodule `services/console/vue/`):*
+- **G9 fix**: `vue/src/pages/Devices/Devices.vue` per-row Revoke success handler should splice the removed udid out of `selected[]` before re-fetching the list (so the toolbar counter drops to `(0)`). Bulk Revoke (DEVI-06) already does this; per-row Revoke needs the same one-line splice. Single file, minimal blast radius.
+
+**Already shipped (no work needed — for traceability):**
+- **G7** PROF-05 delete-success: shipped at submodule commit `0ac0811` during Phase 10 close-out; live in deployed bundle `26c910a`.
+
+**Out of scope (external repo — referenced only):**
+- **G10** thinx_worker silent-loop on `docker pull` — needs a fix in the worker codebase (terminate on persistent "No such image", emit user-visible build-log line, pre-pull on worker startup or pin builds to nodes with the image). Tracked separately; flagged here so the v1 GA bug log is complete.
+
+**Plans:** 2 plans
+
+**Wave 1** *(parent-repo PR; independent of Wave 2)*:
+- [ ] 11-01-PLAN.md — G8 backend investigation + fix
+
+**Wave 2** *(submodule PR; independent of Wave 1)*:
+- [ ] 11-02-PLAN.md — G9 Devices.vue per-row Revoke selection-prune
+
+**Cross-cutting constraints:**
+- Atomic commits per fix
+- `mapGetters` MUST stay in `methods:` (Phase 6 G1 anti-regression — relevant for Wave 2)
+- No new npm packages
+- Wave 1 deploys via parent push; Wave 2 deploys via parent submodule bump (per memory `deployment-console-thinx-cloud`); manual `./scripts/stack-deploy` may be needed until swarm auto-pull is diagnosed (v1.x backlog OPS-swarmpull)
+
+**UAT:**
+- G8: Logout → `/#/login` → Forgot password? → enter email → Send reset email. `POST /password/reset` returns 200; success message shown; reset email received; reset_key round-trip works; new password logs in.
+- G9: `/#/app/devices` → throwaway device row → Revoke → confirm modal → device disappears AND toolbar counter drops to `(0)`.
+
+---
+
 ## Phase Summary
 
 | Phase | Description | Effort | Requirements | Status |
@@ -366,10 +406,11 @@ Plans:
 | 6 | User Profile & Account Settings | L | PROF-01–06 | Code complete (verified; UAT folds into Phase 9) |
 | 7 | History Improvements | M | HIST-01–05 | Code complete (UAT in Phase 9 — 2026-05-23) |
 | 8 | Authentication Extras | S | AUTH-01–03 | Complete (Phase 9 UAT 2026-05-24; G5 router-guard shipped `3e720d4`) |
-| 9 | Manual UAT Review | M | aggregate of carry-over UAT items | In progress (live-walked 2026-05-24) |
-| 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Complete (2026-05-24) |
+| 9 | Manual UAT Review | M | aggregate of carry-over UAT items | In progress (live-walked 2026-05-24; G7 shipped; G8/G9 → Phase 11; G10 external) |
+| 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Verified (live UAT 2026-05-26 — bundle `26c910a`) |
+| 11 | v1 GA Gap Closures | S | G7..G10 closure (G7 shipped, G10 external) | Pending |
 
-**Total v1 requirements:** 54 across 9 phases. Phase 10 adds 3 v1.1 requirements (ADMIN-01..03 — see `REQUIREMENTS.md`).
+**Total v1 requirements:** 54 across 9 phases. Phase 10 adds 3 v1.1 requirements (ADMIN-01..03 — see `REQUIREMENTS.md`). Phase 11 closes Phase 9 gaps against existing requirements (no new line items). Items deferred to v1.x backlog: see `.planning/v1.x-backlog.md`.
 
 ---
 

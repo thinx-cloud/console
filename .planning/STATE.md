@@ -18,9 +18,9 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 ## Current Status
 
-- **Active phase:** Phase 10 — Admin Features (CLOSED 2026-05-26 — code + docs + live UAT all accepted)
-- **Last action:** Phase 10 live UAT walk accepted on `console.thinx.cloud` against bundle `26c910a`. Parent commit chain that landed the close-out: submodule `ba13b451` (test fix for admin.spec.js — gates on CYPRESS_ADMIN_USER/PASS via new `cy.loginAsAdmin()`) ← `20e5eebc` (docs reconcile + write 10-HUMAN-UAT.md) ← `0ac0811` (Phase 9 G7 PROF-05 delete-success redirect fix). Parent commit `26c910ad chore: sync console at ba13b451`. Manual swarm pull via `./scripts/stack-deploy` was needed because the auto-pull mechanism stopped working after 14:44 CET on 2026-05-25 (root cause not yet diagnosed). Operational helper added in parent (uncommitted): `scripts/set-admin.sh` — POSIX `sh` for promoting/demoting CouchDB admin flag from inside any container on the docker network (used to promote Throw Away for UAT; works with `curl + jq`). One v1.x backlog item captured from acceptance: admin user-list **search/filter**. (2026-05-26)
-- **Next action:** Phase 10 is done. Remaining work is non-blocking v1 GA polish + v1.x backlog. Side track A — Phase 9 G7..G10 are the v1 GA follow-ups (G7 redirect fix already shipped at `0ac0811`; G8 `/password/reset 403` is backend; G9 `DEVI-05` selection-prune is a one-line splice; G10 worker infra is outside this repo). Side track B — DASH-04 + AUTH-03 laptop-sleep UAT walks blocked on external state. v1.x backlog (admin search, signup form / AUTH-04, swarm auto-pull diagnosis, `cy.login` argument-ignoring latent bug at `commands.ts:43`) tracked in REQUIREMENTS.md and `10-HUMAN-UAT.md`.
+- **Active phase:** Phase 11 — v1 GA Gap Closures (Pending; just added 2026-05-26)
+- **Last action:** Phase 10 closed (live UAT accepted against bundle `26c910a`). Phase 11 added to ROADMAP covering G8 + G9 (Wave 1 backend + Wave 2 frontend; G7 already shipped at submodule `0ac0811`; G10 noted as external). Created `.planning/v1.x-backlog.md` with 6 items deferred to v1.1+: ADMIN-search, AUTH-04 (signup), ADMIN-devcount, HIST-flags, OPS-swarmpull, CY-loginargs. REQUIREMENTS.md v1.x section now indexes the backlog file. Committed `scripts/set-admin.sh` in parent as `1586c941` — operational helper validated in production today (Throw Away promotion enabled Phase 10 UAT). (2026-05-26)
+- **Next action:** Phase 11 needs context-gathering or planning. Two independent waves: (1) G8 backend investigation in parent monorepo — `POST /api/v2/password/reset` returns 403 against rtm; legacy console hit the same endpoint without auth, so it's likely a middleware regression rather than a route redesign. (2) G9 frontend in console submodule — one-line splice in `Devices.vue` per-row Revoke success handler. Suggest `/gsd:discuss-phase 11` to gather context (the G8 investigation is the unknown) before `/gsd:plan-phase 11`. Side track — DASH-04 + AUTH-03 laptop-sleep walks remain pending on external state (not in Phase 11). v1.x backlog separate from Phase 11 and tracked in `.planning/v1.x-backlog.md`.
 
 ## Phase Progress
 
@@ -36,6 +36,7 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 | 8 — Authentication Extras | Complete (2026-05-24 — Waves 0+1+2 + Phase 9 UAT; G5 carry-over tracked in Phase 9) |
 | 9 — Manual UAT Review | In progress (20 verified after 2nd user-walk; new gaps G7–G11 filed; 2 walks still pending — DASH-04 + AUTH-03 laptop-sleep) |
 | 10 — Admin Features | **Verified (2026-05-26 — live UAT accepted against bundle `26c910a`; ADMIN-01/02/03 all Verified; one v1.x backlog note: admin user-list search/filter)** |
+| 11 — v1 GA Gap Closures | Pending (added 2026-05-26 — covers G8 backend + G9 frontend; G7 already shipped at `0ac0811`; G10 external) |
 
 ### Quick Tasks Completed
 
