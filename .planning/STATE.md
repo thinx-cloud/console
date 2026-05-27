@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
+milestone: v1.999
 milestone_name: milestone
 status: in_progress
 stopped_at: Phase 11 FULLY VERIFIED 2026-05-27 — G9 live UAT walked and passed on console.thinx.cloud (per-row Revoke → toolbar counter dropped to `(0)`); bundle verified as post-G9 via direct curl probe of `/js/app.js` (splice pattern present at offset 1118402). Both Phase 11 waves are now closed: Wave 1 (G8 backend) Verified 2026-05-26 in parent monorepo as parent Phase 1 (AUTH-API-01; rtm image `0a0e6b32`); Wave 2 (G9 Vue) shipped 2026-05-26 via console quick `260526-2d3` (`4be39f3`) and Verified 2026-05-27 via live walk. v1.0 GA from the console side is locked in. Phase 10 remains CLOSED. v1.x backlog tracks `AUTH-bearer-null` (Vue cleanup — harmless under parent guard). Operational facts still in play: (a) swarm auto-pull broken since 14:44 CET 2026-05-25 — actual deploy script is `./restart.sh` (per memory `swarm-deploy-script-name`); (b) `cy.login(user, pass)` ignores its arguments at commands.ts:43 (latent bug). The parent monorepo runs its own GSD project at `/Users/igraczech/Repositories/thinx-device-api/.planning/` covering 4 v1 GA backend gaps (AUTH-API-01 Verified; SEC-PII-01, OPS-01, SEC-DEP-01 — parent v1.0 milestone shipped 2026-05-27).
-last_updated: "2026-05-27T17:30:00Z"
+last_updated: "2026-05-27T17:35:00Z"
 ---
 
 # Project State
