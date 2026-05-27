@@ -356,7 +356,7 @@ Plans:
 
 ## Phase 11 — v1 GA Gap Closures
 
-**Status:** Pending
+**Status:** Both waves shipped 2026-05-26 — Wave 1 closed by parent project's Phase 1 (AUTH-API-01 Verified end-to-end on rtm); Wave 2 (G9) shipped via console quick task `260526-2d3` (`4be39f3`). G9 live UAT walk on Devices page is the only remaining gate.
 **Effort:** S
 **Goal:** Close the engineering follow-ups surfaced during Phase 9 live UAT (G7..G10) so v1.0 can ship without outstanding GA debt.
 
@@ -377,10 +377,10 @@ Plans:
 **Plans:** 2 plans
 
 **Wave 1** *(parent-repo PR; independent of Wave 2)*:
-- [ ] 11-01-PLAN.md — G8 backend investigation + fix
+- [x] **Closed by parent project's Phase 1 (AUTH-API-01) — Verified 2026-05-26.** No `11-01-PLAN.md` authored in this submodule; the work landed in the parent monorepo's own GSD project. Class-fix Bearer-null guard at parent commit `622aa01` (`lib/router.js:103`) + `postPasswordReset` response normalization at `db46790` + tightening at `c67d9af` + regression spec at `3413166` (`spec/jasmine/ZZ-RouterPasswordResetSpec.js`). Deployed live on `rtm.thinx.cloud` as image `thinxcloud/api:latest sha256:0a0e6b32`. Full root-cause + reversion plan: parent `.planning/milestones/v1.0-phases/01-auth-api-password-reset/01-SUMMARY.md`. Frontend half (Vue still sends `Bearer null` on logged-out requests — `vue/src/core/api.js:53-57`) is harmless after the backend guard; cleanup filed in `.planning/v1.x-backlog.md` as `AUTH-bearer-null`.
 
 **Wave 2** *(submodule PR; independent of Wave 1)*:
-- [ ] 11-02-PLAN.md — G9 Devices.vue per-row Revoke selection-prune
+- [x] G9 Devices.vue per-row Revoke selection-prune — shipped via console quick task `260526-2d3` (commit `4be39f3`, unsigned per session authorization); see `.planning/quick/260526-2d3-g9-revoke-selection-prune/260526-2d3-SUMMARY.md`. Live UAT walk on the Devices page against the next deployed Vue bundle remains the only gate for marking G9 (and Phase 11) Verified.
 
 **Cross-cutting constraints:**
 - Atomic commits per fix
@@ -408,7 +408,7 @@ Plans:
 | 8 | Authentication Extras | S | AUTH-01–03 | Complete (Phase 9 UAT 2026-05-24; G5 router-guard shipped `3e720d4`) |
 | 9 | Manual UAT Review | M | aggregate of carry-over UAT items | In progress (live-walked 2026-05-24; G7 shipped; G8/G9 → Phase 11; G10 external) |
 | 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Verified (live UAT 2026-05-26 — bundle `26c910a`) |
-| 11 | v1 GA Gap Closures | S | G7..G10 closure (G7 shipped, G10 external) | Pending |
+| 11 | v1 GA Gap Closures | S | G7..G10 closure (G7 shipped, G10 external) | Wave 1 + Wave 2 shipped 2026-05-26 (W1 in parent as AUTH-API-01; W2 via quick `260526-2d3`); G9 live UAT walk owed |
 
 **Total v1 requirements:** 54 across 9 phases. Phase 10 adds 3 v1.1 requirements (ADMIN-01..03 — see `REQUIREMENTS.md`). Phase 11 closes Phase 9 gaps against existing requirements (no new line items). Items deferred to v1.x backlog: see `.planning/v1.x-backlog.md`.
 
