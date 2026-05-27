@@ -1,8 +1,8 @@
 ---
 phase: 09-manual-uat-review
-status: second user-walk complete — 20 verified, 3 failed (G7/G8/G9), 1 infra gap (G10), 1 scope finding (G11); 2 items still pending walk (DASH-04, AUTH-03 laptop-sleep)
+status: second user-walk complete — 20 verified, 3 failed (G7/G8/G9 — all now closed), 1 infra gap (G10), 1 scope finding (G11); 1 item BLOCKED on G10 worker fix (DASH-04 zip download — 2026-05-27 production-fs audit confirms no successful builds exist); 1 item still pending walk (AUTH-03 laptop-sleep)
 created: 2026-05-24
-updated: 2026-05-24 (second user-walk)
+updated: 2026-05-27 (G7/G8/G9 all closed; DASH-04 zip walk confirmed blocked on G10 via prod-fs audit)
 inputs: [04-HUMAN-UAT.md, 05-HUMAN-UAT.md, 06-HUMAN-UAT.md, 07-HUMAN-UAT.md, 08-HUMAN-UAT.md]
 ---
 
@@ -27,7 +27,7 @@ Cypress stub. Not re-walked here.
 | DASH-01 | pass | 6 metric cards render; values from real `/stats` (zeros legitimate for test account in current window) |
 | DASH-02 | pass | Each card shows Today/Week/Month sub-values |
 | DASH-03 | pass (empty state) | Timeline widget + 7/31/365 range selector render; "No check-in data for this range." correctly shown for empty account |
-| DASH-04 | widget renders | Recent Builds card renders with "No builds yet." — download path HN-deferred (needs account with successful build artifact zip) |
+| DASH-04 | widget renders; **download walk BLOCKED on G10** | Recent Builds card renders with "No builds yet." for the test account. **2026-05-27 production-fs audit** of `/mnt/gluster/thinx/deploy` on swarm `188.166.23.244` confirms NO successful build artifacts exist for ANY account in the platform (6 FAILED + 1 aborted builds; 0 `firmware.bin` files; most-recent attempt 2023-03-07). The download sub-criterion is gated on `OPS-builder-broken` (G10) — see `.planning/v1.x-backlog.md`. |
 | DASH-05 | pass | Recent Audit Events widget renders |
 
 ### Phase 7 — History
@@ -86,9 +86,10 @@ account or by accepting the test-account mutation.
 
 ### Needs external state (HN)
 
-- **DASH-04 zip download**: needs an account with a successful build
-  that has an artifact zip. Test account has only ERROR-status builds
-  with no zips.
+- **DASH-04 zip download**: **BLOCKED on G10 worker fix (not HN).** 2026-05-27
+  production-fs audit confirmed no successful build artifacts exist for any
+  account on the platform (6 FAILED + 1 aborted; 0 firmware.bin; last attempt
+  Mar 2023). Tracked as `OPS-builder-broken` in `.planning/v1.x-backlog.md`.
 - **PROF-04 negative case**: needs a non-admin account to confirm the
   Admin tab is correctly hidden (`v-if="profile && profile.admin === true"`).
   Live walk on the admin test account ran into the stale-session
@@ -274,9 +275,9 @@ Items moving from Pending/Partial → Failed (engineering follow-ups required):
 
 Items staying Pending pending user action:
 
-- DASH-04 (full zip download — needs account with successful build artifact)
+- DASH-04 (full zip download) — **BLOCKED on G10 worker fix per 2026-05-27 production-fs audit;** filed as `OPS-builder-broken` in `.planning/v1.x-backlog.md`. Widget rendering sub-criterion already verified.
 - AUTH-03 laptop-sleep belt-and-suspenders edge case
-- DEVI-09 worker infrastructure (**G10**) — out-of-scope for the requirement-level pass, but tracked as an open infra issue
+- DEVI-09 worker infrastructure (**G10**) — out-of-scope for the requirement-level pass, but tracked as an open infra issue (same upstream cause as DASH-04 above; both unblock together when worker is fixed)
 
 Out-of-scope side-finding:
 

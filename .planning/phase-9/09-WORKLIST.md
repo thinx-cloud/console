@@ -43,7 +43,7 @@ Aggregates every open UAT item from Phases 4-8 (Phase 3 transformer UAT was neve
 | 5.1 | DASH-01 | 6 metric cards from real `/stats` | AC | Just visit `/#/app/dashboard` and confirm cards render numbers, not undefined/zero placeholders. |
 | 5.2 | DASH-02 | Today/week/month period breakdowns on each card | AC | Visible on the same page. |
 | 5.3 | DASH-03 | Timeline + 7/31/365 range selector | AC | Click each range, confirm chart re-renders. |
-| 5.4 | DASH-04 | Recent Builds widget download link | HN | Test account has no builds with artifact zips. Needs an account with a successful build to confirm zip-save round-trip. |
+| 5.4 | DASH-04 | Recent Builds widget download link | BLOCKED | **2026-05-27 production-fs audit (`/mnt/gluster/thinx/deploy` on swarm `188.166.23.244`) confirms NO successful build artifacts exist for ANY account** — 6 FAILED + 1 aborted builds, 0 firmware.bin files. Walk blocked on `OPS-builder-broken` (G10 worker fix) — see `.planning/v1.x-backlog.md`. Widget rendering + download-link presence already AI-verified at `04f78e0`; only the live "successful zip download" sub-criterion remains, and it's gated on a working build pipeline. |
 | 5.5 | DASH-05 | Recent Audit Events widget | AC | Just confirm widget renders. |
 
 ### Phase 6 — User Profile (6 items)
@@ -82,7 +82,8 @@ Aggregates every open UAT item from Phases 4-8 (Phase 3 transformer UAT was neve
 
 - **AC** (will walk now): 19 items
 - **AC-DEST** (deferred, user-owned): 5 items
-- **HN** (human needed — out-of-AI-scope): 3 items (DASH-04 zip, PROF-04 negative, AUTH-03 1-hr)
+- **HN** (human needed — out-of-AI-scope): 2 items (PROF-04 negative, AUTH-03 1-hr)
+- **BLOCKED** (blocked on external work): 1 item (DASH-04 zip — gated on `OPS-builder-broken`/G10 worker fix per 2026-05-27 audit)
 - **PASS** (no action): 12 items
 
 Total: 33 items
