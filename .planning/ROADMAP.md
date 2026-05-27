@@ -356,7 +356,7 @@ Plans:
 
 ## Phase 11 — v1 GA Gap Closures
 
-**Status:** Both waves shipped 2026-05-26 — Wave 1 closed by parent project's Phase 1 (AUTH-API-01 Verified end-to-end on rtm); Wave 2 (G9) shipped via console quick task `260526-2d3` (`4be39f3`). G9 live UAT walk on Devices page is the only remaining gate.
+**Status:** **Verified 2026-05-27** — both waves closed. Wave 1 (G8 backend) closed in parent monorepo as parent project's Phase 1 (AUTH-API-01 Verified end-to-end on rtm); Wave 2 (G9 Vue) shipped via console quick task `260526-2d3` (`4be39f3`) and verified via live UAT walk on `console.thinx.cloud` 2026-05-27 (per-row Revoke → toolbar counter drops to `(0)`).
 **Effort:** S
 **Goal:** Close the engineering follow-ups surfaced during Phase 9 live UAT (G7..G10) so v1.0 can ship without outstanding GA debt.
 
@@ -408,7 +408,7 @@ Plans:
 | 8 | Authentication Extras | S | AUTH-01–03 | Complete (Phase 9 UAT 2026-05-24; G5 router-guard shipped `3e720d4`) |
 | 9 | Manual UAT Review | M | aggregate of carry-over UAT items | In progress (live-walked 2026-05-24; G7 shipped; G8/G9 → Phase 11; G10 external) |
 | 10 | Admin Features (v1.1) | L | ADMIN-01..03 (new) | Verified (live UAT 2026-05-26 — bundle `26c910a`) |
-| 11 | v1 GA Gap Closures | S | G7..G10 closure (G7 shipped, G10 external) | Wave 1 + Wave 2 shipped 2026-05-26 (W1 in parent as AUTH-API-01; W2 via quick `260526-2d3`); G9 live UAT walk owed |
+| 11 | v1 GA Gap Closures | S | G7..G10 closure (G7 shipped, G10 external) | **Verified 2026-05-27** (G9 live UAT passed; W1 in parent as AUTH-API-01; W2 via quick `260526-2d3`) |
 
 **Total v1 requirements:** 54 across 9 phases. Phase 10 adds 3 v1.1 requirements (ADMIN-01..03 — see `REQUIREMENTS.md`). Phase 11 closes Phase 9 gaps against existing requirements (no new line items). Items deferred to v1.x backlog: see `.planning/v1.x-backlog.md`.
 
