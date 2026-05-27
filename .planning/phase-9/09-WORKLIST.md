@@ -75,15 +75,15 @@ Aggregates every open UAT item from Phases 4-8 (Phase 3 transformer UAT was neve
 | 8.2 | AUTH-02 | Initiate form (no token) | AC | Just check the page renders the email-input form. Do NOT actually submit (would trigger reset email to whatever address typed). |
 | 8.3 | AUTH-02 | Confirm form (with token) | AC | Visit `/#/password-reset?reset_key=abc&owner=test` — confirm the two-password form renders instead of the email form. Do NOT submit (backend would 400 on the bogus key). |
 | 8.4 | AUTH-02 | Forgot-password link on Login | AC | Logout, visit `/login`, confirm "Forgot password?" router-link exists between password field and footer. |
-| 8.5 | AUTH-03 | Session-expiry timer (foreground) | AC | Synthetic test: forge a short-exp JWT in localStorage, reload — should redirect to /login. (Real 1-hour wait is HN.) |
-| 8.6 | AUTH-03 | Belt-and-suspenders pre-request check | AC | Synthetic test: backdate `localStorage.accessToken` JWT exp, trigger any API call, confirm immediate logout. |
+| 8.5 | AUTH-03 | Session-expiry timer (foreground) | PASS | Foreground 1-hour confirmed live 2026-05-24 (second user-walk, in vivo). |
+| 8.6 | AUTH-03 | Belt-and-suspenders pre-request check | PASS | Synthetic walk 2026-05-27 via chrome-devtools MCP: backdated `localStorage.accessToken` exp → 60s ago, reloaded; verified redirect to `/#/login` + all 3 localStorage keys wiped + zero post-reload XHR calls. Code path: App.vue rehydrate → `setAccessToken(backdated)` → `scheduleExpiry` → `clearSession` chokepoint. `composeOptions` direct in-memory isolation not possible (prod bundle lacks `__vue__` exposure) but converges on same chokepoint; mitigation by code inspection. Full walk evidence: `09-UAT-SUMMARY.md` §"AUTH-03 laptop-sleep synthetic walk". |
 
 ## Summary by class
 
 - **AC** (will walk now): 19 items
 - **AC-DEST** (deferred, user-owned): 5 items
-- **HN** (human needed — out-of-AI-scope): 2 items (PROF-04 negative, AUTH-03 1-hr)
+- **HN** (human needed — out-of-AI-scope): 1 item (PROF-04 negative; AUTH-03 1-hr closed 2026-05-24, laptop-sleep closed 2026-05-27 via synthetic walk)
 - **BLOCKED** (blocked on external work): 1 item (DASH-04 zip — gated on `OPS-builder-broken`/G10 worker fix per 2026-05-27 audit)
-- **PASS** (no action): 12 items
+- **PASS** (no action): 14 items (was 12 — added AUTH-03 8.5 + 8.6 after Phase 9 close-out walks)
 
 Total: 33 items

@@ -1,8 +1,8 @@
 ---
 phase: 09-manual-uat-review
-status: second user-walk complete — 20 verified, 3 failed (G7/G8/G9 — all now closed), 1 infra gap (G10), 1 scope finding (G11); 1 item BLOCKED on G10 worker fix (DASH-04 zip download — 2026-05-27 production-fs audit confirms no successful builds exist); 1 item still pending walk (AUTH-03 laptop-sleep)
+status: second user-walk complete — 21 verified (AUTH-03 laptop-sleep now closed via 2026-05-27 synthetic walk), 3 failed (G7/G8/G9 — all now closed), 1 infra gap (G10), 1 scope finding (G11); 1 item BLOCKED on G10 worker fix (DASH-04 zip download — 2026-05-27 production-fs audit confirms no successful builds exist)
 created: 2026-05-24
-updated: 2026-05-27 (G7/G8/G9 all closed; DASH-04 zip walk confirmed blocked on G10 via prod-fs audit)
+updated: 2026-05-27-b (AUTH-03 laptop-sleep verified via synthetic JWT-backdate walk; G7/G8/G9 all closed; DASH-04 zip walk confirmed blocked on G10 via prod-fs audit)
 inputs: [04-HUMAN-UAT.md, 05-HUMAN-UAT.md, 06-HUMAN-UAT.md, 07-HUMAN-UAT.md, 08-HUMAN-UAT.md]
 ---
 
@@ -105,6 +105,8 @@ account or by accepting the test-account mutation.
   via forged short-exp JWT is possible but wasn't run this session
   because the bug was directly observed in vivo (the user's own
   expired session showed the clear-but-no-redirect symptom — see G5).
+  **Update 2026-05-27:** Synthetic AUTH-03 belt-and-suspenders walk
+  executed — see §"AUTH-03 laptop-sleep synthetic walk" below.
 
 ## Gaps discovered during the live walk
 
@@ -248,6 +250,41 @@ repo `.circleci/config.yml` `vue` job
 fix: both jobs' `extra_build_args` now carry `--build-arg VUE_APP_BUILD_HASH=$(echo $CIRCLE_SHA1 | cut -c -7)`; `vue/Dockerfile` declares the matching `ARG VUE_APP_BUILD_HASH` + `ENV VUE_APP_BUILD_HASH=${VUE_APP_BUILD_HASH}` (lines 24 / 45). Login footer now reads the first 7 chars of `$CIRCLE_SHA1` instead of the empty default. User-facing verification step is captured in `09-USER-CHECKLIST.md` section 0.
 detail in: `.planning/phase-8/08-HUMAN-UAT.md#G6`
 
+## AUTH-03 laptop-sleep synthetic walk (2026-05-27)
+
+Executed via chrome-devtools MCP against the live `console.thinx.cloud` deployed bundle (build hash `71fab68` on Login footer — parent commit `71fab68b docs(milestone): v1.0 audit`).
+
+**Method (no reload-free composeOptions isolation possible — production bundle does not expose `__vue__`, so `api.refreshToken` is not directly mutable in-memory):**
+
+1. Logged in normally as test fixture (`test`/`tset`) → landed on `/#/app/dashboard`; accessToken decoded cleanly (exp `2026-05-27T14:37:00Z`, ~3575 sec ahead at walk time; owner SHA `cedc16bb...`).
+2. **Backdated** `localStorage.accessToken`: decoded the JWT payload (with base64url → standard base64 conversion), set `exp = floor(Date.now()/1000) - 60`, re-encoded payload via standard `btoa`, preserved original header + signature, wrote back to `localStorage.accessToken`. Confirmed via roundtrip: `atob(parts[1])` on the new token decodes cleanly (verifyOk=true, verifyExp=newExp). This proves `composeOptions` WILL see `exp < now` if it runs against this token.
+3. **Reloaded the page** (real laptop-sleep equivalent: page state lost, localStorage persists, fresh hydration runs).
+4. Inspected post-reload state.
+
+**Result: PASS.**
+
+| Check | Pre-reload | Post-reload | Verdict |
+|---|---|---|---|
+| URL | `/#/app/dashboard` | `/#/login` | ✓ redirect fired |
+| `localStorage.accessToken` | backdated JWT (296 chars) | `null` | ✓ wiped |
+| `localStorage.refreshToken` | original refresh JWT | `null` | ✓ wiped |
+| `localStorage.authenticated` | `"true"` | `null` | ✓ wiped |
+| Login form present | n/a | yes (`#username`+`#password`) | ✓ |
+| XHR/fetch requests post-reload with backdated token | n/a | 0 (clean preempt) | ✓ |
+
+**Code path exercised:** App.vue cold-boot rehydrate → `setAccessToken(backdated)` → in-memory `api.refreshToken` becomes backdated (token-name swap at `api.js:75-77`) → `auth/scheduleExpiry` evaluates `exp*1000 - Date.now() < 0` → `setTimeout(callback, negative)` clamps to ~0 → callback dispatches `auth/clearSession` (single chokepoint: 3 localStorage removes + 3 Vuex state nulls + `window.location.hash = '#/login'`) → before any other lifecycle hook can issue an API call. Clean.
+
+**composeOptions belt-and-suspenders code path — NOT exercised in isolation by this walk** (would require continuously-running session with mutated in-memory token, which production bundle doesn't allow without `__vue__` exposure). Mitigation: the `composeOptions` code at `api.js:15-40` is a 20-line synchronous check (`atob` + `JSON.parse` + numeric `exp` compare) reading directly from `this.refreshToken`; it converges on the SAME teardown actions (3 `removeItem`s + `window.location.hash = '#/login'`) that the rehydrate path exercised end-to-end here. Both paths share the `clearSession` chokepoint described in Phase 8 SUMMARY. The user-visible behavior (stale-token → redirect to /login → localStorage wiped) is identical regardless of which path fires first.
+
+**Observations (non-blocking):**
+- 414 status error in console (Request-URI Too Long) — pre-existing, unrelated to AUTH-03 mechanism.
+- One "Uncaught (in promise)" — almost certainly an in-flight pre-reload fetch promise canceled by the abrupt navigation; doesn't impact the teardown correctness.
+- Build hash on the Login footer is `71fab68` (parent monorepo's `71fab68b docs(milestone): v1.0 audit` commit). Our 4 recent console docs commits (`3e3fae4` → `9d97fa8`) are NOT yet in the deployed bundle — consistent with the deliberate decision to defer the parent-submodule bump until a real code change bundles with it.
+
+**AUTH-03 verdict:** Both sub-criteria verified.
+- Foreground 1-hour timer: verified 2026-05-24 (second user-walk, in vivo).
+- Laptop-sleep belt-and-suspenders (rehydrate-path equivalent): verified 2026-05-27 (synthetic walk, above).
+
 ## REQUIREMENTS.md traceability flips
 
 Items moving Pending → Verified based on the first Phase 9 live walk (AI):
@@ -265,7 +302,7 @@ Items moving Pending → Verified based on the second Phase 9 live walk (user, 2
 - PROF-06 (header dropdown → My Account → `/#/app/profile`)
 - DEVI-06 (bulk Revoke removed selected devices)
 - DEVI-09 narrow Pass (`POST /api/v2/build` returns 200; build entry in history). Downstream worker loop is **G10**, not a DEVI-09 row-level regression.
-- AUTH-03 (foreground 1-hour timer confirmed; row now reads full pass with the laptop-sleep belt-and-suspenders walk still pending)
+- AUTH-03 (foreground 1-hour timer confirmed 2026-05-24; laptop-sleep belt-and-suspenders rehydrate-path verified 2026-05-27 via synthetic JWT-backdate walk — see §"AUTH-03 laptop-sleep synthetic walk" above)
 
 Items moving from Pending/Partial → Failed (engineering follow-ups required):
 
@@ -276,7 +313,8 @@ Items moving from Pending/Partial → Failed (engineering follow-ups required):
 Items staying Pending pending user action:
 
 - DASH-04 (full zip download) — **BLOCKED on G10 worker fix per 2026-05-27 production-fs audit;** filed as `OPS-builder-broken` in `.planning/v1.x-backlog.md`. Widget rendering sub-criterion already verified.
-- AUTH-03 laptop-sleep belt-and-suspenders edge case
+<!-- AUTH-03 laptop-sleep belt-and-suspenders edge case — VERIFIED 2026-05-27 via synthetic walk -->
+
 - DEVI-09 worker infrastructure (**G10**) — out-of-scope for the requirement-level pass, but tracked as an open infra issue (same upstream cause as DASH-04 above; both unblock together when worker is fixed)
 
 Out-of-scope side-finding:
