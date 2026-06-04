@@ -10,7 +10,8 @@
     "cy:test": "cypress run",
     "cy:open": "cypress open",
     "test": "start-server-and-test serve http://127.0.0.1:3000/ cy:test",
-    "eslint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
+    "eslint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "prepare": "cd .. && npx husky install"
   },
   "dependencies": {
     "@amcharts/amcharts4": "^4.10.13",
@@ -55,7 +56,10 @@
     "webpack-cli": "4.47.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
     "@cypress/vite-dev-server": "^2.2.2",
+    "husky": "^9.0.0",
     "@rushstack/eslint-patch": "^1.1.0",
     "@types/node": "^16.11.25",
     "@vue/cli-plugin-babel": "^5.0.0",
