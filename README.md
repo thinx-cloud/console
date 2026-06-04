@@ -38,6 +38,18 @@ Example:
     docker run -ti -v $(pwd):/var/work thinxcloud/console-build-env:vue cd /var/work && npm run test:unit
 
 
+## Commit Convention
+
+Commits must follow [Conventional Commits](https://www.conventionalcommits.org/) format:
+
+```
+type(scope): description
+```
+
+Common types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`.
+
+The `commit-msg` git hook enforces this via [commitlint](https://commitlint.js.org/). Install it by running `yarn install` inside the `vue/` directory (the `prepare` script wires husky automatically).
+
 ## License
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsuculent%2Fthinx-console.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsuculent%2Fthinx-console?ref=badge_large)
