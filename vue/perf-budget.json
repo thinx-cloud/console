@@ -1,0 +1,35 @@
+{
+  "distDir": "dist",
+  "initialAssetPatterns": [
+    "^js/(app|chunk-vendors)(-legacy)?\\.[a-f0-9]+\\.js$",
+    "^css/(app|chunk-vendors)\\.[a-f0-9]+\\.css$"
+  ],
+  "budgets": {
+    "totalJs": {
+      "rawBytes": 7950000,
+      "gzipBytes": 3150000
+    },
+    "totalCss": {
+      "rawBytes": 705000,
+      "gzipBytes": 110000
+    },
+    "largestInitialJsChunk": {
+      "rawBytes": 2600000,
+      "gzipBytes": 850000
+    },
+    "largestInitialCssChunk": {
+      "rawBytes": 570000,
+      "gzipBytes": 85000
+    }
+  },
+  "warnings": {
+    "routeJsChunk": {
+      "rawBytes": 1000000,
+      "gzipBytes": 350000
+    },
+    "routeCssChunk": {
+      "rawBytes": 250000,
+      "gzipBytes": 60000
+    }
+  }
+}
