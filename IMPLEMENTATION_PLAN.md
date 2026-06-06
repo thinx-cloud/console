@@ -4,7 +4,7 @@ Generated: 2026-03-14
 Legacy console: `src/` (deployed at rtm.thinx.cloud)
 Vue console: `vue/` (deployed at staging.thinx.cloud)
 
-Note: Task grooming and a standard task-template live at `dev/TASK_GROOMING.md`. Use that template when refining entries in this plan.
+Note: Task grooming and the PR-ready task template live at `dev/TASK_GROOMING.md`. Use that standard before assigning or implementing entries in this plan, especially when a phase item spans more than one focused PR.
 
 ---
 
@@ -85,17 +85,62 @@ These are patterns started in Vue that improve on the legacy AngularJS approach 
 ### Phase 1 — Bug Fixes & Cleanup (no new features)
 
 **1.1 Fix stats.js getter**
-- File: `vue/src/store/stats.js:23`
-- Change: `return !state.accessToken` → `return state.stats`
+- Problem statement: `vue/src/store/stats.js:23` returns `!state.accessToken`, so dashboard consumers receive a boolean instead of the fetched stats object.
+- User impact: Dashboard metrics cannot render from real stats data until the getter returns `state.stats`.
+- Scope: Update only the stats store getter and focused coverage for that getter.
+- Non-goals: Dashboard redesign, new stats endpoints, or additional metrics.
+- Acceptance criteria:
+  - The stats getter returns `state.stats`.
+  - A focused unit test or store-level assertion covers the getter behavior.
+  - Existing dashboard code can consume the getter without a boolean payload.
+- Verification:
+  - Run the focused Vue unit test for the stats store, or add and run one if none exists.
+  - Smoke check the dashboard after `fetchStats` and confirm the returned value is an object/array payload, not `true` or `false`.
+- Dependencies: Existing `/../user/stats` response shape.
+- Estimate: XS, 1-2 hours.
+- Owner: @maintainer.
+- Assumptions: No API change is required.
+- Links: `vue/src/store/stats.js`.
 
 **1.2 Remove demo/template routes and pages**
-- File: `vue/src/Routes.js`
-- Remove imports and routes for: Typography, Tables, Notifications, Icons, Maps, Charts, AnotherPage
-- Delete the corresponding page directories under `vue/src/pages/`
+- Problem statement: `vue/src/Routes.js` still registers scaffolded template routes that do not correspond to THiNX console behavior.
+- User impact: Users and contributors see dead-end demo pages while evaluating the Vue console.
+- Scope: Remove imports, route entries, and corresponding page directories for Typography, Tables, Notifications, Icons, Maps, Charts, and AnotherPage.
+- Non-goals: Navigation redesign, replacement feature pages, or layout changes.
+- Acceptance criteria:
+  - `vue/src/Routes.js` no longer imports or registers the demo pages.
+  - The corresponding demo page directories under `vue/src/pages/` are removed.
+  - No active references to the removed demo components remain.
+  - The Vue build resolves all routes and modules successfully.
+- Verification:
+  - Run `rg` for the removed component names and routes.
+  - Run the Vue build.
+  - Manually confirm removed demo routes are not reachable from navigation.
+- Dependencies: None.
+- Estimate: XS, 1-2 hours.
+- Owner: @cleanup.
+- Assumptions: Scaffolded demo pages contain no production customization.
+- Links: `vue/src/Routes.js`.
 
 **1.3 Fix Devices.vue broken chart references**
-- File: `vue/src/pages/Devices/Devices.vue`
-- Remove/replace AngularJS `$rootScope` references in `updateTimeline()` and `updateCharts()`
+- Problem statement: `vue/src/pages/Devices/Devices.vue` contains copied AngularJS `$rootScope` references and timeline mapping that accesses an undefined `date` field.
+- User impact: The Devices page can throw runtime errors while rendering timeline and chart data.
+- Scope: Replace the broken chart/timeline references with Vue-compatible local state or remove the dead chart update path if it is unused.
+- Non-goals: New chart designs, device action features, or backend data changes.
+- Acceptance criteria:
+  - `updateTimeline()` does not read undefined `date` values.
+  - `updateTimeline()` and `updateCharts()` no longer reference `$rootScope`.
+  - The Devices page renders without console errors from these chart update methods.
+  - Existing device list behavior is unchanged.
+- Verification:
+  - Run the focused Vue unit test or component smoke test for Devices if available.
+  - Run the Vue build.
+  - Manually load the Devices page and confirm no `$rootScope` or undefined-date errors appear in the console.
+- Dependencies: Existing device list data shape.
+- Estimate: S, 2-4 hours.
+- Owner: @frontend-team.
+- Assumptions: This is a stabilization task, not a chart feature rebuild.
+- Links: `vue/src/pages/Devices/Devices.vue`.
 
 ---
 

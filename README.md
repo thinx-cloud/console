@@ -10,7 +10,7 @@ You need to **BUILD YOUR OWN CONSOLE** Docker image, because the build injects v
 
 For that reason, no pre-built public thinxcloud/console Docker Hub Image is/will be available.
 
-Note: For task grooming and standardized task templates, see `dev/TASK_GROOMING.md`.
+Note: For task grooming and the PR-ready task template, see `dev/TASK_GROOMING.md`.
 
 
 ## Build Configuration
