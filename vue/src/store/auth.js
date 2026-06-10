@@ -85,7 +85,10 @@ export default {
         }
       },
       async requestPasswordReset(_, { email }) {
-        return await this.$api.$post('/password/reset', JSON.stringify({ email }));
+        // AUTH-RESET-ORIGIN: tag the request so the API redirects the reset link
+        // back to the Vue console hash route (/#/password-reset) rather than the
+        // legacy /password.html page. Both consoles share the same host.
+        return await this.$api.$post('/password/reset', JSON.stringify({ email, client: 'vue' }));
       },
       async confirmPasswordReset(_, { owner, reset_key, activation, password, rpassword }) {
         const body = { password, rpassword, owner };
