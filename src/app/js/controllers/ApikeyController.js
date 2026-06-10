@@ -73,7 +73,7 @@ angular.module( "RTM" ).controller( "ApikeyController", [ "$rootScope", "$scope"
           $scope.$apply();
         } else {
           console.log( data );
-          $( ".msg-warning" ).text( data.status ); // ? || data.response 
+          $( ".msg-warning" ).text( data.status ); // ? || data.response
           $( ".msg-warning" ).show();
         }
       } else {

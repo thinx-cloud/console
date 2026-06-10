@@ -43,8 +43,8 @@ Cypress.Commands.add('restoreLocalStorage', () => {
 Cypress.Commands.add('login', (user, password) => {
     cy.viewport(fixtures.viewport[0], fixtures.viewport[1]);
     cy.visit('/');
-    cy.get('#username').type(fixtures.username);
-    cy.get('#password').type(fixtures.password);
+    cy.get('#username').type(user || fixtures.username);
+    cy.get('#password').type(password || fixtures.password);
     cy.get('button').contains('login', { matchCase: false }).click();
     cy.wait(2000);
 });
@@ -66,5 +66,4 @@ Cypress.Commands.add('loginAsAdmin', () => {
     cy.get('button').contains('login', { matchCase: false }).click();
     cy.wait(2000);
 });
-
 

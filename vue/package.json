@@ -10,7 +10,7 @@
     "cy:test": "cypress run",
     "cy:open": "cypress open",
     "test": "start-server-and-test serve http://127.0.0.1:3000/ cy:test",
-    "eslint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "eslint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "prepare": "cd .. && npx husky install"
   },
   "dependencies": {
