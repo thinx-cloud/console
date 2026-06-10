@@ -48,6 +48,24 @@ var Login = ( function() {
       submitHandler: function( form, event ) {
         event.preventDefault();
 
+        // Click feedback + double-submit guard: the moment the request fires we
+        // disable the button and swap its label for a spinner, so an accidental
+        // double-click can't POST /login twice. Restored on completion (failed
+        // logins can be retried; on success the page redirects away).
+        var $btn = $( form ).find( "button[type=submit]" );
+        if ( $btn.data( "loading" ) ) { return; } // already in flight — ignore extra clicks
+        var originalBtnHtml = $btn.html();
+        $btn.data( "loading", true )
+          .prop( "disabled", true )
+          .addClass( "is-loading" )
+          .html( "<i class=\"fa fa-circle-o-notch fa-spin\"></i> Signing in…" );
+        var restoreButton = function() {
+          $btn.removeData( "loading" )
+            .prop( "disabled", false )
+            .removeClass( "is-loading" )
+            .html( originalBtnHtml );
+        };
+
         var data = {
           username: $( "input[name=username]" ).val(),
           password: $( "input[name=password]" ).val(),
@@ -63,6 +81,7 @@ var Login = ( function() {
           type: "POST",
           dataType: "json",
           contentType: "application/json",
+          complete: restoreButton,
           success: function( response, status, xhr ) {
             console.log( "-- login response --", { response } );
             if ( typeof( response ) !== "undefined" ) {
@@ -159,11 +178,28 @@ var Login = ( function() {
       submitHandler: function( form, event ) {
         event.preventDefault();
 
+        // Click feedback + double-submit guard (see handleLogin): block a second
+        // POST while the request is in flight; restored on completion.
+        var $btn = $( form ).find( "button[type=submit]" );
+        if ( $btn.data( "loading" ) ) { return; }
+        var originalBtnHtml = $btn.html();
+        $btn.data( "loading", true )
+          .prop( "disabled", true )
+          .addClass( "is-loading" )
+          .html( "<i class=\"fa fa-circle-o-notch fa-spin\"></i> Sending…" );
+        var restoreButton = function() {
+          $btn.removeData( "loading" )
+            .prop( "disabled", false )
+            .removeClass( "is-loading" )
+            .html( originalBtnHtml );
+        };
+
         $.ajax( {
           url: urlBase + "/user/password/reset",
           data: { email: $( ".forget-form input[name=email]" ).val() }, //parameters go here in object literal form
           type: "POST",
           dataType: "json",
+          complete: restoreButton,
           success: function( data ) {
             console.log( "--password reset request success--" );
 
@@ -284,6 +320,22 @@ var Login = ( function() {
       submitHandler: function( form, event ) {
         event.preventDefault();
 
+        // Click feedback + double-submit guard (see handleLogin): block a second
+        // POST while the request is in flight; restored on completion.
+        var $btn = $( form ).find( "button[type=submit]" );
+        if ( $btn.data( "loading" ) ) { return; }
+        var originalBtnHtml = $btn.html();
+        $btn.data( "loading", true )
+          .prop( "disabled", true )
+          .addClass( "is-loading" )
+          .html( "<i class=\"fa fa-circle-o-notch fa-spin\"></i> Creating account…" );
+        var restoreButton = function() {
+          $btn.removeData( "loading" )
+            .prop( "disabled", false )
+            .removeClass( "is-loading" )
+            .html( originalBtnHtml );
+        };
+
         $.ajax( {
           url: urlBase + "/user/create",
           data: {
@@ -295,6 +347,7 @@ var Login = ( function() {
 
           type: "POST",
           dataType: "json",
+          complete: restoreButton,
           success: function( response ) {
             console.log( "--user create response--" );
 

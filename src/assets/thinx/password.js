@@ -70,12 +70,29 @@ var PasswordReset = ( function() {
           data.reset_key = reset_key;
         }
 
+        // Click feedback + double-submit guard: block a second POST while the
+        // request is in flight; restored on completion (retry on failure).
+        var $btn = $( form ).find( "button[type=submit]" );
+        if ( $btn.data( "loading" ) ) { return; }
+        var originalBtnHtml = $btn.html();
+        $btn.data( "loading", true )
+          .prop( "disabled", true )
+          .addClass( "is-loading" )
+          .html( "<i class=\"fa fa-circle-o-notch fa-spin\"></i> Saving…" );
+        var restoreButton = function() {
+          $btn.removeData( "loading" )
+            .prop( "disabled", false )
+            .removeClass( "is-loading" )
+            .html( originalBtnHtml );
+        };
+
         $.ajax( {
           url: urlBase + "/user/password/set",
           data: JSON.stringify( data ),
           type: "POST",
           dataType: "json",
           contentType: "application/json",
+          complete: restoreButton,
           success: function( data ) {
             console.log( "--password set request success--" );
 
