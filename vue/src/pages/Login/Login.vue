@@ -68,20 +68,20 @@
             >
             <div class="social-buttons">
               <b-button
-                variant="success"
-                class="social-button"
-                :href="this.$hostnames.API + '/oauth/github'"
-              >
-                <i class="social-icon social-github"></i>
-                <p class="social-text">GitHub</p>
-              </b-button>
-              <b-button
-                variant="primary"
-                class="social-button"
+                size="sm"
+                variant="light"
+                class="social-button social-button--google"
                 :href="this.$hostnames.API + '/oauth/google'"
               >
-                <i class="social-icon social-google"></i>
-                <p class="social-text">Google</p>
+                <i class="fa fa-google"></i> Login with Google
+              </b-button>
+              <b-button
+                size="sm"
+                variant="dark"
+                class="social-button social-button--github"
+                :href="this.$hostnames.API + '/oauth/github'"
+              >
+                <i class="fa fa-github"></i> Login with GitHub
               </b-button>
             </div>
           </div>
