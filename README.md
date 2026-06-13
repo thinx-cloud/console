@@ -38,6 +38,15 @@ Example:
     docker run -ti -v $(pwd):/var/work thinxcloud/console-build-env:vue cd /var/work && npm run test:unit
 
 
+## Documentation Drift Check
+
+`scripts/doc-drift.js` is a zero-dependency Node script that flags docs which have
+drifted from the code: broken relative paths, references to npm scripts that no
+longer exist, and missing source paths in code blocks. Run it from the repo root
+with `node scripts/doc-drift.js`, or from the `vue/` project with `npm run doc-drift`.
+It exits non-zero on drift, so it can gate CI. See `scripts/README.md` for details
+and how to suppress intentional examples.
+
 ## Commit Convention
 
 Commits must follow [Conventional Commits](https://www.conventionalcommits.org/) format:
