@@ -35,7 +35,7 @@ You can build your own image using `docker build -t yourname\console` and follow
 
 Example:
     
-    docker run -ti -v $(pwd):/var/work thinxcloud/console-build-env:vue cd /var/work && npm run test:unit
+    docker run -ti -v $(pwd):/var/work thinxcloud/console-build-env:vue cd /var/work && npm run test
 
 
 ## Documentation Drift Check
