@@ -302,9 +302,9 @@ export default {
       const result = await this.deleteAccount();
       if (result.success) {
         // G7 fix: account is gone server-side, so tear down the local session
-        // (3 localStorage keys + 3 Vuex slots + cancel expiry timer) BEFORE
-        // routing. Without this, localStorage.authenticated lingers and the
-        // router.beforeEach guard treats the orphaned page as still logged in
+        // (persisted auth tokens + Vuex slots + cancel expiry timer) BEFORE
+        // routing. Without this, the router.beforeEach guard treats the
+        // orphaned page as still logged in
         // (same chokepoint as Header.vue#logout — Phase 8 Wave 2, 0295a69).
         await this.$store.dispatch('auth/clearSession');
         this.$router.push('/login');

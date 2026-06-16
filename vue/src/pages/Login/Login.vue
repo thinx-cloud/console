@@ -3,8 +3,7 @@
     <b-container>
       <Widget
         class="widget-auth mx-auto"
-        title="<h3 class='mt-0'>THiNX Login</h3>"
-        customHeader
+        title="THiNX Login"
       >
         <p class="widget-auth-info">Use your username to sign in.</p>
         <form class="mt" @submit.prevent="login">
@@ -98,7 +97,7 @@
 
 <script>
 import Widget from "@/components/Widget/Widget";
-import { mapMutations, mapGetters, mapActions } from "vuex";
+import { mapGetters, mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
 
 export default {
@@ -112,15 +111,11 @@ export default {
     };
   },
   methods: {
-    ...mapMutations({
-      setAccessToken: "auth/setAccessToken",
-      setRefreshToken: "auth/setRefreshToken",
-      setUser: "auth/setUser",
-    }),
     ...mapActions({
+      persistSession: "auth/persistSession",
+      hydrateSession: "auth/hydrateSession",
       fetchProfile: "profile/fetchProfile",
       isTokenValid: "auth/isTokenValid",
-      scheduleExpiry: "auth/scheduleExpiry",
     }),
     ...mapGetters({
       isAuthenticated: "auth/isAuthenticated",
@@ -134,7 +129,7 @@ export default {
       try {
         await this.$router.push(location);
       } catch (error) {
-        if (error?.name !== "NavigationDuplicated") {
+        if (!error || error.name !== "NavigationDuplicated") {
           throw error;
         }
       }
@@ -159,7 +154,6 @@ export default {
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "http://localhost:3080 " + this.$hostnames.API,
           },
           body: JSON.stringify({
             username: usernameValue,
@@ -197,34 +191,20 @@ export default {
         (await this.isTokenValid(access_token)) &&
         (await this.isTokenValid(refresh_token))
       ) {
-        this.setAccessToken(access_token);
-        this.setRefreshToken(refresh_token);
-        this.scheduleExpiry(access_token);
+        await this.persistSession({ accessToken: access_token, refreshToken: refresh_token });
       }
 
       if (this.isAuthenticated()) {
-        window.localStorage.setItem("accessToken", access_token);
-        window.localStorage.setItem("refreshToken", refresh_token);
-        window.localStorage.setItem("authenticated", true);
-
         await this.fetchProfile();
-        this.setUser(this.getProfile());
+        this.$store.commit("auth/setUser", this.getProfile());
         await this.pushIfNeeded("/app/dashboard");
       } else {
         this.errorMessage = "Token expired";
       }
     },
   },
-  created() {
-    // TTODO validate
-    const authenticated = window.localStorage.getItem("authenticated") === "true";
-    const accessToken = window.localStorage.getItem("accessToken");
-    const refreshToken = window.localStorage.getItem("refreshToken");
-
-    if (authenticated && accessToken) {
-      this.setAccessToken(accessToken);
-      this.setRefreshToken(refreshToken);
-      this.scheduleExpiry(accessToken);
+  async created() {
+    if (await this.hydrateSession()) {
       void this.pushIfNeeded("/app/dashboard");
     }
   },

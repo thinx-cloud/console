@@ -242,15 +242,19 @@ export default {
       if (!item.build_id) return;
       const profile = this.getProfile() || {};
       const owner = profile.owner || '';
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      const accessToken = this.$store.$api.accessToken;
+      if (accessToken) {
+        headers.Authorization = 'Bearer ' + accessToken;
+      }
       let response;
       try {
         response = await fetch(this.$hostnames.API + '/build/artifacts', {
           method: 'POST',
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + this.$store.$api.refreshToken,
-          },
+          headers,
           body: JSON.stringify({ owner, udid: item.udid, build_id: item.build_id }),
         });
       } catch (networkError) {

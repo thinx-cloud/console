@@ -3,8 +3,7 @@
     <b-container>
       <Widget
         class="widget-auth mx-auto"
-        title="<h3 class='mt-0'>Password Reset</h3>"
-        customHeader
+        title="Password Reset"
       >
         <!-- Initiate form -->
         <form v-if="!hasResetToken" @submit.prevent="submitInitiate">

@@ -1,9 +1,25 @@
 import VueJwtDecode from "vue-jwt-decode";
+import {
+  clearPersistedAuthTokens,
+  getPersistedAuthTokens,
+  persistAuthTokens,
+} from "./auth-storage";
 
 // Module-private setTimeout id for the session-expiry watcher (AUTH-03).
 // Kept outside Vuex state so we can clear/replace it across action dispatches
 // without triggering reactivity overhead or committing a mutation.
 let expiryTimerId = null;
+
+function isJwtValid(token) {
+  if (!token) return false;
+  try {
+    const nowUnixtime = Math.floor(Date.now() / 1000);
+    const decoded = VueJwtDecode.decode(token);
+    return decoded.exp > nowUnixtime;
+  } catch (error) {
+    return false;
+  }
+}
 
 export default {
     namespaced: true,
@@ -18,41 +34,55 @@ export default {
         },
         setAccessToken(state, token) {
           // TODO use validation
-          state.accessToken = token;
+          state.accessToken = token || null;
           this.$api.setAccessToken(state.accessToken);
         },
         setRefreshToken(state, token) {
           // TODO use validation
-          state.refreshToken = token;
+          state.refreshToken = token || null;
           this.$api.setRefreshToken(state.refreshToken);
         },
       },
     actions: {
-      removeAccessToken(state) {
-        window.localStorage.removeItem('accessToken');
-        state.accessToken = undefined;
+      removeAccessToken({ commit, state }) {
+        persistAuthTokens({ accessToken: null, refreshToken: state.refreshToken });
+        commit('setAccessToken', null);
       },
-      removeRefreshToken(state) {
-        window.localStorage.removeItem('refreshToken');
-        state.refreshToken = undefined;
+      removeRefreshToken({ commit, state }) {
+        persistAuthTokens({ accessToken: state.accessToken, refreshToken: null });
+        commit('setRefreshToken', null);
       },
       isTokenValid(_, token) {
-        try {
-            const nowUnixtime = Math.floor(Date.now() / 1000);
-            let decoded = VueJwtDecode.decode(token);
-            return decoded.exp <= nowUnixtime ? false : true;
-        } catch (error) {
-            return false
+        return isJwtValid(token);
+      },
+      persistSession({ commit, dispatch }, { accessToken, refreshToken = null }) {
+        if (!accessToken) {
+          dispatch('clearSession');
+          return false;
         }
+        persistAuthTokens({ accessToken, refreshToken });
+        commit('setAccessToken', accessToken);
+        commit('setRefreshToken', refreshToken);
+        dispatch('scheduleExpiry', accessToken);
+        return true;
+      },
+      hydrateSession({ commit, dispatch }) {
+        const { accessToken, refreshToken } = getPersistedAuthTokens();
+        if (!accessToken || !isJwtValid(accessToken) || (refreshToken && !isJwtValid(refreshToken))) {
+          dispatch('clearSession');
+          return false;
+        }
+        commit('setAccessToken', accessToken);
+        commit('setRefreshToken', refreshToken);
+        dispatch('scheduleExpiry', accessToken);
+        return true;
       },
       clearSession({ commit }) {
         if (expiryTimerId) {
           clearTimeout(expiryTimerId);
           expiryTimerId = null;
         }
-        window.localStorage.removeItem('accessToken');
-        window.localStorage.removeItem('refreshToken');
-        window.localStorage.removeItem('authenticated');
+        clearPersistedAuthTokens();
         commit('setAccessToken', null);
         commit('setRefreshToken', null);
         commit('setUser', null);

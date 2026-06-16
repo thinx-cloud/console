@@ -1,7 +1,7 @@
 {
   "viewport": [1600, 1200],
   "username": "test",
-  "password": "tset",
+  "password": "",
   "email": "dynamic@example.com",
   "new": {
     "first_name": "cypress",
