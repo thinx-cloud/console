@@ -7,6 +7,7 @@ import Layout from '@/components/Layout/Layout';
 import Login from '@/pages/Login/Login';
 import PasswordResetPage from '@/pages/PasswordReset/PasswordReset';
 import ErrorPage from '@/pages/Error/Error';
+import OAuthReturnPage from '@/pages/OAuthReturn/OAuthReturn';
 
 import Dashboard from '@/pages/Visits/Visits';
 
@@ -44,6 +45,11 @@ const router = new Router({
       path: '/error',
       name: 'Error',
       component: ErrorPage,
+    },
+    {
+      path: '/oauth-return',
+      name: 'OAuthReturn',
+      component: OAuthReturnPage,
     },
     {
       path: '/app',
@@ -138,7 +144,7 @@ const router = new Router({
 // the one-shot hash redirect was missed) can't navigate freely under /app/*.
 // Reads in-memory store first; falls back to localStorage for the cold-reload
 // path where App.vue.created hasn't yet rehydrated the store.
-const PUBLIC_PATHS = ['/login', '/password-reset', '/error'];
+const PUBLIC_PATHS = ['/login', '/password-reset', '/error', '/oauth-return'];
 const ADMIN_PATHS = ['/app/admin'];
 router.beforeEach((to, from, next) => {
   if (PUBLIC_PATHS.includes(to.path)) return next();

@@ -71,7 +71,7 @@
                 size="sm"
                 variant="light"
                 class="social-button social-button--google"
-                :href="this.$hostnames.API + '/oauth/google'"
+                :href="this.$hostnames.API + '/oauth/google' + oauthReturnQuery"
               >
                 <i class="fa fa-google"></i> Login with Google
               </b-button>
@@ -79,7 +79,7 @@
                 size="sm"
                 variant="dark"
                 class="social-button social-button--github"
-                :href="this.$hostnames.API + '/oauth/github'"
+                :href="this.$hostnames.API + '/oauth/github' + oauthReturnQuery"
               >
                 <i class="fa fa-github"></i> Login with GitHub
               </b-button>
@@ -110,6 +110,16 @@ export default {
       errorMessage: null,
       buildHash: process.env.VUE_APP_BUILD_HASH || '',
     };
+  },
+  computed: {
+    // Tell the API where to return after OAuth so it lands back on THIS console
+    // (the backend allowlists the origin). Without it the callback falls back to
+    // the legacy auth.html on the API host.
+    oauthReturnQuery() {
+      const origin = (typeof window !== 'undefined' && window.location && window.location.origin)
+        ? window.location.origin : '';
+      return origin ? ('?return=' + encodeURIComponent(origin)) : '';
+    },
   },
   methods: {
     ...mapMutations({
