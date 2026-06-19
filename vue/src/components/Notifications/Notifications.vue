@@ -27,7 +27,7 @@
       </b-list-group-item>
     </b-list-group>
     <footer class="text-sm footer px-4 py-2">
-      <router-link to="/app/history" class="fs-mini">See all builds</router-link>
+      <router-link to="/app/history/builds" class="fs-mini">See all builds</router-link>
       <b-button
         variant="link"
         @click="loadNotifications"

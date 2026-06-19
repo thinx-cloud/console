@@ -35,7 +35,11 @@
           <span class="text-white"
             >{{ this.profile.first_name }} {{ this.profile.last_name }}</span
           >
-          <span class="mx-2 circle bg-danger text-dark fs-sm fw-bold">9</span>
+          <span
+            v-if="recentBuildCount > 0"
+            class="mx-2 circle bg-danger text-dark fs-sm fw-bold"
+            >{{ recentBuildCount }}</span
+          >
           <i class="fi flaticon-arrow-down" />
         </template>
         <notifications />
@@ -93,6 +97,13 @@ export default {
       sidebarClose: (state) => state.sidebarClose,
       sidebarStatic: (state) => state.sidebarStatic,
     }),
+    // Recent-builds count for the top-bar badge (the dropdown shows "Recent
+    // Builds"). Reactive to the buildlog store; the badge is hidden when 0 — the
+    // previous hardcoded "9" was a mock placeholder, not a real count.
+    ...mapGetters("buildlog", { buildItems: "getItems" }),
+    recentBuildCount() {
+      return (this.buildItems || []).length;
+    },
     avatarFallback() {
       const fallbackPath = "thinx/default_avatar_sm.png";
       if (
@@ -135,6 +146,8 @@ export default {
     this.fetchProfile().then(() => {
       this.profile = this.getProfile();
     });
+    // Populate the buildlog store so the recent-builds badge reflects reality.
+    this.$store.dispatch("buildlog/fetchBuildLog");
   },
 };
 </script>
