@@ -7,8 +7,8 @@
     loading: fetchingData
   }" ref="widget">
     <h5 v-if="title && typeof title === 'string' && !customHeader" class="title">{{title}}</h5>
-    <header v-if="title && customHeader" class="title" v-html="title"></header>
-    <div v-if="!customControls && mainControls"
+    <header v-if="title && customHeader" class="title">{{title}}</header>
+    <div v-if="mainControls"
       class="widgetControls widget-controls">
       <a v-if="settings" href="#"><i class="la la-cog" /></a>
       <a v-if="settingsInverse" href="#" class="bg-default mx-2">
@@ -75,7 +75,6 @@
         </b-tooltip>
       </a>
     </div>
-    <div v-if="customControls" v-html="customControls" ref="customControlsRef" class="widgetControls widget-controls"></div>
     <div :class="`widgetBody widget-body ${bodyClass}`" ref="widgetBodyRef"
           :style="{display: state === 'collapse' ? 'none' : ''}"
     >
@@ -107,7 +106,6 @@ export default {
     refresh: { type: [Boolean, String], default: false },
     className: { default: '' },
     title: { default: '' },
-    customControls: { default: null },
     bodyClass: { default: '' },
     options: { default: () => ({}) },
     fetchingData: {type: Boolean, default: false},
@@ -131,20 +129,6 @@ export default {
       if (typeof this.autoload === 'number') {
         setInterval(() => {this.loadWidgster()}, this.autoload);
       }
-    }
-    if (this.customControls) {
-      let close = this.$refs.customControlsRef.querySelector('[control=close]');
-      close && close.addEventListener('click', this.closeWidget);
-      let collapse = this.$refs.customControlsRef.querySelector('[control=collapse]');
-      collapse && collapse.addEventListener('click', this.changeState.bind(this, null, 'collapse'));
-      let expand = this.$refs.customControlsRef.querySelector('[control=expand]');
-      expand && expand.addEventListener('click', this.changeState.bind(this, null, 'default'));
-      let fullscreen = this.$refs.customControlsRef.querySelector('[control=fullscreen]');
-      fullscreen && fullscreen.addEventListener('click', this.changeState.bind(this, null, 'fullscreen'));
-      let restore = this.$refs.customControlsRef.querySelector('[control=restore]');
-      restore && restore.addEventListener('click', this.changeState.bind(this, null, 'default'));
-      let load = this.$refs.customControlsRef.querySelector('[control=load]');
-      load && load.addEventListener('click', this.loadWidgster);
     }
   },
   methods: {

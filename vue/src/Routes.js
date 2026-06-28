@@ -2,6 +2,7 @@ import Vue from 'vue';
 import Router from 'vue-router';
 
 import store from '@/store';
+import { getPersistedAuthTokens } from '@/store/auth-storage';
 
 import Layout from '@/components/Layout/Layout';
 import Login from '@/pages/Login/Login';
@@ -142,16 +143,19 @@ const router = new Router({
 
 // AUTH-03 G5 — global auth guard so a torn-down session (clearSession ran but
 // the one-shot hash redirect was missed) can't navigate freely under /app/*.
-// Reads in-memory store first; falls back to localStorage for the cold-reload
-// path where App.vue.created hasn't yet rehydrated the store.
+// Reads in-memory store first; falls back to centralized session persistence
+// for the cold-reload path where App.vue.created hasn't yet rehydrated the store.
 const PUBLIC_PATHS = ['/login', '/password-reset', '/error', '/oauth-return'];
 const ADMIN_PATHS = ['/app/admin'];
 router.beforeEach((to, from, next) => {
   if (PUBLIC_PATHS.includes(to.path)) return next();
   if (!to.path.startsWith('/app')) return next();
+  const persistedTokens = typeof window !== 'undefined'
+    ? getPersistedAuthTokens()
+    : { accessToken: null };
   const authed =
     !!(store && store.state && store.state.auth && store.state.auth.accessToken) ||
-    !!(typeof window !== 'undefined' && window.localStorage.getItem('accessToken'));
+    !!persistedTokens.accessToken;
   if (!authed) return next('/login');
   if (ADMIN_PATHS.some(p => to.path.startsWith(p))) {
     const profile = (store && store.state && store.state.profile && store.state.profile.profile);

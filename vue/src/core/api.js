@@ -1,3 +1,5 @@
+import { clearPersistedAuthTokens } from "@/store/auth-storage";
+
 export default class Api {
 
   constructor(hostname) {
@@ -17,19 +19,17 @@ export default class Api {
     // (e.g. laptop slept past the auth/scheduleExpiry setTimeout firing time), tear
     // down the session synchronously before issuing the request. The request itself
     // is still issued — it will 401, but the page is already navigating to /login.
-    // Reads this.refreshToken because of the token-name swap at setAccessToken (line 50):
-    // setAccessToken stores its argument as this.refreshToken, so this.refreshToken IS
-    // the access JWT. Uses platform atob + JSON.parse to avoid loading the JWT decode
-    // library into the API client (kept dependency-free).
-    if (this.refreshToken) {
+    // Uses platform atob + JSON.parse to avoid loading the JWT decode library
+    // into the API client (kept dependency-free).
+    if (this.accessToken) {
       try {
-        const parts = this.refreshToken.split('.');
+        const parts = this.accessToken.split('.');
         if (parts.length === 3) {
           const payload = JSON.parse(atob(parts[1]));
           if (payload && typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()) {
-            window.localStorage.removeItem('accessToken');
-            window.localStorage.removeItem('refreshToken');
-            window.localStorage.removeItem('authenticated');
+            clearPersistedAuthTokens();
+            this.accessToken = null;
+            this.refreshToken = null;
             if (typeof window !== 'undefined') window.location.hash = '#/login';
             // fall through — the request will 401 and the page is already navigating
           }
@@ -50,11 +50,13 @@ export default class Api {
   }
 
   composeHeaders() {
-    return {
+    const headers = {
       "Content-Type": "application/json",
-      'Authorization': 'Bearer ' + this.refreshToken,
-      'Access-Control-Allow-Origin': 'http://localhost:3080 ' + this.baseApiUrl,
+    };
+    if (this.accessToken) {
+      headers.Authorization = 'Bearer ' + this.accessToken;
     }
+    return headers;
   }
 
   composePath(path) {
@@ -73,11 +75,11 @@ export default class Api {
   }
 
   setAccessToken(token) {
-    this.refreshToken = token;
+    this.accessToken = token || null;
   }
 
   setRefreshToken(token) {
-    this.accessToken = token;
+    this.refreshToken = token || null;
   }
 
   async request(method, path, body) {

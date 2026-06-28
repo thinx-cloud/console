@@ -7,11 +7,15 @@ describe( "Login feature", function() {
     cy.visit( "/" );
   } );
 
-  it( "Should log in with static test account", function() {
-    cy.get( ".login-form .form-subtitle" ).should( "contain", "Please login", { matchCase: false } );
-    cy.get( "input[name=\"username\"" ).type( data.username );
-      cy.get( "input[name=\"password\"" ).type( data.password );
-      cy.get( "button" ).contains( "login", { matchCase: false } ).click();
+  it('Should log in with configured test account', function() {
+    const username = Cypress.env('THINX_TEST_USER') || data.username;
+    const password = Cypress.env('THINX_TEST_PASSWORD') || data.password;
+    expect(username, 'test username').to.be.a('string').and.not.be.empty;
+    expect(password, 'test password').to.be.a('string').and.not.be.empty;
+    cy.get('.login-form .form-subtitle').should('contain', 'Please login', { matchCase: false });
+    cy.get('input[name="username"').type(username);
+    cy.get('input[name="password"').type(password, { log: false });
+    cy.get('button').contains('login', { matchCase: false }).click();
     // TODO check invalid name
     // TODO check invalid password
   } );

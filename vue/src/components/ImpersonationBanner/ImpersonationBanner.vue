@@ -8,6 +8,7 @@
 <script>
 import VueJwtDecode from "vue-jwt-decode";
 import { mapActions } from "vuex";
+import { getPersistedAuthTokens } from "@/store/auth-storage";
 
 export default {
   name: "ImpersonationBanner",
@@ -35,7 +36,7 @@ export default {
     ...mapActions({ clearSession: "auth/clearSession" }),
     decode() {
       try {
-        const token = window.localStorage.getItem('accessToken');
+        const token = this.$store.getters["auth/getAccessToken"] || getPersistedAuthTokens().accessToken;
         if (!token) { this.impersonatorOwner = null; return; }
         const decoded = VueJwtDecode.decode(token);
         if (decoded && decoded.impersonator_owner) {

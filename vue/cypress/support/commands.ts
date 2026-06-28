@@ -28,6 +28,15 @@ import fixtures from '../fixtures/thinx.json';
 
 let LOCAL_STORAGE_MEMORY = {};
 
+function credentialFromEnv(value, envNames) {
+  if (value) return value;
+  for (const envName of envNames) {
+    const envValue = Cypress.env(envName);
+    if (envValue) return String(envValue);
+  }
+  return '';
+}
+
 Cypress.Commands.add('saveLocalStorage', () => {
   Object.keys(localStorage).forEach(key => {
     LOCAL_STORAGE_MEMORY[key] = localStorage[key];
@@ -41,10 +50,15 @@ Cypress.Commands.add('restoreLocalStorage', () => {
 });
 
 Cypress.Commands.add('login', (user, password) => {
+    const username = credentialFromEnv(user || fixtures.username, ['THINX_TEST_USER', 'LOGIN_USERNAME']);
+    const passwordValue = credentialFromEnv(password || fixtures.password, ['THINX_TEST_PASSWORD', 'LOGIN_PASSWORD']);
+    if (!username || !passwordValue) {
+      throw new Error('Set CYPRESS_THINX_TEST_USER and CYPRESS_THINX_TEST_PASSWORD, or pass credentials to cy.login().');
+    }
     cy.viewport(fixtures.viewport[0], fixtures.viewport[1]);
     cy.visit('/');
-    cy.get('#username').type(user || fixtures.username);
-    cy.get('#password').type(password || fixtures.password);
+    cy.get('#username').type(username);
+    cy.get('#password').type(passwordValue, { log: false });
     cy.get('button').contains('login', { matchCase: false }).click();
     cy.wait(2000);
 });
@@ -59,6 +73,9 @@ Cypress.Commands.add('login', (user, password) => {
 Cypress.Commands.add('loginAsAdmin', () => {
     const user = Cypress.env('ADMIN_USER');
     const password = Cypress.env('ADMIN_PASS');
+    if (!user || !password) {
+      throw new Error('Set CYPRESS_ADMIN_USER and CYPRESS_ADMIN_PASS before calling cy.loginAsAdmin().');
+    }
     cy.viewport(fixtures.viewport[0], fixtures.viewport[1]);
     cy.visit('/');
     cy.get('#username').type(user);
@@ -66,4 +83,3 @@ Cypress.Commands.add('loginAsAdmin', () => {
     cy.get('button').contains('login', { matchCase: false }).click();
     cy.wait(2000);
 });
-

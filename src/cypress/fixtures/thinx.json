@@ -1,6 +1,6 @@
 {
   "username": "dynamic",
-  "password": "dynamic",
+  "password": "",
   "email": "dynamic@example.com",
   "new": {
     "first_name": "cypress",

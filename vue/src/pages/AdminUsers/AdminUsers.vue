@@ -50,7 +50,7 @@
 </template>
 
 <script>
-import { mapActions, mapGetters, mapMutations } from "vuex";
+import { mapActions, mapGetters } from "vuex";
 
 export default {
   name: "AdminUsers",
@@ -86,9 +86,8 @@ export default {
       fetchUsers: 'admin/fetchUsers',
       revokeSession: 'admin/revokeSession',
       impersonate: 'admin/impersonate',
-      scheduleExpiry: 'auth/scheduleExpiry',
+      persistSession: 'auth/persistSession',
     }),
-    ...mapMutations({ setAccessToken: 'auth/setAccessToken' }),
     formatDate(ts) {
       if (!ts) return '—';
       try { return new Date(ts).toLocaleString(); } catch (_e) { return String(ts); }
@@ -126,10 +125,7 @@ export default {
         this.error = 'Impersonation token missing from server response.';
         return;
       }
-      window.localStorage.setItem('accessToken', access_token);
-      window.localStorage.removeItem('refreshToken');
-      this.setAccessToken(access_token);
-      this.scheduleExpiry(access_token);
+      await this.persistSession({ accessToken: access_token, refreshToken: null });
       this.$router.push('/app/dashboard');
     },
   },

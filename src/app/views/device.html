@@ -217,14 +217,15 @@
                 <span class="badge {{source.value.base_platform}}-platform-color platform-badge">{{$root.platforms[source.value.base_platform].name}}</span>
               </div>
               <small>{{source.value.url}}</small>
-              <div ng-if="source.value.circle_key.length > 0">
-                <img src="https://circleci.com/gh/{{source.value.url | split:'git@github.com:':1 | split:'.git':0 }}.svg?style=svg&circle-token={{source.value.circle_key}}" />
+              <div ng-if="source.value.circle_key">
+                <span class="badge badge-info" title="CircleCI token configured">CircleCI token configured</span>
+                <img ng-src="https://circleci.com/gh/{{source.value.url | split:'git@github.com:':1 | split:'.git':0 }}.svg?style=svg" alt="CircleCI build status" />
               </div>
             </ui-select-choices>
           </ui-select>
           <span class="input-group-btn">
             <button ng-if="$root.getSourceById(deviceForm.source).circle_key" type="button" class="btn btn-default">
-              <img src="https://circleci.com/gh/{{$root.getSourceById(deviceForm.source).url | split:'git@github.com:':1 | split:'.git':0 }}.svg?style=svg&circle-token={{$root.getSourceById(deviceForm.source).circle_key}}" />
+              <span class="badge badge-info" title="CircleCI token configured">CircleCI token configured</span>
             </button>
             <button ng-disabled="attachingSource"  type="button" ng-click="detachSource(deviceForm.udid)" class="btn btn-default">
               <span title="Detach source from device" class="fa fa-chain-broken" ng-hide="attachingSource"></span>
