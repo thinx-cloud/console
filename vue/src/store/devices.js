@@ -48,19 +48,19 @@ export default {
         if (result.success) await dispatch('fetchItems');
         return result;
       },
-      async pushConfiguration({ dispatch }, { udids, enviros, reset_devices }) {
+      async pushConfiguration(_, { udids, enviros, reset_devices }) {
         const result = await this.$api.$post('/device/configuration', JSON.stringify({ udids, enviros, reset_devices }));
         return result;
       },
-      async buildFirmware({ dispatch }, { udid, source_id }) {
+      async buildFirmware(_, { udid, source_id }) {
         const result = await this.$api.$post('/build', JSON.stringify({ build: { udid, source_id, dryrun: false } }));
         return result;
       },
-      async transferDevices({ dispatch }, { udids, to, mig_sources, mig_apikeys }) {
+      async transferDevices(_, { udids, to, mig_sources, mig_apikeys }) {
         const result = await this.$api.$post('/transfer/request', JSON.stringify({ udids, to, mig_sources, mig_apikeys }));
         return result;
       },
-      async updateDevice({ dispatch }, { udid, changes }) {
+      async updateDevice(_, { udid, changes }) {
         // PUT /api/v2/device -> editDevice. POST is getDeviceDetail (read).
         // editDevice reads req.body.changes and requires changes.udid.
         const result = await this.$api.$put('/device', JSON.stringify({ changes: { udid, ...changes } }));

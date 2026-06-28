@@ -60,7 +60,9 @@ export default {
       return this.dataheaders.filter((h) => h.pos !== null);
     },
     isAllSelected() {
-      return this.selectedItems.length == this.datasource.length - 1 ? true : false;
+      // All rows selected only when every row is in selectedItems. Guard against an
+      // empty datasource so the header checkbox isn't shown checked with zero rows.
+      return this.datasource.length > 0 && this.selectedItems.length === this.datasource.length;
     },
   },
   methods: {
