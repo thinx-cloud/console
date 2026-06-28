@@ -81,7 +81,7 @@ RUN bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/insta
 #
 
 # needs to include gulp
-FROM nginx:1.29.3-alpine
+FROM nginx:1.31.1-alpine
 ARG WEB_HOSTNAME
 ENV NGINX_HOST=${WEB_HOSTNAME}
 
