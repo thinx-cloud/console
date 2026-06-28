@@ -5,7 +5,12 @@
 <script>
 import { mapActions } from "vuex";
 
-const PUBLIC_PATHS = ["/login", "/password-reset", "/error"];
+// Public routes must NOT be force-redirected to /login on cold load. In
+// particular /oauth-return is unauthenticated by definition (it is mid-flight
+// exchanging the one-shot OAuth token for JWTs); bouncing it here aborted the
+// exchange and dropped the user back on the login page. Keep in sync with
+// Routes.js PUBLIC_PATHS.
+const PUBLIC_PATHS = ["/login", "/password-reset", "/error", "/oauth-return"];
 
 export default {
   name: "App",
@@ -30,13 +35,6 @@ export default {
   async created() {
     const currentPath = this.$router.history.current.path;
     const authenticated = await this.hydrateSession();
-
-    // Public routes must NOT be force-redirected to /login on cold load. In
-    // particular /oauth-return is unauthenticated by definition (it is mid-flight
-    // exchanging the one-shot OAuth token for JWTs); bouncing it here aborted the
-    // exchange and dropped the user back on the login page. Keep in sync with
-    // Routes.js PUBLIC_PATHS.
-    const PUBLIC_PATHS = ['/login', '/password-reset', '/error', '/oauth-return'];
 
     if (!authenticated) {
       if (!PUBLIC_PATHS.includes(currentPath)) {
