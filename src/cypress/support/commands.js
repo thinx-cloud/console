@@ -26,33 +26,32 @@
 
 let LOCAL_STORAGE_MEMORY = {};
 
-Cypress.Commands.add("saveLocalStorage", () => {
-  Object.keys(localStorage).forEach(key => {
-    LOCAL_STORAGE_MEMORY[key] = localStorage[key];
-  });
-});
+Cypress.Commands.add( "saveLocalStorage", () => {
+  Object.keys( localStorage ).forEach( key => {
+    LOCAL_STORAGE_MEMORY[ key ] = localStorage[ key ];
+  } );
+} );
 
-Cypress.Commands.add("restoreLocalStorage", () => {
-  Object.keys(LOCAL_STORAGE_MEMORY).forEach(key => {
-    localStorage.setItem(key, LOCAL_STORAGE_MEMORY[key]);
-  });
-});
+Cypress.Commands.add( "restoreLocalStorage", () => {
+  Object.keys( LOCAL_STORAGE_MEMORY ).forEach( key => {
+    localStorage.setItem( key, LOCAL_STORAGE_MEMORY[ key ] );
+  } );
+} );
 
-Cypress.Commands.add("createOwner", (ownerData, url) => {
-      cy.request({
-          method: 'POST',
+Cypress.Commands.add( "createOwner", ( ownerData, url ) => {
+      cy.request( {
+          method: "POST",
           failOnStatusCode: true,
-          url: url + '/register',
-          body: ownerData,
-      }).then(
-          (response) => {
-              if (response.response === 200) { 
-                  expect(response.body).to.have.property('access_token');
+          url: url + "/register",
+          body: ownerData
+      } ).then(
+          ( response ) => {
+              if ( response.response === 200 ) {
+                  expect( response.body ).to.have.property( "access_token" );
               }
-              cy.wrap(response.body).as('createResponse');
+              cy.wrap( response.body ).as( "createOwnerResponse" );
           }
-      )
-});
-
+      );
+} );
 
 

@@ -53,7 +53,9 @@ var Login = ( function() {
         // double-click can't POST /login twice. Restored on completion (failed
         // logins can be retried; on success the page redirects away).
         var $btn = $( form ).find( "button[type=submit]" );
-        if ( $btn.data( "loading" ) ) { return; } // already in flight — ignore extra clicks
+        if ( $btn.data( "loading" ) ) {
+ return;
+} // already in flight — ignore extra clicks
         var originalBtnHtml = $btn.html();
         $btn.data( "loading", true )
           .prop( "disabled", true )
@@ -181,7 +183,9 @@ var Login = ( function() {
         // Click feedback + double-submit guard (see handleLogin): block a second
         // POST while the request is in flight; restored on completion.
         var $btn = $( form ).find( "button[type=submit]" );
-        if ( $btn.data( "loading" ) ) { return; }
+        if ( $btn.data( "loading" ) ) {
+ return;
+}
         var originalBtnHtml = $btn.html();
         $btn.data( "loading", true )
           .prop( "disabled", true )
@@ -204,7 +208,7 @@ var Login = ( function() {
             console.log( "--password reset request success--" );
 
             var response = data;
-            
+
             try {
               response = JSON.parse( data );
             } catch ( e ) {
@@ -323,7 +327,9 @@ var Login = ( function() {
         // Click feedback + double-submit guard (see handleLogin): block a second
         // POST while the request is in flight; restored on completion.
         var $btn = $( form ).find( "button[type=submit]" );
-        if ( $btn.data( "loading" ) ) { return; }
+        if ( $btn.data( "loading" ) ) {
+ return;
+}
         var originalBtnHtml = $btn.html();
         $btn.data( "loading", true )
           .prop( "disabled", true )
@@ -351,7 +357,7 @@ var Login = ( function() {
           success: function( response ) {
             console.log( "--user create response--" );
 
-            if ( typeof(response.success) !== 'undefined' && response.success ) {
+            if ( typeof( response.success ) !== "undefined" && response.success ) {
               if ( response.response == "email_sent" ) {
                 $( ".msg-error", $( ".register-form" ) ).hide();
                 $( ".register-form" ).hide();

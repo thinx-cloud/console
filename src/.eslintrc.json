@@ -23,6 +23,33 @@
     "parserOptions": {
         "ecmaVersion": 2018
     },
+    "overrides": [
+        {
+            "files": ["cypress/**/*.js"],
+            "env": {
+                "browser": true,
+                "node": true,
+                "mocha": true
+            },
+            "globals": {
+                "Cypress": "readonly",
+                "cy": "readonly",
+                "expect": "readonly",
+                "assert": "readonly"
+            },
+            "parserOptions": {
+                "ecmaVersion": 2020,
+                "sourceType": "script"
+            }
+        },
+        {
+            "files": ["cypress/support/index.js"],
+            "parserOptions": {
+                "ecmaVersion": 2020,
+                "sourceType": "module"
+            }
+        }
+    ],
     "rules": {
         "no-console": "off",
         "no-unused-vars": "off",
@@ -32,6 +59,6 @@
         "eqeqeq": "off",
         "dot-notation": "off",
         "no-useless-escape": "off",
-        "quotes": [1, "always"]
+        "quotes": ["warn", "double"]
     }
 }

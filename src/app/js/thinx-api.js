@@ -1,282 +1,279 @@
 // Thninx API Ajax Class
 var urlBase = "<ENV::apiBaseUrl>";
 
-if (urlBase.indexOf("localhost") !== -1) {
-  $.ajaxSetup({
+if ( urlBase.indexOf( "localhost" ) !== -1 ) {
+  $.ajaxSetup( {
     contentType: "application/json; charset=utf-8"
-  });
+  } );
 } else {
-  $.ajaxSetup({
+  $.ajaxSetup( {
     contentType: "application/json; charset=utf-8",
     xhrFields: {
-      withCredentials: urlBase.indexOf("localhost") !== -1 ? false : true
+      withCredentials: urlBase.indexOf( "localhost" ) !== -1 ? false : true
     }
-  });
+  } );
 }
 
 // eslint-disable-next-line  no-redeclare
 var Thinx = {
   // RSA
-  apikeyList: function () {
+  apikeyList: function() {
     return apikeyList();
   },
-  createApikey: function (apikeyAlias) {
-    return createApikey(apikeyAlias);
+  createApikey: function( apikeyAlias ) {
+    return createApikey( apikeyAlias );
   },
-  revokeApikeys: function (fingerprints) {
-    return revokeApikeys(fingerprints);
+  revokeApikeys: function( fingerprints ) {
+    return revokeApikeys( fingerprints );
   },
   // RSA keys (obsolete!!!)
-  rsakeyList: function () {
+  rsakeyList: function() {
     return rsakeyList();
   },
-  addRsakey: function (rsakeyName, rsakeyValue) {
-    return addRsakey(rsakeyName, rsakeyValue);
-  },
-  revokeRsakeys: function (fingerprints) {
-    return revokeRsakeys(fingerprints);
+  revokeRsakeys: function( fingerprints ) {
+    return revokeRsakeys( fingerprints );
   },
 
   // Deploy keys
-  deploykeyList: function () {
+  deploykeyList: function() {
     return deploykeyList();
   },
-  createDeploykey: function () {
+  createDeploykey: function() {
     return createDeploykey();
   },
-  revokeDeploykeys: function (filenames) {
-    return revokeDeploykeys(filenames);
+  revokeDeploykeys: function( filenames ) {
+    return revokeDeploykeys( filenames );
   },
 
   // Channels
-  channelList: function () {
+  channelList: function() {
     return channelList();
   },
-  createChannel: function (meshId, alias, ownerId) {
-    return createChannel(meshId, alias, ownerId);
+  createChannel: function( meshId, alias, ownerId ) {
+    return createChannel( meshId, alias, ownerId );
   },
-  revokeChannels: function (ownerId, meshIds) {
-    return revokeChannels(ownerId, meshIds);
+  revokeChannels: function( ownerId, meshIds ) {
+    return revokeChannels( ownerId, meshIds );
   },
-  attachChannel: function (meshId, deviceUdid) {
-    return attachChannel(meshId, deviceUdid);
+  attachChannel: function( meshId, deviceUdid ) {
+    return attachChannel( meshId, deviceUdid );
   },
-  detachChannel: function (meshId, deviceUdid) {
-    return detachChannel(meshId, deviceUdid);
+  detachChannel: function( meshId, deviceUdid ) {
+    return detachChannel( meshId, deviceUdid );
   },
   // SOURCE
-  sourceList: function () {
+  sourceList: function() {
     return sourceList();
   },
-  addSource: function (sourceUrl, sourceAlias, sourceBranch, sourceCircleToken, $sourceGitSecret) {
-    return addSource(sourceUrl, sourceAlias, sourceBranch, sourceCircleToken, $sourceGitSecret);
+  addSource: function( sourceUrl, sourceAlias, sourceBranch, sourceCircleToken, $sourceGitSecret ) {
+    return addSource( sourceUrl, sourceAlias, sourceBranch, sourceCircleToken, $sourceGitSecret );
   },
-  revokeSources: function (sourceIds) {
-    return revokeSources(sourceIds);
+  revokeSources: function( sourceIds ) {
+    return revokeSources( sourceIds );
   },
   // RSA
-  enviroList: function () {
+  enviroList: function() {
     return enviroList();
   },
-  addEnviro: function (enviroName, enviroValue) {
-    return addEnviro(enviroName, enviroValue);
+  addEnviro: function( enviroName, enviroValue ) {
+    return addEnviro( enviroName, enviroValue );
   },
-  revokeEnviros: function (names) {
-    return revokeEnviros(names);
+  revokeEnviros: function( names ) {
+    return revokeEnviros( names );
   },
   // DEVICE
-  deviceList: function () {
+  deviceList: function() {
     return deviceList();
   },
-  submitDevice: function (deviceForm) {
-    return submitDevice(deviceForm);
+  submitDevice: function( deviceForm ) {
+    return submitDevice( deviceForm );
   },
-  revokeDevices: function (deviceUdids) {
-    return revokeDevices(deviceUdids);
+  revokeDevices: function( deviceUdids ) {
+    return revokeDevices( deviceUdids );
   },
-  transferDevices: function (transferForm, deviceUdids) {
-    return transferDevices(transferForm, deviceUdids);
+  transferDevices: function( transferForm, deviceUdids ) {
+    return transferDevices( transferForm, deviceUdids );
   },
-  pushConfig: function (configForm, deiceUdids) {
-    return pushConfig(configForm, deiceUdids);
+  pushConfig: function( configForm, deiceUdids ) {
+    return pushConfig( configForm, deiceUdids );
   },
-  attachSource: function (sourceId, deviceUdid) {
-    return attachSource(sourceId, deviceUdid);
+  attachSource: function( sourceId, deviceUdid ) {
+    return attachSource( sourceId, deviceUdid );
   },
-  detachSource: function (deviceUdid) {
-    return detachSource(deviceUdid);
+  detachSource: function( deviceUdid ) {
+    return detachSource( deviceUdid );
   },
-  build: function (deviceUdid, sourceId) {
-    return build(deviceUdid, sourceId);
+  build: function( deviceUdid, sourceId ) {
+    return build( deviceUdid, sourceId );
   },
-  getLatestFirmwareEnvelope: function (deviceUdid) {
-    return getLatestFirmwareEnvelope(deviceUdid);
+  getLatestFirmwareEnvelope: function( deviceUdid ) {
+    return getLatestFirmwareEnvelope( deviceUdid );
   },
-  getArtifacts: function (deviceUdid, build_id) {
-    return getArtifacts(deviceUdid, build_id);
+  getArtifacts: function( deviceUdid, build_id ) {
+    return getArtifacts( deviceUdid, build_id );
   },
   // PROFILE
-  getProfile: function () {
+  getProfile: function() {
     return getProfile();
   },
-  submitProfile: function (profile) {
-    return submitProfile(profile);
+  submitProfile: function( profile ) {
+    return submitProfile( profile );
   },
-  submitProfileAvatar: function (avatar) {
-    return submitProfileAvatar(avatar);
+  submitProfileAvatar: function( avatar ) {
+    return submitProfileAvatar( avatar );
   },
-  submitProfileChanges: function (changes, profile) {
-    return submitProfileChanges(changes, profile);
+  submitProfileChanges: function( changes, profile ) {
+    return submitProfileChanges( changes, profile );
   },
-  userDelete: function (deleteForm) {
-    return userDelete(deleteForm);
+  userDelete: function( deleteForm ) {
+    return userDelete( deleteForm );
   },
-  profileDownload: function () {
+  profileDownload: function() {
     return profileDownload();
   },
-  getAuditHistory: function () {
+  getAuditHistory: function() {
     return getAuditHistory();
   },
-  getBuildLog: function (buildId) {
-    return getBuildLog(buildId);
+  getBuildLog: function( buildId ) {
+    return getBuildLog( buildId );
   },
-  tailBuildLog: function (buildId) {
-    return tailBuildLog(buildId);
+  tailBuildLog: function( buildId ) {
+    return tailBuildLog( buildId );
   },
-  getBuildHistory: function () {
+  getBuildHistory: function() {
     return getBuildHistory();
   },
-  getStats: function () {
+  getStats: function() {
     return getStats();
   },
-  submitSystemMessage: function (messageForm) {
-    return submitSystemMessage(messageForm);
+  submitSystemMessage: function( messageForm ) {
+    return submitSystemMessage( messageForm );
   },
-  checkToken: function (token) {
-    return checkToken(token);
+  checkToken: function( token ) {
+    return checkToken( token );
   },
-  apiBaseUrl: function () {
+  apiBaseUrl: function() {
     return urlBase;
   },
-  init: function ($rootScope, $scope) {
-    return init($rootScope, $scope);
+  init: function( $rootScope, $scope ) {
+    return init( $rootScope, $scope );
   }
 };
 
-function init($rootScope, $scope) {
+function init( $rootScope, $scope ) {
 
-  if (typeof ($rootScope.xhrFailedListener) === "undefined") {
-    $rootScope.xhrFailedListener = $rootScope.$on("xhrFailed", function (event, error) {
+  if ( typeof( $rootScope.xhrFailedListener ) === "undefined" ) {
+    $rootScope.xhrFailedListener = $rootScope.$on( "xhrFailed", function( event, error ) {
       event.stopPropagation();
-      xhrFailed(error);
-    });
+      xhrFailed( error );
+    } );
   }
 
-  function xhrFailed(error) {
-    if (error.status == 401) {
+  function xhrFailed( error ) {
+    if ( error.status == 401 ) {
       window.location = "/";
     }
   }
 
-  if (typeof ($rootScope.updateSourcesListener) === "undefined") {
-    $rootScope.updateSourcesListener = $rootScope.$on("updateSources", function (event, data) {
+  if ( typeof( $rootScope.updateSourcesListener ) === "undefined" ) {
+    $rootScope.updateSourcesListener = $rootScope.$on( "updateSources", function( event, data ) {
       event.stopPropagation();
-      updateSources(data);
-    });
+      updateSources( data );
+    } );
   }
 
-  function updateSources(response) {
+  function updateSources( response ) {
 
-    if (typeof (response.success) === "undefined" || !response.success) {
+    if ( typeof( response.success ) === "undefined" || !response.success ) {
       return;
     }
 
     $rootScope.sources = [];
-    $.each(response.response, function (sourceId, value) {
+    $.each( response.response, function( sourceId, value ) {
       value.sourceId = sourceId;
-      if (typeof (value.platform) === "undefined") {
+      if ( typeof( value.platform ) === "undefined" ) {
         value.platform = "unknown";
       }
-      if (typeof (value.is_private) === "undefined") {
+      if ( typeof( value.is_private ) === "undefined" ) {
         value.is_private = false;
       }
-      value.base_platform = value.platform.split(":")[0];
-      $rootScope.sources.push(value);
-    });
+      value.base_platform = value.platform.split( ":" )[ 0 ];
+      $rootScope.sources.push( value );
+    } );
     $rootScope.$apply();
 
     // save user-spcific goal achievement
-    if ($rootScope.profile.info.goals.length > 0) {
-      if (!$rootScope.profile.info.goals.includes("source") && Object.keys($rootScope.sources).length > 0) {
-        $rootScope.profile.info.goals.push("source");
-        $scope.$emit("saveProfileChanges", ["goals"]);
+    if ( $rootScope.profile.info.goals.length > 0 ) {
+      if ( !$rootScope.profile.info.goals.includes( "source" ) && Object.keys( $rootScope.sources ).length > 0 ) {
+        $rootScope.profile.info.goals.push( "source" );
+        $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
   }
 
-  if (typeof ($rootScope.updateApikeysListener) === "undefined") {
-    $rootScope.updateApikeysListener = $rootScope.$on("updateApikeys", function (event, data) {
+  if ( typeof( $rootScope.updateApikeysListener ) === "undefined" ) {
+    $rootScope.updateApikeysListener = $rootScope.$on( "updateApikeys", function( event, data ) {
       event.stopPropagation();
-      updateApikeys(data);
-    });
+      updateApikeys( data );
+    } );
   }
 
-  function updateApikeys(response) {
+  function updateApikeys( response ) {
     $rootScope.apikeys = response.response;
     $rootScope.$apply();
   }
 
-  if (typeof ($rootScope.updateRsakeysListener) === "undefined") {
-    $rootScope.updateRsakeysListener = $rootScope.$on("updateRsakeys", function (event, data) {
+  if ( typeof( $rootScope.updateRsakeysListener ) === "undefined" ) {
+    $rootScope.updateRsakeysListener = $rootScope.$on( "updateRsakeys", function( event, data ) {
       event.stopPropagation();
-      updateRsakeys(data);
-    });
+      updateRsakeys( data );
+    } );
   }
 
-  function updateRsakeys(response) {
+  function updateRsakeys( response ) {
     $rootScope.rsakeys = response.response;
     $scope.$apply();
 
     // save user-spcific goal achievement
-    if ($rootScope.profile.info.goals.length > 0) {
-      if (!$rootScope.profile.info.goals.includes("rsakey") && $rootScope.rsakeys.length > 0) {
-        $rootScope.profile.info.goals.push("rsakey");
-        $scope.$emit("saveProfileChanges", ["goals"]);
+    if ( $rootScope.profile.info.goals.length > 0 ) {
+      if ( !$rootScope.profile.info.goals.includes( "rsakey" ) && $rootScope.rsakeys.length > 0 ) {
+        $rootScope.profile.info.goals.push( "rsakey" );
+        $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
     $rootScope.$apply();
   }
 
-  if (typeof ($rootScope.updateDeploykeysListener) === "undefined") {
-    $rootScope.updateDeploykeysListener = $rootScope.$on("updateDeploykeys", function (event, data) {
+  if ( typeof( $rootScope.updateDeploykeysListener ) === "undefined" ) {
+    $rootScope.updateDeploykeysListener = $rootScope.$on( "updateDeploykeys", function( event, data ) {
       event.stopPropagation();
-      updateDeploykeys(data);
-    });
+      updateDeploykeys( data );
+    } );
   }
 
-  function updateDeploykeys(data) {
+  function updateDeploykeys( data ) {
     $rootScope.deploykeys = data.response;
     $scope.$apply();
 
     // save user-spcific goal achievement
-    if ($rootScope.profile.info.goals.length > 0) {
-      if (!$rootScope.profile.info.goals.includes("deploykey") && $rootScope.deploykeys.length > 0) {
-        $rootScope.profile.info.goals.push("deploykey");
-        $scope.$emit("saveProfileChanges", ["goals"]);
+    if ( $rootScope.profile.info.goals.length > 0 ) {
+      if ( !$rootScope.profile.info.goals.includes( "deploykey" ) && $rootScope.deploykeys.length > 0 ) {
+        $rootScope.profile.info.goals.push( "deploykey" );
+        $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
     $rootScope.$apply();
   }
 
-  if (typeof ($rootScope.updateChannelsListener) === "undefined") {
-    $rootScope.updateChannelsListener = $rootScope.$on("updateChannels", function (event, data) {
+  if ( typeof( $rootScope.updateChannelsListener ) === "undefined" ) {
+    $rootScope.updateChannelsListener = $rootScope.$on( "updateChannels", function( event, data ) {
       event.stopPropagation();
-      updateChannels(data);
-    });
+      updateChannels( data );
+    } );
   }
 
-  function updateChannels(response) {
-    if (typeof (response.response) === "undefined") {
+  function updateChannels( response ) {
+    if ( typeof( response.response ) === "undefined" ) {
       return;
     }
 
@@ -284,28 +281,28 @@ function init($rootScope, $scope) {
     $scope.$apply();
 
     // save user-spcific goal achievement
-    if ($rootScope.profile.info.goals.length > 0) {
-      if (!$rootScope.profile.info.goals.includes("channel") && $rootScope.channels.length > 0) {
-        $rootScope.profile.info.goals.push("channel");
-        $scope.$emit("saveProfileChanges", ["goals"]);
+    if ( $rootScope.profile.info.goals.length > 0 ) {
+      if ( !$rootScope.profile.info.goals.includes( "channel" ) && $rootScope.channels.length > 0 ) {
+        $rootScope.profile.info.goals.push( "channel" );
+        $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
     $rootScope.$apply();
   }
 
-  if (typeof ($rootScope.updateDevicesListener) === "undefined") {
-    $rootScope.updateDevicesListener = $rootScope.$on("updateDevices", function (event, data) {
+  if ( typeof( $rootScope.updateDevicesListener ) === "undefined" ) {
+    $rootScope.updateDevicesListener = $rootScope.$on( "updateDevices", function( event, data ) {
       event.stopPropagation();
-      updateDevices(data);
-    });
+      updateDevices( data );
+    } );
   }
 
-  function updateDevices(response) {
+  function updateDevices( response ) {
     $rootScope.devices = [];
     let devices = response.response;
-    for (var d in devices) {
-      devices[d].base_platform = devices[d].platform.split(":")[0];
-      $rootScope.devices.push(devices[d]);
+    for ( var d in devices ) {
+      devices[ d ].base_platform = devices[ d ].platform.split( ":" )[ 0 ];
+      $rootScope.devices.push( devices[ d ] );
     }
     updateTags();
 
@@ -314,19 +311,19 @@ function init($rootScope, $scope) {
     $rootScope.meta.transformerDevices = {};
 
     // calculate device timeline
-    if (typeof ($rootScope.devices) !== "undefined" && $rootScope.devices.length > 0) {
+    if ( typeof( $rootScope.devices ) !== "undefined" && $rootScope.devices.length > 0 ) {
       updateTimeline();
     }
 
     $scope.$apply();
 
     // save user-spcific goal achievements
-    if ($rootScope.profile.info.goals.length > 0) {
-      if (!$rootScope.profile.info.goals.includes("enroll") && $rootScope.devices.length > 0) {
+    if ( $rootScope.profile.info.goals.length > 0 ) {
+      if ( !$rootScope.profile.info.goals.includes( "enroll" ) && $rootScope.devices.length > 0 ) {
         // TODO enable
-        $rootScope.profile.info.goals.push("enroll");
-        $rootScope.profile.info.goals.push("enroll-setup");
-        $scope.$emit("saveProfileChanges", ["goals"]);
+        $rootScope.profile.info.goals.push( "enroll" );
+        $rootScope.profile.info.goals.push( "enroll-setup" );
+        $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
   }
@@ -335,55 +332,55 @@ function init($rootScope, $scope) {
 
     var deviceTimeline = [];
 
-    for (var i in $rootScope.devices) {
-      $rootScope.devices[i].lastseen = moment($rootScope.devices[i].lastupdate).fromNow(true);
+    for ( var i in $rootScope.devices ) {
+      $rootScope.devices[ i ].lastseen = moment( $rootScope.devices[ i ].lastupdate ).fromNow( true );
 
       // iterate all device transformers and put them to meta container organised by utid
-      if (typeof ($rootScope.devices[i].transformers) !== "undefined" && $rootScope.devices[i].transformers.length > 0) {
-        for (var transformerIndex in $rootScope.devices[i].transformers) {
-          var utid = $rootScope.devices[i].transformers[transformerIndex];
-          if (typeof ($rootScope.meta.transformerDevices[utid]) === "undefined") {
-            $rootScope.meta.transformerDevices[utid] = [];
+      if ( typeof( $rootScope.devices[ i ].transformers ) !== "undefined" && $rootScope.devices[ i ].transformers.length > 0 ) {
+        for ( var transformerIndex in $rootScope.devices[ i ].transformers ) {
+          var utid = $rootScope.devices[ i ].transformers[ transformerIndex ];
+          if ( typeof( $rootScope.meta.transformerDevices[ utid ] ) === "undefined" ) {
+            $rootScope.meta.transformerDevices[ utid ] = [];
           }
-          $rootScope.meta.transformerDevices[utid].push($rootScope.devices[i].udid);
+          $rootScope.meta.transformerDevices[ utid ].push( $rootScope.devices[ i ].udid );
         }
       }
 
       // copy records to dashboard timeline
-      deviceTimeline.push({
-        date: moment($rootScope.devices[i].lastupdate).format("YYYY-MM-DD"),
-        alias: $rootScope.devices[i].alias,
-        icon: $rootScope.devices[i].icon,
-        udid: $rootScope.devices[i].udid,
-        category: $rootScope.devices[i].category
-      });
+      deviceTimeline.push( {
+        date: moment( $rootScope.devices[ i ].lastupdate ).format( "YYYY-MM-DD" ),
+        alias: $rootScope.devices[ i ].alias,
+        icon: $rootScope.devices[ i ].icon,
+        udid: $rootScope.devices[ i ].udid,
+        category: $rootScope.devices[ i ].category
+      } );
 
       // generate list index of devices by attached apikey -> meta.apikeys
-      if ($rootScope.getApikeyByHash($rootScope.devices[i].keyhash) != false) {
-        if (typeof ($rootScope.meta.apikeys[$rootScope.devices[i].keyhash]) == "undefined") {
-          $rootScope.meta.apikeys[$rootScope.devices[i].keyhash] = [];
+      if ( $rootScope.getApikeyByHash( $rootScope.devices[ i ].keyhash ) != false ) {
+        if ( typeof( $rootScope.meta.apikeys[ $rootScope.devices[ i ].keyhash ] ) == "undefined" ) {
+          $rootScope.meta.apikeys[ $rootScope.devices[ i ].keyhash ] = [];
         }
-        $rootScope.meta.apikeys[$rootScope.devices[i].keyhash].push($rootScope.devices[i]);
+        $rootScope.meta.apikeys[ $rootScope.devices[ i ].keyhash ].push( $rootScope.devices[ i ] );
       }
 
       // generate list index of devices by attached source -> meta.sources
-      if ($rootScope.getSourceById($rootScope.devices[i].source) != false) {
-        if (typeof ($rootScope.meta.sources[$rootScope.devices[i].source]) == "undefined") {
-          $rootScope.meta.sources[$rootScope.devices[i].source] = [];
+      if ( $rootScope.getSourceById( $rootScope.devices[ i ].source ) != false ) {
+        if ( typeof( $rootScope.meta.sources[ $rootScope.devices[ i ].source ] ) == "undefined" ) {
+          $rootScope.meta.sources[ $rootScope.devices[ i ].source ] = [];
         }
-        $rootScope.meta.sources[$rootScope.devices[i].source].push($rootScope.devices[i]);
+        $rootScope.meta.sources[ $rootScope.devices[ i ].source ].push( $rootScope.devices[ i ] );
       }
 
     }
-    deviceTimeline.sort(function (a, b) {
+    deviceTimeline.sort( function( a, b ) {
       // Turn your strings into dates, and then subtract them
       // to get a value that is either negative, positive, or zero.
-      return new Date(b.date) - new Date(a.date);
-    });
-    $rootScope.stats.timeline.MIN = deviceTimeline[0]["date"];
-    $rootScope.stats.timeline.MAX = deviceTimeline[deviceTimeline.length - 1]["date"];
+      return new Date( b.date ) - new Date( a.date );
+    } );
+    $rootScope.stats.timeline.MIN = deviceTimeline[ 0 ][ "date" ];
+    $rootScope.stats.timeline.MAX = deviceTimeline[ deviceTimeline.length - 1 ][ "date" ];
     $rootScope.stats.timeline.COUNT = deviceTimeline.length - 1;
-    $rootScope.stats.timeline.SPAN = moment($rootScope.stats.timeline.MAX).diff(moment($rootScope.stats.timeline.MIN), "days");
+    $rootScope.stats.timeline.SPAN = moment( $rootScope.stats.timeline.MAX ).diff( moment( $rootScope.stats.timeline.MIN ), "days" );
     $rootScope.stats.timeline.ERRORS = [];
     $rootScope.stats.timeline.CHECKINS = deviceTimeline;
 
@@ -394,14 +391,14 @@ function init($rootScope, $scope) {
   function updateTags() {
     $rootScope.profile.info.tags = [];
 
-    for (let index in $rootScope.devices) {
-      var tagsArray = $rootScope.devices[index].tags;
-      if (tagsArray !== null) {
-        for (var tagIndex in tagsArray) {
-          if ($rootScope.profile.info.tags.includes(tagsArray[tagIndex])) {
+    for ( let index in $rootScope.devices ) {
+      var tagsArray = $rootScope.devices[ index ].tags;
+      if ( tagsArray !== null ) {
+        for ( var tagIndex in tagsArray ) {
+          if ( $rootScope.profile.info.tags.includes( tagsArray[ tagIndex ] ) ) {
             // duplicate tag found, skipping
           } else {
-            $rootScope.profile.info.tags.push(tagsArray[tagIndex]);
+            $rootScope.profile.info.tags.push( tagsArray[ tagIndex ] );
           }
         }
       }
@@ -409,136 +406,138 @@ function init($rootScope, $scope) {
     }
   }
 
-  if (typeof ($rootScope.submitNotificationResponseListener) === "undefined") {
-    $rootScope.submitNotificationResponseListener = $rootScope.$on("submitNotificationResponse", function (event, data) {
+  if ( typeof( $rootScope.submitNotificationResponseListener ) === "undefined" ) {
+    $rootScope.submitNotificationResponseListener = $rootScope.$on( "submitNotificationResponse", function( event, data ) {
       event.stopPropagation();
-      submitNotificationResponse(data);
-    });
+      submitNotificationResponse( data );
+    } );
   }
 
-  function submitNotificationResponse(response) {
+  function submitNotificationResponse( response ) {
     var response_type = "string";
-    if (typeof (response) === "boolean") {
+    if ( typeof( response ) === "boolean" ) {
       response_type = "bool";
     }
 
-    return $.ajax({
+    return $.ajax( {
       url: urlBase + "/device/notification",
       type: "POST",
-      data: JSON.stringify({
+      data: JSON.stringify( {
         device: "nemam-udid",
         response_type: response_type,
         response: response
-      }),
+      } ),
       dataType: "json",
       contentType: "application/json"
-    });
+    } );
   }
 
   // =================================================
   // API related functions
 
-  $scope.$on("saveProfile", function (event) {
+  $scope.$on( "saveProfile", function( event ) {
     // event.stopPropagation();
-    submitProfile($rootScope.profile);
-  });
+    submitProfile( $rootScope.profile );
+  } );
 
-  $scope.$on("saveProfileChanges", function (event, changes) {
+  $scope.$on( "saveProfileChanges", function( event, changes ) {
     // event.stopPropagation();
-    submitProfileChanges(changes, $rootScope.profile);
+    submitProfileChanges( changes, $rootScope.profile );
 
     // update transformers
-    if (changes.indexOf("transformers") > -1) {
-      updateRawTransformers($rootScope.profile.info.transformers);
+    if ( changes.indexOf( "transformers" ) > -1 ) {
+      updateRawTransformers( $rootScope.profile.info.transformers );
     }
-  });
+  } );
 
-  $scope.$on("updateProfile", function (event, data) {
-    updateProfile(data);
-  });
+  $scope.$on( "updateProfile", function( event, data ) {
+    updateProfile( data );
+  } );
 
-  function updateProfile(response) {
-    if ((typeof (response) === "undefined") || (typeof (response.success) === "undefined")) return;
+  function updateProfile( response ) {
+    if ( ( typeof( response ) === "undefined" ) || ( typeof( response.success ) === "undefined" ) ) {
+return;
+}
 
     // validate response and refresh view
-    if (!response.success) {
+    if ( !response.success ) {
       return;
     }
 
     var profile = response.response;
 
     // set default avatar if one's missing
-    if (typeof (profile.avatar) === "undefined" || profile.avatar.length == 0) {
+    if ( typeof( profile.avatar ) === "undefined" || profile.avatar.length == 0 ) {
       profile.avatar = "/assets/thinx/img/default_avatar_sm.png";
     }
-    if (typeof (profile.info.goals) === "undefined") {
-      profile.info["goals"] = $rootScope.profile.info.goals;
+    if ( typeof( profile.info.goals ) === "undefined" ) {
+      profile.info[ "goals" ] = $rootScope.profile.info.goals;
     }
-    if (typeof (profile.info.tags) === "undefined") {
-      profile.info["tags"] = $rootScope.profile.info.tags;
+    if ( typeof( profile.info.tags ) === "undefined" ) {
+      profile.info[ "tags" ] = $rootScope.profile.info.tags;
     }
-    if (typeof (profile.info.transformers) === "undefined") {
-      profile.info["transformers"] = $rootScope.profile.info.transformers;
+    if ( typeof( profile.info.transformers ) === "undefined" ) {
+      profile.info[ "transformers" ] = $rootScope.profile.info.transformers;
     }
     $rootScope.profile = profile;
 
-    updateRawTransformers($rootScope.profile.info.transformers);
+    updateRawTransformers( $rootScope.profile.info.transformers );
 
     $scope.$apply();
 
-    $scope.$emit("initWebsocket", profile.owner);
+    $scope.$emit( "initWebsocket", profile.owner );
   }
 
-  $scope.$on("updateRawTransformers", function (event, transformers) {
-    $scope.$apply(function () {
-      updateRawTransformers(transformers);
-    });
-  });
+  $scope.$on( "updateRawTransformers", function( event, transformers ) {
+    $scope.$apply( function() {
+      updateRawTransformers( transformers );
+    } );
+  } );
 
-  function updateRawTransformers(transformers) {
+  function updateRawTransformers( transformers ) {
     // decode all transformers
-    for (let index in transformers) {
-      $rootScope.meta.transformers[transformers[index].utid] =
+    for ( let index in transformers ) {
+      $rootScope.meta.transformers[ transformers[ index ].utid ] =
       {
-        "utid": transformers[index].utid,
-        "alias": transformers[index].alias,
+        "utid": transformers[ index ].utid,
+        "alias": transformers[ index ].alias,
         // eslint-disable-next-line  no-undef
-        "body": base64converter("decode", transformers[index].body),
+        "body": base64converter( "decode", transformers[ index ].body ),
         "changed": false
       };
     }
   }
 
-  $scope.$on("updateAuditHistory", function (event, data) {
-    updateAuditHistory(data);
-  });
+  $scope.$on( "updateAuditHistory", function( event, data ) {
+    updateAuditHistory( data );
+  } );
 
   var warningStr = "undefined";
   var dangerStr = "error";
   var invalidStr = "invalid";
 
-  function updateAuditHistory(response) {
-    if (typeof (response.success) !== "undefined" && response.success) {
+  function updateAuditHistory( response ) {
+    if ( typeof( response.success ) !== "undefined" && response.success ) {
       $rootScope.auditlog = response.response;
-      if (typeof ($scope.chartRange) !== "undefined") {
+      if ( typeof( $scope.chartRange ) !== "undefined" ) {
         $scope.chart.computing = true;
       }
 
       var totalErrors = 0;
       var errorTimeline = {};
-      for (let index in $rootScope.auditlog) {
-        if (typeof ($rootScope.auditlog[index].message) !== "undefined") {
-          if ($rootScope.auditlog[index].message.match(warningStr) !== null) {
-            $rootScope.auditlog[index].flags.push("warning");
+      for ( let index in $rootScope.auditlog ) {
+        if ( typeof( $rootScope.auditlog[ index ].message ) !== "undefined" ) {
+          if ( $rootScope.auditlog[ index ].message.match( warningStr ) !== null ) {
+            $rootScope.auditlog[ index ].flags.push( "warning" );
           }
-          if ($rootScope.auditlog[index].message.match(dangerStr) !== null || $rootScope.auditlog[index].message.match(invalidStr) !== null) {
-            $rootScope.auditlog[index].flags.push("danger");
+          if ( $rootScope.auditlog[ index ].message.match( dangerStr ) !== null || $rootScope.auditlog[ index ].message.match( invalidStr ) !== null ) {
+            $rootScope.auditlog[ index ].flags.push( "danger" );
 
-            var errorDate = moment($rootScope.auditlog[index].date).format("YYYY-MM-DD");
-            if (typeof (errorTimeline[errorDate]) == "undefined") {
-              errorTimeline[errorDate] = 1;
+            var errorDate = moment( $rootScope.auditlog[ index ].date ).format( "YYYY-MM-DD" );
+            if ( typeof( errorTimeline[ errorDate ] ) == "undefined" ) {
+              errorTimeline[ errorDate ] = 1;
             } else {
-              errorTimeline[errorDate]++;
+              errorTimeline[ errorDate ]++;
             }
             totalErrors++;
           }
@@ -549,86 +548,86 @@ function init($rootScope, $scope) {
       $rootScope.stats.total.ERRORS = totalErrors;
       $rootScope.stats.timeline.ERRORS = errorTimeline;
 
-      if (typeof ($scope.chartRange) !== "undefined") {
-        $scope.chartRange($scope.chart.range);
+      if ( typeof( $scope.chartRange ) !== "undefined" ) {
+        $scope.chartRange( $scope.chart.range );
       }
       $scope.$apply();
     }
   }
 
-  $scope.$on("updateLatestFirmwareEnvelope", function (event, data) {
-    updateLatestFirmwareEnvelope(data);
-  });
+  $scope.$on( "updateLatestFirmwareEnvelope", function( event, data ) {
+    updateLatestFirmwareEnvelope( data );
+  } );
 
-  function updateLatestFirmwareEnvelope(data) {
+  function updateLatestFirmwareEnvelope( data ) {
     $rootScope.meta.latestFirmwareEnvelope = data;
     $rootScope.$apply();
   }
 
 
-  $scope.$on("updateStats", function (event, data) {
-    updateStats(data);
-  });
+  $scope.$on( "updateStats", function( event, data ) {
+    updateStats( data );
+  } );
 
-  function updateStats(response) {
+  function updateStats( response ) {
     // sparkline stats defaults
-    if (response.success) {
+    if ( response.success ) {
       var days = response.response;
-      for (var prop in days) {
+      for ( var prop in days ) {
         var propTotal = 0;
-        for (var i = 0; i < days[prop].length; i++) {
-          propTotal = propTotal + parseInt(days[prop][i]);
+        for ( var i = 0; i < days[ prop ].length; i++ ) {
+          propTotal = propTotal + parseInt( days[ prop ][ i ] );
         }
-        $rootScope.stats.total[prop] = propTotal;
-        $rootScope.stats.daily[prop] = days[prop];
+        $rootScope.stats.total[ prop ] = propTotal;
+        $rootScope.stats.daily[ prop ] = days[ prop ];
       }
     }
   }
 
 
-  $scope.$on("updateBuildHistory", function (event, data) {
-    updateBuildHistory(data);
-  });
+  $scope.$on( "updateBuildHistory", function( event, data ) {
+    updateBuildHistory( data );
+  } );
 
-  function sortByLastUpdate(b, a) {
-    if (a.last_update < b.last_update) {
+  function sortByLastUpdate( b, a ) {
+    if ( a.last_update < b.last_update ) {
       return -1;
     }
-    if (a.last_update > b.last_update) {
+    if ( a.last_update > b.last_update ) {
       return 1;
     }
     return 0;
   }
 
-  function updateBuildHistory(response) {
-    if (typeof (response.success) !== "undefined" && response.success) {
+  function updateBuildHistory( response ) {
+    if ( typeof( response.success ) !== "undefined" && response.success ) {
       $rootScope.buildHistory = response.response;
 
       $rootScope.meta.builds = [];
       $rootScope.meta.deviceBuilds = {};
 
-      for (let index in response.response) {
+      for ( let index in response.response ) {
         // reset device build history
-        if (typeof ($rootScope.meta.deviceBuilds[response.response[index].udid]) == "undefined") {
-          $rootScope.meta.deviceBuilds[response.response[index].udid] = [];
+        if ( typeof( $rootScope.meta.deviceBuilds[ response.response[ index ].udid ] ) == "undefined" ) {
+          $rootScope.meta.deviceBuilds[ response.response[ index ].udid ] = [];
         }
-        $rootScope.meta.deviceBuilds[response.response[index].udid].push({
-          "build_id": response.response[index].build_id,
-          "last_update": response.response[index].last_update,
-          "timestamp": response.response[index].timestamp,
-          "start_time": response.response[index].start_time,
-          "state": response.response[index].state
-        });
+        $rootScope.meta.deviceBuilds[ response.response[ index ].udid ].push( {
+          "build_id": response.response[ index ].build_id,
+          "last_update": response.response[ index ].last_update,
+          "timestamp": response.response[ index ].timestamp,
+          "start_time": response.response[ index ].start_time,
+          "state": response.response[ index ].state
+        } );
 
-        if (typeof ($rootScope.meta.builds[response.response[index].build_id]) == "undefined") {
-          $rootScope.meta.builds[response.response[index].build_id] = [];
+        if ( typeof( $rootScope.meta.builds[ response.response[ index ].build_id ] ) == "undefined" ) {
+          $rootScope.meta.builds[ response.response[ index ].build_id ] = [];
         }
-        $rootScope.meta.builds[response.response[index].build_id].push(response.response[index]);
+        $rootScope.meta.builds[ response.response[ index ].build_id ].push( response.response[ index ] );
       }
 
       // sort device build entries by date
-      for (let index in $rootScope.meta.deviceBuilds) {
-        $rootScope.meta.deviceBuilds[index].sort(sortByLastUpdate);
+      for ( let index in $rootScope.meta.deviceBuilds ) {
+        $rootScope.meta.deviceBuilds[ index ].sort( sortByLastUpdate );
       }
       $scope.$apply();
     }
@@ -659,16 +658,16 @@ function init($rootScope, $scope) {
   */
 
   Thinx.getProfile()
-    .done(function (data) {
-      updateProfile(data);
-    })
-    .fail(error => $scope.$emit("xhrFailed", error));
+    .done( function( data ) {
+      updateProfile( data );
+    } )
+    .fail( error => $scope.$emit( "xhrFailed", error ) );
 
   Thinx.getBuildHistory()
-    .done(function (data) {
-      updateBuildHistory(data);
-    })
-    .fail(error => $scope.$emit("xhrFailed", error));
+    .done( function( data ) {
+      updateBuildHistory( data );
+    } )
+    .fail( error => $scope.$emit( "xhrFailed", error ) );
 
 }
 
@@ -679,13 +678,13 @@ function init($rootScope, $scope) {
 //
 // deviceList GET /
 function deviceList() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/devices",
     type: "GET"
-  });
+  } );
 }
 
-function submitDevice(deviceForm) {
+function submitDevice( deviceForm ) {
   var data = {
     changes: {
       udid: deviceForm.udid,
@@ -702,148 +701,148 @@ function submitDevice(deviceForm) {
       timezone_offset: deviceForm.timezone_offset
     }
   };
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/device/edit",
     type: "POST",
-    data: JSON.stringify(data),
+    data: JSON.stringify( data ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function revokeDevices(deviceUdids) {
-  return $.ajax({
+function revokeDevices( deviceUdids ) {
+  return $.ajax( {
     url: urlBase + "/device/revoke",
     type: "POST",
-    data: JSON.stringify({ udids: deviceUdids }),
+    data: JSON.stringify( { udids: deviceUdids } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function transferDevices(transferForm, deviceUdids) {
-  return $.ajax({
+function transferDevices( transferForm, deviceUdids ) {
+  return $.ajax( {
     url: urlBase + "/transfer/request",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       udids: deviceUdids,
       to: transferForm.email,
       mig_sources: transferForm.mig_sources,
       mig_apikeys: transferForm.mig_apikeys
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function pushConfig(configForm, deviceUdids) {
+function pushConfig( configForm, deviceUdids ) {
   var enabledEnviros = [];
-  for (let index in configForm.enviros) {
-    if (configForm.enviros[index]) {
-      enabledEnviros.push(index);
+  for ( let index in configForm.enviros ) {
+    if ( configForm.enviros[ index ] ) {
+      enabledEnviros.push( index );
     }
   }
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/device/push",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       enviros: enabledEnviros,
       udids: deviceUdids,
       reset_devices: configForm.resetDevices
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function attachSource(sourceId, deviceUdid) {
-  return $.ajax({
+function attachSource( sourceId, deviceUdid ) {
+  return $.ajax( {
     url: urlBase + "/device/attach",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       source_id: sourceId,
       udid: deviceUdid
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function detachSource(deviceUdid) {
-  return $.ajax({
+function detachSource( deviceUdid ) {
+  return $.ajax( {
     url: urlBase + "/device/detach",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       udid: deviceUdid
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function getLatestFirmwareEnvelope(deviceUdid) {
-  return $.ajax({
+function getLatestFirmwareEnvelope( deviceUdid ) {
+  return $.ajax( {
     url: urlBase + "/device/envelope",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       udid: deviceUdid
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function getArtifacts(deviceUdid, build_id) {
-  return new Promise((resolve, reject) => {
+function getArtifacts( deviceUdid, build_id ) {
+  return new Promise( ( resolve, reject ) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", urlBase + "/device/artifacts", true);
-    xhr.setRequestHeader("Content-type", "application/json; charset=utf-8");
-    xhr.withCredentials = urlBase.indexOf("localhost") !== -1 ? false : true;
+    xhr.open( "POST", urlBase + "/device/artifacts", true );
+    xhr.setRequestHeader( "Content-type", "application/json; charset=utf-8" );
+    xhr.withCredentials = urlBase.indexOf( "localhost" ) !== -1 ? false : true;
     xhr.responseType = "blob";
-    xhr.onload = () => resolve(xhr.response);
-    xhr.onerror = () => reject(xhr.statusText);
+    xhr.onload = () => resolve( xhr.response );
+    xhr.onerror = () => reject( xhr.statusText );
     xhr.send(
-      JSON.stringify({
+      JSON.stringify( {
         udid: deviceUdid,
         build_id: build_id
-      })
+      } )
     );
-  });
+  } );
 }
 
-function saveBlob(blob, fileName) {
-  var a = document.createElement("a");
-  a.href = window.URL.createObjectURL(blob);
+function saveBlob( blob, fileName ) {
+  var a = document.createElement( "a" );
+  a.href = window.URL.createObjectURL( blob );
   a.download = fileName;
   a.click();
 }
 
-function submitSystemMessage(messageForm) {
-  return $.ajax({
+function submitSystemMessage( messageForm ) {
+  return $.ajax( {
     url: urlBase + "/user/chat",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       message: messageForm.text
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function build(deviceUdid, sourceId) {
-  return $.ajax({
+function build( deviceUdid, sourceId ) {
+  return $.ajax( {
     url: urlBase + "/build",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       build: {
         udid: deviceUdid,
         source_id: sourceId,
         dryrun: false
       }
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
 // Apikeys /user/apikey
@@ -852,32 +851,32 @@ function build(deviceUdid, sourceId) {
 // createApikey /
 // revokeApikey [keyToRevoke] /
 function apikeyList() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/apikey/list",
     type: "GET"
-  });
+  } );
 }
 
-function createApikey(apikeyAlias) {
-  return $.ajax({
+function createApikey( apikeyAlias ) {
+  return $.ajax( {
     url: urlBase + "/user/apikey",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       alias: apikeyAlias
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function revokeApikeys(fingerprints) {
-  return $.ajax({
+function revokeApikeys( fingerprints ) {
+  return $.ajax( {
     url: urlBase + "/user/apikey/revoke",
     type: "POST",
-    data: JSON.stringify({ fingerprints: fingerprints }),
+    data: JSON.stringify( { fingerprints: fingerprints } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
 
@@ -886,20 +885,20 @@ function revokeApikeys(fingerprints) {
 // revokeKey [keyToRevoke] /
 // keyList /list
 function rsakeyList() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/rsakey/list",
     type: "GET"
-  });
+  } );
 }
 
-function revokeRsakeys(fingerprints) {
-  return $.ajax({
+function revokeRsakeys( fingerprints ) {
+  return $.ajax( {
     url: urlBase + "/user/rsakey/revoke",
     type: "POST",
-    data: JSON.stringify({ fingerprints: fingerprints }),
+    data: JSON.stringify( { fingerprints: fingerprints } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
 
@@ -911,27 +910,27 @@ function revokeRsakeys(fingerprints) {
 // revokeKey [filenameToRevoke] /
 // keyList /list
 function deploykeyList() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/rsakey/list",
     type: "GET"
-  });
+  } );
 }
 
 function createDeploykey() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/rsakey/create",
     type: "GET"
-  });
+  } );
 }
 
-function revokeDeploykeys(filenames) {
-  return $.ajax({
+function revokeDeploykeys( filenames ) {
+  return $.ajax( {
     url: urlBase + "/user/rsakey/revoke",
     type: "POST",
-    data: JSON.stringify({ filenames: filenames }),
+    data: JSON.stringify( { filenames: filenames } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
 // Mesh channels //mesh/list
@@ -940,63 +939,63 @@ function revokeDeploykeys(filenames) {
 // revokeChannels [channel_ids]
 // channelList
 function channelList() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/mesh/list",
     type: "GET"
-  });
+  } );
 }
 
-function createChannel(mesh_id, alias, owner_id) {
-  return $.ajax({
+function createChannel( mesh_id, alias, owner_id ) {
+  return $.ajax( {
     url: urlBase + "/mesh/create",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       owner_id: owner_id,
       mesh_id: mesh_id,
       alias: alias
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function revokeChannels(owner_id, mesh_ids) {
-  return $.ajax({
+function revokeChannels( owner_id, mesh_ids ) {
+  return $.ajax( {
     url: urlBase + "/mesh/delete",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       owner_id: owner_id,
       mesh_ids: mesh_ids
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function attachChannel(meshId, deviceUdid) {
-  return $.ajax({
+function attachChannel( meshId, deviceUdid ) {
+  return $.ajax( {
     url: urlBase + "/device/mesh/attach",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       mesh_id: meshId,
       udid: deviceUdid
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function detachChannel(meshId, deviceUdid) {
-  return $.ajax({
+function detachChannel( meshId, deviceUdid ) {
+  return $.ajax( {
     url: urlBase + "/device/mesh/detach",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       mesh_id: meshId,
       udid: deviceUdid
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
 // Enviros /user/enviro
@@ -1004,33 +1003,33 @@ function detachChannel(meshId, deviceUdid) {
 // revokeKey [keyToRevoke] /
 // keyList /list
 function enviroList() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/env/list",
     type: "GET"
-  });
+  } );
 }
 
-function addEnviro(enviroName, enviroValue) {
-  return $.ajax({
+function addEnviro( enviroName, enviroValue ) {
+  return $.ajax( {
     url: urlBase + "/user/env/add",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       key: enviroName,
       value: enviroValue
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function revokeEnviros(enviroNames) {
-  return $.ajax({
+function revokeEnviros( enviroNames ) {
+  return $.ajax( {
     url: urlBase + "/user/env/revoke",
     type: "POST",
-    data: JSON.stringify({ names: enviroNames }),
+    data: JSON.stringify( { names: enviroNames } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
 // Sources /user/source
@@ -1039,36 +1038,36 @@ function revokeEnviros(enviroNames) {
 // addSource [sourceUrl] POST /
 // removeSource [index] POST /
 function sourceList() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/sources/list",
     type: "GET"
-  });
+  } );
 }
 
-function addSource(url, alias, branch, circleToken, gitSecret) {
-  return $.ajax({
+function addSource( url, alias, branch, circleToken, gitSecret ) {
+  return $.ajax( {
     url: urlBase + "/user/source",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       url: url,
       alias: alias,
       branch: branch,
       circleToken: circleToken,
       secret: gitSecret
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function revokeSources(sourceIds) {
-  return $.ajax({
+function revokeSources( sourceIds ) {
+  return $.ajax( {
     url: urlBase + "/user/source/revoke",
     type: "POST",
-    data: JSON.stringify({ source_ids: sourceIds }),
+    data: JSON.stringify( { source_ids: sourceIds } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
 // Profile /user/profile
@@ -1076,13 +1075,13 @@ function revokeSources(sourceIds) {
 // getProfile GET /
 // submitProfile POST /
 function getProfile() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/profile",
     type: "GET"
-  });
+  } );
 }
 
-function submitProfile(profile) {
+function submitProfile( profile ) {
   var info = {
     first_name: profile.info.first_name,
     last_name: profile.info.last_name,
@@ -1099,122 +1098,122 @@ function submitProfile(profile) {
     timezone_offset: profile.timezone_offset
   };
 
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/profile",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       info: info
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function submitProfileAvatar(avatar) {
-  return $.ajax({
+function submitProfileAvatar( avatar ) {
+  return $.ajax( {
     url: urlBase + "/user/profile",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       avatar: avatar
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function submitProfileChanges(changes, profile) {
+function submitProfileChanges( changes, profile ) {
   var info = {};
-  for (var change in changes) {
-    info[changes[change]] = profile.info[changes[change]];
+  for ( var change in changes ) {
+    info[ changes[ change ] ] = profile.info[ changes[ change ] ];
   }
 
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/profile",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       info: info
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function userDelete(deleteForm) {
-  return $.ajax({
+function userDelete( deleteForm ) {
+  return $.ajax( {
     url: urlBase + "/user/delete",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       username: deleteForm.username,
       owner: deleteForm.owner
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
 function profileDownload() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/gdpr/transfer",
     type: "POST",
     data: {},
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
 function getAuditHistory() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/logs/audit",
     type: "GET"
-  });
+  } );
 }
 
 function getBuildHistory() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/logs/build/list",
     type: "GET"
-  });
+  } );
 }
 
-function getBuildLog(buildId) {
-  return $.ajax({
+function getBuildLog( buildId ) {
+  return $.ajax( {
     url: urlBase + "/user/logs/build",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       build_id: buildId
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function tailBuildLog(buildId) {
-  return $.ajax({
+function tailBuildLog( buildId ) {
+  return $.ajax( {
     url: urlBase + "/user/logs/tail",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       build_id: buildId
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
-function checkToken(token) {
-  return $.ajax({
+function checkToken( token ) {
+  return $.ajax( {
     url: urlBase + "/login",
     type: "POST",
-    data: JSON.stringify({
+    data: JSON.stringify( {
       token: token
-    }),
+    } ),
     dataType: "json",
     contentType: "application/json"
-  });
+  } );
 }
 
 function getStats() {
-  return $.ajax({
+  return $.ajax( {
     url: urlBase + "/user/stats",
     type: "GET"
-  });
+  } );
 }

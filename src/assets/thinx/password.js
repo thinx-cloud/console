@@ -73,7 +73,9 @@ var PasswordReset = ( function() {
         // Click feedback + double-submit guard: block a second POST while the
         // request is in flight; restored on completion (retry on failure).
         var $btn = $( form ).find( "button[type=submit]" );
-        if ( $btn.data( "loading" ) ) { return; }
+        if ( $btn.data( "loading" ) ) {
+ return;
+}
         var originalBtnHtml = $btn.html();
         $btn.data( "loading", true )
           .prop( "disabled", true )
