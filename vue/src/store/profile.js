@@ -103,6 +103,19 @@ export default {
         const owner = state.profile && state.profile.owner;
         return await this.$api.$delete('/user', JSON.stringify({ owner }));
       },
+      // Per-user GitHub access token linking (#392 / GH-03 frontend).
+      // POSTs to /api/v2/github/token (the v2 alias of /api/github/token added in
+      // lib/router.github.js so the v2-prefixed $api client can reach it). The
+      // backend validates the token with GitHub, stores it on the user doc, ensures
+      // an RSA key exists and pushes the public key. The token is NEVER returned and
+      // is not part of the /profile payload, so there is nothing to persist locally —
+      // we just hand the raw API result back so the Profile UI can surface
+      // created_key / key_pushed on success or the specific error code on failure
+      // (missing_token / github_token_invalid / invalid_owner). The token value is
+      // never logged here.
+      async linkGitHubToken(_, token) {
+        return await this.$api.$post('/github/token', JSON.stringify({ token }));
+      },
     },
     getters: {
         getProfile(state) {

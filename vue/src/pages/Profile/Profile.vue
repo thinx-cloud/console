@@ -103,6 +103,44 @@
             </table>
           </b-card>
 
+          <!-- GitHub access token linking (#392 / GH-03). The stored token is never
+               returned by the backend and is not part of the /profile payload, so
+               there is no "current value" to display — only the masked input, the
+               link action, and transient feedback after a submit. -->
+          <b-card title="GitHub Access Token" class="mb-3">
+            <p class="text-muted mb-2">
+              Link a GitHub
+              <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">personal access token</a>
+              so THiNX can push your deploy (RSA) key to GitHub and access your private repositories.
+              The token is validated with GitHub, stored securely, and never shown again.
+            </p>
+            <b-form @submit.prevent="linkGitHub">
+              <b-form-group
+                label="GitHub access token"
+                description="Re-submitting a new token replaces the stored one."
+              >
+                <b-form-input
+                  v-model="githubForm.token"
+                  type="password"
+                  autocomplete="off"
+                  placeholder="ghp_…"
+                  :disabled="githubLinking"
+                />
+              </b-form-group>
+              <b-button type="submit" variant="primary" :disabled="githubLinking || !githubForm.token">
+                {{ githubLinking ? 'Validating…' : 'Validate & link' }}
+              </b-button>
+            </b-form>
+            <b-alert
+              v-if="githubResult"
+              :variant="githubResult.variant"
+              show
+              dismissible
+              class="mt-3 mb-0"
+              @dismissed="githubResult = null"
+            >{{ githubResult.text }}</b-alert>
+          </b-card>
+
           <b-card title="Delete Account" border-variant="danger">
             <p class="text-danger">This action is permanent and cannot be undone. All devices, repositories, and data will be deleted.</p>
             <b-button variant="danger" @click="confirmDeleteAccount">Delete My Account</b-button>
@@ -176,6 +214,14 @@ export default {
       },
       avatarB64: null,
       avatarUploading: false,
+      // GitHub access token linking (#392). Token is held only transiently while the
+      // user types; cleared from component state immediately after a submit so it is
+      // never retained. githubResult is the post-submit feedback banner.
+      githubForm: {
+        token: '',
+      },
+      githubLinking: false,
+      githubResult: null,
     };
   },
   computed: {
@@ -191,7 +237,7 @@ export default {
   },
   methods: {
     ...mapGetters({ getProfile: 'profile/getProfile' }),
-    ...mapActions({ fetchProfile: 'profile/fetchProfile', updateProfile: 'profile/updateProfile', deleteAccount: 'profile/deleteAccount', uploadAvatar: 'profile/uploadAvatar', clearSession: 'auth/clearSession' }),
+    ...mapActions({ fetchProfile: 'profile/fetchProfile', updateProfile: 'profile/updateProfile', deleteAccount: 'profile/deleteAccount', uploadAvatar: 'profile/uploadAvatar', linkGitHubToken: 'profile/linkGitHubToken', clearSession: 'auth/clearSession' }),
     async loadProfile() {
       this.loading = true;
       await this.fetchProfile();
@@ -278,6 +324,49 @@ export default {
         this.avatarB64 = null;
       } else {
         this.error = (result && result.message) || 'Failed to upload avatar.';
+      }
+    },
+    async linkGitHub() {
+      const token = (this.githubForm.token || '').trim();
+      if (!token) {
+        this.githubResult = { variant: 'danger', text: 'Enter a GitHub access token first.' };
+        return;
+      }
+      this.githubLinking = true;
+      this.githubResult = null;
+      const result = await this.linkGitHubToken(token);
+      this.githubLinking = false;
+      // Never retain the token in component state once it has been submitted.
+      this.githubForm.token = '';
+      if (result && result.success) {
+        // Success payload is { key_pushed, created_key } (parsed by core/api.js into
+        // result.response). Report whether a key was created vs. reused, and whether
+        // the public key actually reached GitHub. key_pushed:false means the token
+        // was stored but the key push failed — surface that as a warning, not success.
+        const r = result.response || {};
+        const keyPart = r.created_key ? 'a new RSA key was created' : 'your existing RSA key was used';
+        const pushPart = r.key_pushed
+          ? 'and pushed to GitHub'
+          : 'but the public key could not be pushed to GitHub';
+        this.githubResult = {
+          variant: r.key_pushed ? 'success' : 'warning',
+          text: 'GitHub token linked — ' + keyPart + ' ' + pushPart + '.',
+        };
+      } else {
+        // Failure responses carry a string code in result.response:
+        // 401 github_token_invalid, 400 missing_token, invalid_owner, plus the 500s.
+        const code = result && result.response;
+        const messages = {
+          github_token_invalid: 'GitHub rejected this token. Check it is valid and has the required scopes, then try again.',
+          missing_token: 'No token was provided.',
+          invalid_owner: 'Your session is no longer valid. Please sign in again.',
+          token_store_failed: 'The token could not be stored. Please try again.',
+          rsa_key_creation_failed: 'Could not create an RSA key for your account. Please try again.',
+        };
+        this.githubResult = {
+          variant: 'danger',
+          text: (typeof code === 'string' && messages[code]) || 'Failed to link GitHub token. Please try again.',
+        };
       }
     },
     copyToClipboard(value) {
