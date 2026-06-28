@@ -12,6 +12,28 @@ Changes are grouped by release date and conventional-commit type.
 
 ---
 
+## [2026-06] — Login UX & Dependency Hygiene
+
+### Added
+- Legacy login, register, forgot-password, and password-reset forms now disable their submit buttons and show spinner feedback while requests are in flight to prevent accidental double submits.
+
+### Changed
+- Vue login OAuth buttons now use brand-correct Google and GitHub styling with rounded button spacing.
+
+### Fixed
+- **AUTH-RESET-ORIGIN**: Vue password-reset initialization now sends `client=vue` so reset links route back to the Vue console.
+
+### Security
+- **SEC-DEP-02**: Removed unused vendored `jquery-validation` package metadata that caused high-severity Grunt Dependabot alerts, without changing the shipped static assets.
+
+### Developer Tooling
+- Added Commitlint and a Husky `commit-msg` hook to enforce conventional commit messages.
+
+### Internal / Planning
+- **SEC-DEP-02**: Scheduled the dependency-hygiene phase coordinated from thinx-device-api v1.9.
+
+---
+
 ## [2026-05-19] — Phase 2 Feature Completion
 
 ### Added
