@@ -6,7 +6,7 @@
 ## Milestones
 
 - ✅ **v1.999 Feature-Parity GA** — Phases 1-11 (shipped 2026-05-27)
-- 🚧 **v1.x Operational Hygiene** — Phase 1 scheduled 2026-06-03 (SEC-DEP-02 cross-project triage from `thinx-device-api` v1.9 Phase 10); execution awaits operator `/gsd:plan-phase`.
+- 🚧 **v1.x Operational Hygiene** — Phase 1 scheduled 2026-06-03 (SEC-DEP-02 cross-project triage from `thinx-device-api` v1.9 Phase 10); execution awaits operator `/gsd-plan-phase`.
 
 Archives: [v1.999-ROADMAP.md](./milestones/v1.999-ROADMAP.md), [v1.999-REQUIREMENTS.md](./milestones/v1.999-REQUIREMENTS.md)
 Full shipped scope: [MILESTONES.md](./MILESTONES.md)
@@ -67,7 +67,7 @@ Run `/gsd-new-milestone` to scope v1.x — backlog candidates in `.planning/v1.x
   3. services/console CI green on the resulting branch (typically `thinx-staging`) — the Vue console build (`npm run build:test` or equivalent) still completes without referencing the deleted manifest.
   4. The parent `thinx-device-api` submodule pointer for `services/console` bumps cleanly across the SEC-DEP-02 commit; parent CircleCI stays green across the pointer-bump commit on `thinx-staging`.
 
-**Plans:** TBD (operator runs `/gsd:plan-phase 1` in this GSD workspace after `/gsd-new-milestone` is run for `v1.x Operational Hygiene`).
+**Plans:** TBD (operator runs `/gsd-plan-phase 1` in this GSD workspace after `/gsd-new-milestone` is run for `v1.x Operational Hygiene`).
 
 **Cross-project references:**
 - Parent project verdict roll-up: `thinx-device-api/.planning/dep-triage.md` § "Phase 10 / SEC-DEP-02 (services/console) — Cross-Project Roll-up" (2 rows; both `deferred-vendored-asset`).

@@ -15,7 +15,7 @@ Note: For task grooming and the PR-ready task template, see `dev/TASK_GROOMING.m
 
 ## Build Configuration
 
-You can build your own image using `docker build -t yourname\console` and following environment variables will be injected to static HTML on build:
+You can build your own image using `docker build -t yourname/console .` and following environment variables will be injected to static HTML on build:
 
 | Variable name          | Example                          | Purpose                          | Default                 |
 |:-----------------------|:---------------------------------|:---------------------------------|:------------------------|
@@ -35,7 +35,7 @@ You can build your own image using `docker build -t yourname\console` and follow
 
 Example:
     
-    docker run -ti -v $(pwd):/var/work thinxcloud/console-build-env:vue cd /var/work && npm run test
+    docker run -ti -v $(pwd):/var/work thinxcloud/console-build-env:vue bash -c "cd /var/work/vue && yarn && yarn test"
 
 
 ## Documentation Drift Check
