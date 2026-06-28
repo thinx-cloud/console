@@ -8,6 +8,7 @@
     "build:perf": "yarn build && yarn perf:spotter",
     "lint": "vue-cli-service lint",
     "perf:spotter": "node scripts/perf-regression-spotter.js",
+    "schema:advisor": "node ../dev/schema-advisor.js",
     "start": "node server.js",
     "cy:test": "cypress run",
     "cy:open": "cypress open",
