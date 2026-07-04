@@ -15,7 +15,8 @@
     "start": "http-server ./html -p 8080 -g",
     "cy:run": "./node_modules/cypress/bin/cypress run",
     "cy": "start-test 'npm run start' 8080 'npm run cy:run'",
-    "cy:open": "./node_modules/cypress/bin/cypress open"
+    "cy:open": "./node_modules/cypress/bin/cypress open",
+    "flake:scan": "node ../scripts/test-flakiness-analyzer.js --project src --static-only"
   },
   "author": "Mikulas Sychra @ THiNX Cloud",
   "repository": {

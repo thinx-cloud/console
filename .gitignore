@@ -8,6 +8,11 @@ html
 src/.nyc_output
 src/cypress/screenshots
 src/cypress/videos
+src/cypress/downloads
+vue/cypress/screenshots
+vue/cypress/videos
+vue/cypress/downloads
+.flakiness-reports
 yarn.lock
 .dccache
 settings.json
