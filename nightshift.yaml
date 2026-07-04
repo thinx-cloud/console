@@ -1,0 +1,35 @@
+# Nightshift Project Configuration — console (frontend, thinx-cloud/console)
+#
+# Stage: finishing the NEW Vue console (vue/) while retiring the LEGACY app
+# (src/ — gulp + AngularJS + cypress). A migration mid-flight = large dead-code
+# and tech-debt surface.
+#
+# Focus (per owner): (1) tackle tech debt (retire legacy, clean migration
+# leftovers), (2) keep the UI contemporary and ease deployment (modern build).
+
+tasks:
+  enabled:
+    - dead-code            # Retire legacy src/ (gulp/Angular) left over from the Vue migration
+    - dependency-risk      # Modernize frontend deps (Vue toolchain), drop legacy build deps
+    - build-optimize       # Ease deployment: modernize the frontend build & Docker image
+    - tech-debt-classify   # Classify migration debt so cleanup is prioritized, not ad hoc
+    - security-footgun     # Frontend security (XSS / CSP) — CSP hardening is still outstanding
+    - a11y-lint            # Contemporary UI baseline: accessibility on the new Vue surfaces
+    - lint-fix             # Frontend lint hygiene
+  priorities:
+    dead-code: 1
+    dependency-risk: 2
+    build-optimize: 3
+    tech-debt-classify: 4
+    security-footgun: 5
+    a11y-lint: 6
+    lint-fix: 7
+  disabled: []
+
+integrations:
+  claude_md: true
+  agents_md: true
+  task_sources:
+    - td:
+        enabled: false
+        teach_agent: false
