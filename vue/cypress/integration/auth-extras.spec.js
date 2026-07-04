@@ -12,6 +12,10 @@ describe('Auth Extras feature', function() {
 
   it('Should show the confirm (password) form when reset_key is in the query (AUTH-02)', function() { cy.visit('http://localhost:3000/#/password-reset?reset_key=abc&owner=test'); /* TODO AUTH-02: assert two password inputs visible, email input not visible */ });
 
-  it('Should redirect to /login when the access token expires (AUTH-03)', function() { cy.login(); /* TODO AUTH-03: forge a JWT with exp 1 second ahead, wait 2s, assert window.location.hash is '#/login' */ });
+  it('Should redirect to /login when the access token expires (AUTH-03)', function() {
+    if (!Cypress.env('HAS_THINX_TEST_CREDENTIALS')) this.skip();
+    cy.login();
+    /* TODO AUTH-03: forge a JWT with exp 1 second ahead, wait 2s, assert window.location.hash is '#/login' */
+  });
 
 });
