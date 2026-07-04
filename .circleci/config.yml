@@ -99,6 +99,14 @@ jobs:
           command: |
             export ENV NODE_OPTIONS=--openssl-legacy-provider
             cd vue
+            if ! command -v yarn >/dev/null 2>&1; then
+              if command -v corepack >/dev/null 2>&1; then
+                corepack enable
+                corepack prepare yarn@1.22.22 --activate
+              else
+                npm install -g yarn@1.22.22
+              fi
+            fi
             yarn
             yarn build:perf
             yarn test
