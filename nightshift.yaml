@@ -6,6 +6,10 @@
 #
 # Focus (per owner): (1) tackle tech debt (retire legacy, clean migration
 # leftovers), (2) keep the UI contemporary and ease deployment (modern build).
+#
+# NOTE: nightshift reads the task filter ONLY from this on-disk file. It is also
+# committed on `main`; this working-tree copy keeps it present when the submodule
+# is parked on a nightshift/* task branch.
 
 tasks:
   enabled:
@@ -33,3 +37,11 @@ integrations:
     - td:
         enabled: false
         teach_agent: false
+
+# Dedicated slot so the console gets its own runs (daemon does ~1 project/run,
+# no rotation). Global window spans both; this project owns the second half.
+schedule:
+  window:
+    start: "18:00"
+    end: "19:00"
+    timezone: ""
