@@ -42,6 +42,7 @@
 <script>
 import { mapMutations, mapGetters, mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
+import { getCookie } from "@/utils/cookies";
 
 // Landing page for the OAuth callback when the API was told to return to this
 // console (?return=<origin>). The API redirected here as
@@ -84,6 +85,16 @@ export default {
       getProfile: "profile/getProfile",
     }),
 
+    // Prime the XSRF-TOKEN cookie for a cold session. This page is reached directly
+    // via the OAuth-provider redirect and created() dispatches immediately to a
+    // protected POST with no human-typing delay, so callers must AWAIT this.
+    async primeCsrfCookie() {
+      await fetch(this.$hostnames.API + "/csrf-token", {
+        method: "GET",
+        credentials: "include",
+      }).catch(() => {});
+    },
+
     // PUT /api/v2/gdpr is the consent setter (setGDPR); POST is transferGDPR, so
     // we must use PUT here. The one-shot token authorizes the change.
     async submitConsent(consent) {
@@ -91,7 +102,10 @@ export default {
       const response = await fetch(this.$hostnames.API + "/gdpr", {
         method: "PUT",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-XSRF-TOKEN": getCookie("XSRF-TOKEN") || "",
+        },
         body: JSON.stringify({ token: token, gdpr: consent, gdpr_consent: consent }),
       });
       return response.json();
@@ -141,7 +155,10 @@ export default {
         response = await fetch(this.$hostnames.API + "/login", {
           method: "POST",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-XSRF-TOKEN": getCookie("XSRF-TOKEN") || "",
+          },
           body: JSON.stringify({ token: token }),
         });
       } catch (networkError) {
@@ -188,7 +205,12 @@ export default {
       }
     },
   },
-  created() {
+  async created() {
+    // Await the cookie prime FIRST: this page dispatches immediately to a protected
+    // POST with no human-typing delay, so a cold session must not race ahead of the
+    // XSRF-TOKEN cookie landing.
+    await this.primeCsrfCookie();
+
     // g=false -> consent not yet given: show the gate. Otherwise complete silently.
     if (String(this.$route.query.g) === "false") {
       this.needsConsent = true;

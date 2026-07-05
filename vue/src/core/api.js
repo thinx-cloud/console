@@ -1,4 +1,5 @@
 import { clearPersistedAuthTokens } from "@/store/auth-storage";
+import { getCookie } from "./../utils/cookies";
 
 export default class Api {
 
@@ -52,6 +53,7 @@ export default class Api {
   composeHeaders() {
     const headers = {
       "Content-Type": "application/json",
+      "X-XSRF-TOKEN": getCookie("XSRF-TOKEN") || "",
     };
     if (this.accessToken) {
       headers.Authorization = 'Bearer ' + this.accessToken;

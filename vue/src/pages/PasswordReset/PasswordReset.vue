@@ -102,10 +102,12 @@
 <script>
 import Widget from "@/components/Widget/Widget";
 import { mapActions } from "vuex";
+import hostnameMixin from "@/mixins/hostnames";
 
 export default {
   name: "PasswordReset",
   components: { Widget },
+  mixins: [hostnameMixin],
   data() {
     return {
       email: "",
@@ -183,6 +185,15 @@ export default {
         this.submitting = false;
       }
     },
+  },
+  created() {
+    // Reached directly via the /#/password-reset?reset_key=... email link (never
+    // through the login page), so it must prime the XSRF-TOKEN cookie independently.
+    // Fire-and-forget is safe - the human fills the form before submitting.
+    fetch(this.$hostnames.API + "/csrf-token", {
+      method: "GET",
+      credentials: "include",
+    }).catch(() => {});
   },
 };
 </script>
