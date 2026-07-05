@@ -154,8 +154,11 @@ var Auth = ( function() {
       var gdpr = $.getQuery( "g" );
 
       if ( gdpr == "true" ) {
-        // perform login challenge
-        Auth.login();
+        // perform login challenge - await the XSRF-TOKEN cookie prime first (cold-session
+        // race fix): this branch fires POST /login immediately on load with no human delay
+        ( window.__csrfReady ? window.__csrfReady : $.Deferred().resolve() ).always( function() {
+          Auth.login();
+        } );
       } else if ( gdpr == "false" ) {
         // display gdpr form
         $( ".gdpr-form" ).show();
