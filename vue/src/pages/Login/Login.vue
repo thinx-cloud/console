@@ -99,6 +99,7 @@
 import Widget from "@/components/Widget/Widget";
 import { mapGetters, mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
+import { getCookie } from "@/utils/cookies";
 
 export default {
   name: "LoginPage",
@@ -164,6 +165,7 @@ export default {
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
+            "X-XSRF-TOKEN": getCookie("XSRF-TOKEN") || "",
           },
           body: JSON.stringify({
             username: usernameValue,
@@ -214,6 +216,13 @@ export default {
     },
   },
   async created() {
+    // Prime the XSRF-TOKEN cookie for a cold session (fire-and-forget - the human
+    // types username/password before submitting, so there is no race with login()).
+    fetch(this.$hostnames.API + "/csrf-token", {
+      method: "GET",
+      credentials: "include",
+    }).catch(() => {});
+
     if (await this.hydrateSession()) {
       void this.pushIfNeeded("/app/dashboard");
     }
