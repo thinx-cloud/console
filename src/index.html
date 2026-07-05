@@ -74,6 +74,7 @@
   <div class="content">
     <!-- BEGIN LOGIN FORM -->
     <form class="login-form">
+      <input type="hidden" name="_csrf" class="csrf-token-field" value="" />
       <div class="form-title">
 <!--removeIf(enterprise)-->
         <span class="form-title text-center"><h1 class="login-h1">Welcome to THiNX Management Console.</h1></span>
@@ -142,6 +143,7 @@
 
     <!-- BEGIN FORGOT PASSWORD FORM -->
     <form class="forget-form">
+      <input type="hidden" name="_csrf" class="csrf-token-field" value="" />
       <div class="form-title"><span class="form-title">Forgot Password?</span></div>
       <p class="hint">Enter your e-mail address to get reset link:</p>
       <div id="forget-error" class="alert alert-danger msg-error display-hide">
@@ -167,6 +169,7 @@
 
     <!-- BEGIN REGISTRATION FORM -->
     <form class="register-form">
+      <input type="hidden" name="_csrf" class="csrf-token-field" value="" />
       <div class="form-title"><span class="form-title">Create Account</span></div>
       <p class="hint">Enter your personal details below:</p>
       <div id="register-error" class="alert alert-danger msg-error display-hide">
