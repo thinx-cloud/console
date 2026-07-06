@@ -7,8 +7,15 @@ Changes are grouped by release date and conventional-commit type.
 
 ## [Unreleased] — Phase 3 (2026-05-19+)
 
+### Added
+- **SEC-CSRF-02**: Classic login, registration, forgot-password, and reset forms now include hidden `_csrf` fields and load shared CSRF priming before auth requests.
+- **SEC-CSRF-02**: Vue Login, PasswordReset, and OAuthReturn flows now prime the CSRF cookie and send `X-XSRF-TOKEN` through shared API request headers.
+
 ### Fixed
 - **TRAN**: Replace `Math.random()`-based utid with `crypto.randomUUID()` for cryptographically secure transaction IDs
+
+### Security
+- **SEC-CSP-01**: Legacy and Vue nginx CSP templates now use pinned THiNX, Crisp, Google, and Rollbar host allowlists instead of broad `https:`/`wss:` scheme wildcards.
 
 ---
 
