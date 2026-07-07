@@ -1,7 +1,8 @@
 
 describe('Profile feature', function() {
 
-  beforeEach(() => {
+  beforeEach(function() {
+    if (!Cypress.env('HAS_THINX_TEST_CREDENTIALS')) this.skip();
     cy.viewport(1536, 754);
     cy.login();
     cy.visit('http://localhost:3000/#/app/profile');

@@ -99,6 +99,21 @@ jobs:
           command: |
             export ENV NODE_OPTIONS=--openssl-legacy-provider
             cd vue
+            if ! command -v yarn >/dev/null 2>&1; then
+              if command -v corepack >/dev/null 2>&1; then
+                corepack enable
+                corepack prepare yarn@1.22.22 --activate
+              elif command -v npm >/dev/null 2>&1; then
+                npm install -g yarn@1.22.22
+              elif command -v apt-get >/dev/null 2>&1; then
+                apt-get update
+                apt-get install -y npm
+                npm install -g yarn@1.22.22
+              else
+                echo "Unable to install Yarn: yarn, corepack, npm, and apt-get are unavailable."
+                exit 127
+              fi
+            fi
             yarn
             yarn build:perf
             yarn test

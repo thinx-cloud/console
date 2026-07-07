@@ -37,6 +37,14 @@ function credentialFromEnv(value, envNames) {
   return '';
 }
 
+Cypress.env(
+  'HAS_THINX_TEST_CREDENTIALS',
+  Boolean(
+    credentialFromEnv(fixtures.username, ['THINX_TEST_USER', 'LOGIN_USERNAME']) &&
+    credentialFromEnv(fixtures.password, ['THINX_TEST_PASSWORD', 'LOGIN_PASSWORD'])
+  )
+);
+
 Cypress.Commands.add('saveLocalStorage', () => {
   Object.keys(localStorage).forEach(key => {
     LOCAL_STORAGE_MEMORY[key] = localStorage[key];
