@@ -6,7 +6,7 @@ describe('Login feature', function() {
     cy.visit('http://localhost:3000/#/login');
   });
 
-  it.only('Should log in with configured test account', function() {
+  it('Should log in with configured test account', function() {
     // TODO This is failing! Fix me!
     cy.login();
     // cy.get('.page-title').should('contain', 'Dashboard', { matchCase: false });

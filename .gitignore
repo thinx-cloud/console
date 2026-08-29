@@ -5,9 +5,13 @@ src/node_modules
 coverage
 dist
 html
+.flake-reports
+flake-reports
 src/.nyc_output
 src/cypress/screenshots
 src/cypress/videos
+vue/cypress/screenshots
+vue/cypress/videos
 yarn.lock
 .dccache
 settings.json
