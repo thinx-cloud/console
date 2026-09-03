@@ -25,7 +25,7 @@
   "license": "ISC",
   "dependencies": {
     "negotiator": "0.6.3",
-    "qs": "6.15.2"
+    "qs": "6.16.0"
   },
   "overrides": {
     "negotiator": "0.6.3",
