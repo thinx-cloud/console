@@ -14,5 +14,5 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y -qq nodejs \
     && npm install -g npm \
-    && npm install node-gyp eslint -g \
-    apt-get clean
+    && npm install -g node-gyp eslint \
+    && apt-get clean
