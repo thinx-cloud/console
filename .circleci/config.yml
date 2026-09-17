@@ -181,7 +181,12 @@ workflows:
 
       - test_vue:
           name: Test Vue console
-          context: sonarcloud
+          context:
+            - sonarcloud
+            # Supplies CYPRESS_THINX_TEST_USER / CYPRESS_THINX_TEST_PASSWORD and
+            # CYPRESS_ADMIN_USER / CYPRESS_ADMIN_PASS. Without them the
+            # login-dependent Cypress suites skip themselves rather than fail.
+            - console
 
       # - ggshield/scan:
       #     name: Scan using Gitguardian shield

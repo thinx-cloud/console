@@ -25,17 +25,9 @@
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
 import fixtures from '../fixtures/thinx.json';
+import { loginCredentials } from './credentials';
 
 let LOCAL_STORAGE_MEMORY = {};
-
-function credentialFromEnv(value, envNames) {
-  if (value) return value;
-  for (const envName of envNames) {
-    const envValue = Cypress.env(envName);
-    if (envValue) return String(envValue);
-  }
-  return '';
-}
 
 Cypress.Commands.add('saveLocalStorage', () => {
   Object.keys(localStorage).forEach(key => {
@@ -49,9 +41,14 @@ Cypress.Commands.add('restoreLocalStorage', () => {
   });
 });
 
+// Credential resolution lives in ./credentials so the spec-level skip gates
+// (hasLoginCredentials) can never disagree with what this command accepts.
+//
+// Like loginAsAdmin, this does NOT skip on missing creds — `this.skip()` cannot
+// run from inside a cy.* chain. Spec files MUST gate in their own beforeEach
+// via hasLoginCredentials() before calling this.
 Cypress.Commands.add('login', (user, password) => {
-    const username = credentialFromEnv(user || fixtures.username, ['THINX_TEST_USER', 'LOGIN_USERNAME']);
-    const passwordValue = credentialFromEnv(password || fixtures.password, ['THINX_TEST_PASSWORD', 'LOGIN_PASSWORD']);
+    const { username, password: passwordValue } = loginCredentials(user, password);
     if (!username || !passwordValue) {
       throw new Error('Set CYPRESS_THINX_TEST_USER and CYPRESS_THINX_TEST_PASSWORD, or pass credentials to cy.login().');
     }

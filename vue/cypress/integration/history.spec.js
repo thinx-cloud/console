@@ -1,7 +1,16 @@
+import { hasLoginCredentials, MISSING_LOGIN_CREDENTIALS } from '../support/credentials';
 
 describe('History feature', function() {
 
-  beforeEach(() => {
+  beforeEach(function() {
+    // Login-dependent suite: skip gracefully when no test account is configured
+    // (local dev, forks, or CI without CYPRESS_THINX_TEST_* in the `console`
+    // context), mirroring admin.spec.js. Must be a function() hook, not an
+    // arrow — this.skip() needs the Mocha context.
+    if (!hasLoginCredentials()) {
+      cy.log(MISSING_LOGIN_CREDENTIALS);
+      this.skip();
+    }
     cy.viewport(1536, 754);
     cy.login();
     cy.visit('http://localhost:3000/#/app/history');
