@@ -27,8 +27,9 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | b
     nvm install $NODE_VERSION && \
     nvm use $NODE_VERSION && \
     nvm alias default $NODE_VERSION && \
-    # Make node/npm available globally
-    ln -s $NVM_DIR/versions/node/v$NODE_VERSION/bin/node /usr/bin/node && \
-    ln -s $NVM_DIR/versions/node/v$NODE_VERSION/bin/npm /usr/bin/npm && \
-    ln -s $NVM_DIR/versions/node/v$NODE_VERSION/bin/npx /usr/bin/npx && \
-    npm install -g npm yarn eslint node-gyp
+    npm install -g npm yarn eslint node-gyp && \
+    # Expose the resolved nvm bin dir (v25 -> v25.9.0) under a stable path,
+    # so node/npm/npx/yarn/eslint resolve in non-login shells too (CI runs bash -eo pipefail).
+    ln -s "$(dirname "$(nvm which $NODE_VERSION)")" /usr/local/nvm-bin
+
+ENV PATH=/usr/local/nvm-bin:$PATH
