@@ -12,15 +12,16 @@
       <b-tab title="Audit Log">
         <b-form-inline class="mb-2">
           <label class="mr-2 mb-0">From</label>
-          <b-form-input type="date" v-model="dateFrom" class="mr-3" style="max-width:180px" />
+          <b-form-input type="date" data-cy="date-from" v-model="dateFrom" class="mr-3" style="max-width:180px" />
           <label class="mr-2 mb-0">To</label>
-          <b-form-input type="date" v-model="dateTo" style="max-width:180px" />
+          <b-form-input type="date" data-cy="date-to" v-model="dateTo" style="max-width:180px" />
         </b-form-inline>
         <b-form-input v-model="auditSearch" placeholder="Search audit log..." class="mb-3" style="max-width:400px" />
         <b-form-checkbox-group
           v-model="auditFlagFilter"
           :options="flagFilterOptions"
           class="mb-3"
+          data-cy="flag-filter"
           switches
         />
         <div v-if="!filteredAudit.length" class="text-muted">No audit events.</div>
@@ -33,7 +34,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, i) in filteredAudit" :key="i" :class="rowClass(item)">
+            <tr v-for="(item, i) in filteredAudit" :key="i" :class="rowClass(item)" data-cy="audit-row">
               <td style="white-space:nowrap">{{ item.date | formatDate }}</td>
               <td>{{ item.message }}</td>
               <td>
@@ -53,9 +54,9 @@
       <b-tab title="Build Log">
         <b-form-inline class="mb-2">
           <label class="mr-2 mb-0">From</label>
-          <b-form-input type="date" v-model="dateFrom" class="mr-3" style="max-width:180px" />
+          <b-form-input type="date" data-cy="date-from" v-model="dateFrom" class="mr-3" style="max-width:180px" />
           <label class="mr-2 mb-0">To</label>
-          <b-form-input type="date" v-model="dateTo" style="max-width:180px" />
+          <b-form-input type="date" data-cy="date-to" v-model="dateTo" style="max-width:180px" />
         </b-form-inline>
         <b-form-input v-model="buildSearch" placeholder="Search build log..." class="mb-3" style="max-width:400px" />
         <div v-if="!filteredBuilds.length" class="text-muted">No build logs.</div>
@@ -69,7 +70,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, i) in filteredBuilds" :key="i">
+            <tr v-for="(item, i) in filteredBuilds" :key="i" data-cy="build-row">
               <td style="white-space:nowrap">{{ item.date | formatDate }}</td>
               <td>{{ item.name }}</td>
               <td>
@@ -79,6 +80,7 @@
                 <pre
                   v-if="hasLog(item)"
                   class="mb-0"
+                  data-cy="build-log-pre"
                   :style="logStyle(item)"
                 >{{ logFull(item) }}</pre>
                 <b-button
@@ -86,6 +88,7 @@
                   size="sm"
                   variant="link"
                   class="p-0"
+                  data-cy="build-expand"
                   @click="toggleExpand(item)"
                 >{{ isExpanded(item) ? 'Collapse' : 'Expand' }}</b-button>
                 <span v-if="!hasLog(item)" class="text-muted">—</span>
