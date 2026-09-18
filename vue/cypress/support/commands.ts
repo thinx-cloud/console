@@ -58,6 +58,11 @@ Cypress.Commands.add('login', (user, password) => {
     cy.get('#password').type(passwordValue, { log: false });
     cy.get('button').contains('login', { matchCase: false }).click();
     cy.wait(2000);
+    // Assert the session actually exists. Without this the command types,
+    // clicks and returns happily on rejected credentials, so every downstream
+    // spec runs unauthenticated and still reports green — the suite passed for
+    // months while sending a username that belongs to no account.
+    cy.hash().should('not.contain', '/login');
 });
 
 // Admin-credentials login. Reads CYPRESS_ADMIN_USER / CYPRESS_ADMIN_PASS
@@ -79,4 +84,5 @@ Cypress.Commands.add('loginAsAdmin', () => {
     cy.get('#password').type(password, { log: false });
     cy.get('button').contains('login', { matchCase: false }).click();
     cy.wait(2000);
+    cy.hash().should('not.contain', '/login'); // see cy.login()
 });
