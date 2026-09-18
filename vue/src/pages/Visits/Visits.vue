@@ -7,7 +7,7 @@
       <!-- 6 Metric cards (DASH-02) -->
       <b-row class="mb-4">
         <b-col md="4" sm="6" class="mb-3" v-for="card in metricCards" :key="card.label">
-          <b-card :class="'text-white bg-' + card.variant">
+          <b-card :class="'text-white bg-' + card.variant" data-cy="metric-card">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <div class="font-weight-bold">{{ card.label }}</div>
               <i :class="'fa fa-2x ' + card.icon" style="opacity:0.4" />
@@ -29,18 +29,21 @@
               <b-button
                 size="sm"
                 class="mr-1"
+                data-cy="chart-range-7"
                 :variant="chartRange === 7 ? 'primary' : 'outline-secondary'"
                 @click="chartRange = 7"
               >7 days</b-button>
               <b-button
                 size="sm"
                 class="mr-1"
+                data-cy="chart-range-31"
                 :variant="chartRange === 31 ? 'primary' : 'outline-secondary'"
                 @click="chartRange = 31"
               >31 days</b-button>
               <b-button
                 size="sm"
                 class="mr-1"
+                data-cy="chart-range-365"
                 :variant="chartRange === 365 ? 'primary' : 'outline-secondary'"
                 @click="chartRange = 365"
               >365 days</b-button>
@@ -53,7 +56,7 @@
       <!-- Recent audit events (DASH-05) and Recent builds (DASH-04) -->
       <b-row>
         <b-col md="6" class="mb-4">
-          <b-card title="Recent Audit Events">
+          <b-card title="Recent Audit Events" data-cy="recent-audit">
             <div v-if="!auditItems.length" class="text-muted">No audit events yet.</div>
             <table v-else class="table table-sm mb-0">
               <thead><tr><th>Time</th><th>Event</th></tr></thead>
@@ -69,7 +72,7 @@
         </b-col>
 
         <b-col md="6" class="mb-4">
-          <b-card title="Recent Builds">
+          <b-card title="Recent Builds" data-cy="recent-builds">
             <div v-if="!buildItems.length" class="text-muted">No builds yet.</div>
             <table v-else class="table table-sm mb-0">
               <thead><tr><th>Time</th><th>Device</th><th>Status</th><th>Download</th></tr></thead>
@@ -85,6 +88,7 @@
                       v-if="item.build_id"
                       size="sm"
                       variant="primary"
+                      data-cy="build-download"
                       @click="downloadArtifact(item)"
                     >Download</b-button>
                     <span v-else class="text-muted">—</span>
