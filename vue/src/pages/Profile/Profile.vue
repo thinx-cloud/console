@@ -15,21 +15,21 @@
       <b-tab title="Profile" active>
         <b-form @submit.prevent="saveProfile" style="max-width:500px">
           <b-form-group label="First Name">
-            <b-form-input v-model="form.first_name" />
+            <b-form-input v-model="form.first_name" data-cy="profile-first-name" />
           </b-form-group>
           <b-form-group label="Last Name">
-            <b-form-input v-model="form.last_name" />
+            <b-form-input v-model="form.last_name" data-cy="profile-last-name" />
           </b-form-group>
           <b-form-group label="Mobile Phone">
-            <b-form-input v-model="form.mobile_phone" type="tel" />
+            <b-form-input v-model="form.mobile_phone" type="tel" data-cy="profile-mobile-phone" />
           </b-form-group>
           <b-form-group
             label="Timezone"
             description="IANA tz database name (e.g. Europe/Prague, America/Los_Angeles). The server computes the offset (with DST) when needed."
           >
-            <b-form-input v-model="form.timezone_abbr" placeholder="e.g. Europe/Prague" />
+            <b-form-input v-model="form.timezone_abbr" placeholder="e.g. Europe/Prague" data-cy="profile-timezone-abbr" />
           </b-form-group>
-          <b-button type="submit" variant="primary" :disabled="saving">
+          <b-button type="submit" variant="primary" data-cy="save-profile" :disabled="saving">
             {{ saving ? 'Saving...' : 'Save Profile' }}
           </b-button>
         </b-form>
@@ -43,7 +43,7 @@
             <b-form-checkbox v-model="notifForm.important" class="mb-2">Important notifications only</b-form-checkbox>
             <b-form-checkbox v-model="notifForm.info">Informational notifications</b-form-checkbox>
           </b-form-group>
-          <b-button type="submit" variant="primary" :disabled="saving">
+          <b-button type="submit" variant="primary" data-cy="save-notifications" :disabled="saving">
             {{ saving ? 'Saving...' : 'Save Notifications' }}
           </b-button>
         </b-form>
@@ -58,11 +58,13 @@
               class="rounded-circle mb-2"
               style="width:96px;height:96px;object-fit:cover"
               alt="Profile avatar"
+              data-cy="avatar-preview"
             />
           </div>
           <b-form-group label="Upload new avatar (JPEG or PNG, max 2 MB)">
             <b-form-file
               accept="image/jpeg,image/png"
+              data-cy="avatar-file"
               @change="onAvatarFileChange"
               :disabled="avatarUploading"
             />
@@ -143,7 +145,7 @@
 
           <b-card title="Delete Account" border-variant="danger">
             <p class="text-danger">This action is permanent and cannot be undone. All devices, repositories, and data will be deleted.</p>
-            <b-button variant="danger" @click="confirmDeleteAccount">Delete My Account</b-button>
+            <b-button variant="danger" data-cy="delete-account" @click="confirmDeleteAccount">Delete My Account</b-button>
           </b-card>
         </div>
       </b-tab>

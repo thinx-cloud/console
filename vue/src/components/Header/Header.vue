@@ -46,6 +46,7 @@
       </b-nav-item-dropdown>
       <b-nav-item class="divider d-md-down-none"></b-nav-item>
       <b-nav-item-dropdown
+        data-cy="settings-dropdown"
         no-caret
         right
         class="mr-2"
