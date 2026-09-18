@@ -31,6 +31,33 @@ You can build your own image using `docker build -t yourname/console .` and foll
 
 **Security Notice: Do not push build results to public Docker Hub repository or your envinronment variables might become public. Do not store environment variables in your repo's fork.**
 
+## Vue Console CI Configuration
+
+The `test_vue` CircleCI job (Vue console + Cypress) reads these from the project's
+environment variables. They are separate from the legacy build-args above.
+
+| Variable name                 | Example                 | Purpose                                |
+|:------------------------------|:------------------------|:---------------------------------------|
+| `VUE_APP_API_HOSTNAME`        | https://rtm.thinx.cloud | API base URL the Vue app calls         |
+| `CYPRESS_THINX_TEST_USER`     | -                       | Account for the login-dependent suites |
+| `CYPRESS_THINX_TEST_PASSWORD` | -                       | Its password                           |
+| `CYPRESS_ADMIN_USER`          | -                       | Account for `admin.spec.js`            |
+| `CYPRESS_ADMIN_PASS`          | -                       | Its password                           |
+
+`VUE_APP_API_HOSTNAME` **must include the scheme**. `vue/src/core/api.js` assigns the
+value verbatim (the line that would prepend `https://` is commented out), so a bare
+hostname yields a relative request URL.
+
+Point it at an API host that terminates TLS with a valid certificate. `api.thinx.cloud`
+has no Traefik router, so it answers with Traefik's self-signed default certificate; the
+browser then fails the TLS handshake and the console reports "Unexpected response from
+the server" on login, giving no hint that the hostname is at fault.
+
+The Cypress variables are optional: `vue/cypress/support/credentials.js` skips the
+login-dependent suites when they are unset rather than failing them. The password in
+`vue/cypress/fixtures/thinx.json` is deliberately empty — the fixture account leaked, and
+the real password now lives only in `CYPRESS_THINX_TEST_PASSWORD`.
+
 ## Testing in Docker
 
 Example:
