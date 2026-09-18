@@ -8,13 +8,13 @@
     </h1>
 
     <p>
-      <b-button variant="danger" @click="confirmRevoke" :disabled="!isSelected" class="mr-2">
+      <b-button variant="danger" data-cy="bulk-revoke" @click="confirmRevoke" :disabled="!isSelected" class="mr-2">
         Revoke ({{ selectedCount }})
       </b-button>
-      <b-button variant="warning" @click="$bvModal.show('transfer-modal')" :disabled="!isSelected" class="mr-2">
+      <b-button variant="warning" data-cy="bulk-transfer" @click="$bvModal.show('transfer-modal')" :disabled="!isSelected" class="mr-2">
         Transfer ({{ selectedCount }})
       </b-button>
-      <b-button variant="info" @click="$bvModal.show('push-config-modal')" :disabled="!isSelected">
+      <b-button variant="info" data-cy="bulk-push" @click="$bvModal.show('push-config-modal')" :disabled="!isSelected">
         Push Config ({{ selectedCount }})
       </b-button>
     </p>
@@ -23,15 +23,16 @@
     <b-alert v-if="message" variant="success" show dismissible @dismissed="message = null">{{ message }}</b-alert>
 
     <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-      <b-button size="sm" :variant="viewMode === 'list' ? 'primary' : 'outline-secondary'" @click="viewMode = 'list'" class="mr-1">
+      <b-button size="sm" data-cy="view-list" :variant="viewMode === 'list' ? 'primary' : 'outline-secondary'" @click="viewMode = 'list'" class="mr-1">
         <span>&#9776;</span>
       </b-button>
-      <b-button size="sm" :variant="viewMode === 'grid' ? 'primary' : 'outline-secondary'" @click="viewMode = 'grid'" class="mr-1">
+      <b-button size="sm" data-cy="view-grid" :variant="viewMode === 'grid' ? 'primary' : 'outline-secondary'" @click="viewMode = 'grid'" class="mr-1">
         <span>&#9635;</span>
       </b-button>
       <b-button
         v-for="cat in ['All', 'yellow-crusta', 'red-intense', 'purple-studio', 'blue', 'green', 'green-dark', 'grey-mint']"
         :key="cat"
+        :data-cy="'category-pill-' + cat"
         size="sm"
         :variant="filterCategory === cat ? 'primary' : 'outline-secondary'"
         :style="filterCategory !== cat && cat !== 'All' ? { borderColor: categoryColor(cat), color: categoryColor(cat) } : {}"
@@ -39,8 +40,8 @@
         class="mr-1"
       >{{ cat }}</b-button>
       <div class="ml-auto d-flex align-items-center">
-        <b-form-select v-model="sortBy" :options="[{ value: 'lastupdate', text: 'Last Update' }, { value: 'platform', text: 'Platform' }, { value: 'alias', text: 'Alias' }]" size="sm" style="width:140px" class="mr-2" />
-        <b-form-input v-model="searchText" placeholder="Search alias or MAC..." size="sm" style="width:200px" />
+        <b-form-select data-cy="device-sort" v-model="sortBy" :options="[{ value: 'lastupdate', text: 'Last Update' }, { value: 'platform', text: 'Platform' }, { value: 'alias', text: 'Alias' }]" size="sm" style="width:140px" class="mr-2" />
+        <b-form-input data-cy="device-search" v-model="searchText" placeholder="Search alias or MAC..." size="sm" style="width:200px" />
       </div>
     </div>
     <div v-if="loading">Loading...</div>
@@ -62,7 +63,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(device, index) in filteredItems" :key="device.udid">
+        <tr v-for="(device, index) in filteredItems" :key="device.udid" data-cy="device-row">
           <td>
             <div class="abc-checkbox">
               <input
@@ -80,9 +81,9 @@
           <td>{{ device.status }}</td>
           <td>{{ device.lastupdate | fromNow }}</td>
           <td>
-            <b-button size="sm" variant="primary" @click="viewDevice(device.udid)" class="mr-1">Detail</b-button>
-            <b-button size="sm" variant="secondary" @click="buildDevice(device)" class="mr-1">Build</b-button>
-            <b-button size="sm" variant="danger" @click="revokeRow(device.udid)" class="ml-1">Revoke</b-button>
+            <b-button size="sm" variant="primary" data-cy="row-detail" @click="viewDevice(device.udid)" class="mr-1">Detail</b-button>
+            <b-button size="sm" variant="secondary" data-cy="row-build" @click="buildDevice(device)" class="mr-1">Build</b-button>
+            <b-button size="sm" variant="danger" data-cy="row-revoke" @click="revokeRow(device.udid)" class="ml-1">Revoke</b-button>
           </td>
         </tr>
         <tr v-if="!filteredItems.length">
@@ -97,7 +98,7 @@
         cols="12" sm="6" md="4"
         class="mb-3"
       >
-        <b-card class="h-100">
+        <b-card class="h-100" data-cy="device-card">
           <template #header>
             <span
               class="badge mr-2"
