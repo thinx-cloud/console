@@ -3,7 +3,17 @@ describe('Devices feature', function() {
   beforeEach(function() {
     cy.viewport(1536, 754);
     cy.stubThinxApi();
-    cy.visitApp('/#/app/devices', { session: true });
+    cy.visitApp('/#/app/devices', {
+      session: true,
+      onBeforeLoad(win) {
+        // Cypress already fails on uncaught exceptions; a logged console.error is
+        // invisible to it, so stub it to make the "no JS errors" assertion on the
+        // first test real. Devices.vue is the most-modified component on this
+        // branch (13 new attributes), which is exactly the kind of change that
+        // surfaces as a `[Vue warn]` routed through console.error.
+        cy.stub(win.console, 'error').as('consoleError');
+      },
+    });
     cy.wait('@getDevices');
   });
 
@@ -11,6 +21,7 @@ describe('Devices feature', function() {
     // 'All' plus the seven CATEGORY_COLORS keys.
     cy.get('[data-cy^=category-pill-]').should('have.length', 8);
     cy.get('[data-cy=category-pill-All]').should('have.class', 'btn-primary');
+    cy.get('@consoleError').should('not.have.been.called');
   });
 
   it('Should filter devices by category (DEVI-01)', function() {
@@ -56,7 +67,7 @@ describe('Devices feature', function() {
 
   it('Should revoke a single device with confirmation (DEVI-05)', function() {
     // Registered after stubThinxApi, so it outranks the base stub and serves the
-    // refetch that revokeDevices triggers on success (store/devices.js:47).
+    // refetch that revokeDevices triggers on success (store/devices.js:48).
     cy.intercept({ method: 'GET', pathname: '/api/v2/device' }, { fixture: 'api/devices-after-revoke.json' }).as('getDevicesAfterRevoke');
 
     cy.contains('[data-cy=device-row]', 'alpha-node').find('[data-cy=row-revoke]').click();

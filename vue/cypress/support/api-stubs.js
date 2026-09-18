@@ -3,6 +3,22 @@
 // Intercepts match on `pathname`, not a full URL, because VUE_APP_API_HOSTNAME
 // is a remote host in CI (https://rtm.thinx.cloud) and falls back to
 // window.location.origin locally. Matching the path alone works in both.
+//
+// Fixture-to-spec map, and the load-bearing properties of each fixture that
+// specs actually depend on (change these values and something below silently
+// diverges rather than failing loudly):
+//   - devices.json      — devices.spec.js + device-detail.spec.js. Two devices
+//     are category "green" (DEVI-01 filter), two aliases contain "node"
+//     (DEVI-03 search), and the alias-ascending order (DEVI-02) is the
+//     REVERSE of the default lastupdate-descending order — a fixture that
+//     happened to already be alias-sorted would hide a broken sort.
+//   - build-log.json    — dashboard.spec.js + history.spec.js +
+//     device-detail.spec.js. build-1's log contents must exceed ~400 chars or
+//     HIST-03's Expand/Collapse button never renders (History.vue only shows
+//     it past a length threshold).
+//   - audit-log.json    — dashboard.spec.js + history.spec.js. Exactly one
+//     entry carries the `danger` flag, and the oldest entry is 2026-09-10 —
+//     both are asserted on directly by name/count, not just "some rows exist".
 
 const API = '/api/v2';
 
@@ -26,6 +42,14 @@ Cypress.Commands.add('stubThinxApi', (overrides = {}) => {
   // /api/v2 call not stubbed below lands here instead of reaching production,
   // which is what makes "these specs never touch the real API" an enforced
   // property rather than an intention.
+  //
+  // Calling cy.stubThinxApi() a second time (e.g. profile.spec.js's PROF-04,
+  // which re-stubs with a different profile fixture) re-registers this WHOLE
+  // route set, including a fresh catch-all. Because that fresh catch-all is
+  // now the most recently defined route, it silently outranks — and swallows
+  // — any bespoke cy.intercept() a test registered between the two
+  // cy.stubThinxApi() calls, with no error to indicate why the bespoke stub
+  // stopped matching.
   cy.intercept(/\/api\/v2\//, {
     statusCode: 500,
     body: { success: false, response: 'unstubbed_endpoint' },

@@ -6,11 +6,22 @@ describe('Device Detail feature', function() {
   });
 
   it('Should navigate to device detail on Detail button click (DEVI-10)', function() {
-    cy.visitApp('/#/app/devices', { session: true });
+    cy.visitApp('/#/app/devices', {
+      session: true,
+      onBeforeLoad(win) {
+        // Cypress already fails on uncaught exceptions; a logged console.error is
+        // invisible to it, so stub it to make a "no JS errors" assertion real.
+        // DeviceDetail.vue took 7 new attributes on this branch, which is exactly
+        // the kind of change that surfaces as a `[Vue warn]` routed through
+        // console.error once the detail page renders below.
+        cy.stub(win.console, 'error').as('consoleError');
+      },
+    });
     cy.wait('@getDevices');
     cy.get('[data-cy=device-row]').first().find('[data-cy=row-detail]').click();
     cy.hash().should('eq', '#/app/device/udid-z');
     cy.get('.page-title').should('contain', 'zephyr-01');
+    cy.get('@consoleError').should('not.have.been.called');
   });
 
   describe('once on the detail page', function() {
@@ -53,7 +64,7 @@ describe('Device Detail feature', function() {
     });
 
     it('Should display Transfer button in Actions card (DEVI-11)', function() {
-      cy.get('[data-cy=action-transfer]').should('be.visible').and('contain', 'Transfer Device');
+      cy.get('[data-cy=card-actions] [data-cy=action-transfer]').should('be.visible').and('contain', 'Transfer Device');
     });
 
   });

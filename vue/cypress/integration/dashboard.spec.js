@@ -61,6 +61,12 @@ describe('Dashboard feature', function() {
       // the chart survives — it will NOT catch a broken dateAxis computation.
       // Making it real would mean reaching into the Chart.js instance or diffing
       // canvas pixels, which is disproportionate here.
+      // All three range buttons before touching any of them, so a range option
+      // silently dropped from the template (chart-range-365 previously had no
+      // test referencing it at all) would fail here instead of going unnoticed.
+      cy.get('[data-cy=chart-range-7]').should('exist');
+      cy.get('[data-cy=chart-range-31]').should('exist');
+      cy.get('[data-cy=chart-range-365]').should('exist');
       cy.get('[data-cy=chart-range-7]').should('have.class', 'btn-primary');
       cy.get('[data-cy=chart-range-31]').click();
       cy.get('[data-cy=chart-range-31]').should('have.class', 'btn-primary');

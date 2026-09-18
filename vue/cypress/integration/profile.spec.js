@@ -8,13 +8,24 @@ describe('Profile feature', function() {
 
     beforeEach(function() {
       cy.stubThinxApi();
-      cy.visitApp('/#/app/profile', { session: true });
+      cy.visitApp('/#/app/profile', {
+        session: true,
+        onBeforeLoad(win) {
+          // Cypress already fails on uncaught exceptions; a logged console.error is
+          // invisible to it, so stub it to make the PROF-01 "no JS errors" assertion
+          // real. Profile.vue took 7 new attributes in this branch, two on components
+          // with non-obvious attribute fall-through, which is exactly the kind of
+          // change that surfaces as a `[Vue warn]` routed through console.error.
+          cy.stub(win.console, 'error').as('consoleError');
+        },
+      });
       cy.wait('@getProfile');
     });
 
     it('Should load the profile page without JS errors (PROF-01)', function() {
       cy.get('.page-title').should('contain', 'My Profile');
       cy.get('.nav-tabs .nav-link').should('contain', 'Profile');
+      cy.get('@consoleError').should('not.have.been.called');
     });
 
     it('Should display and save profile fields: first name, last name, phone, timezone (PROF-01)', function() {
@@ -54,7 +65,14 @@ describe('Profile feature', function() {
 
       cy.wait('@postProfile').its('request.body').should('have.property', 'avatar');
       cy.wait('@getProfileWithAvatar');
-      cy.get('[data-cy=avatar-preview]').should('have.attr', 'src').and('match', /^data:image\/png;base64,/);
+      // avatarSrc hard-codes the `data:image/png;base64,` prefix regardless of
+      // content, so matching only that prefix would pass even if the binding
+      // were broken and profile.avatar were some other non-empty string.
+      // Asserting the actual fixture bytes (the PNG signature, base64-encoded)
+      // proves the preview is really rendering profile.avatar.
+      cy.get('[data-cy=avatar-preview]').should('have.attr', 'src')
+        .and('match', /^data:image\/png;base64,/)
+        .and('include', 'iVBORw0KGgo');
     });
 
     it('Should save notification preferences without overwriting profile info (PROF-03)', function() {

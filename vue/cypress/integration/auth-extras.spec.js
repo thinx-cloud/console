@@ -38,10 +38,19 @@ describe('Auth Extras feature', function() {
     cy.get('#reset-email').should('not.exist');
   });
 
+  // The 6s lifetime is a boot budget, not an arbitrary number: the token must
+  // outlive a cold dev-server boot (bundle download + parse + execute + Vue
+  // mount + App.vue#created) so the initial `.page-title` assertion below has
+  // something real to observe. Whichever of the two expiry paths ends up
+  // firing — the in-app `scheduleExpiry` timer tearing down an active
+  // session, or `hydrateSession` rejecting a token that was already expired
+  // by the time the app booted — both land on `#/login`, so the test passes
+  // either way; only the final hash assertion (given generous headroom via a
+  // 15s timeout) needs to be true.
   it('Should redirect to /login when the access token expires (AUTH-03)', function() {
-    cy.visitApp('/#/app/dashboard', { session: { expiresInSeconds: 2 } });
+    cy.visitApp('/#/app/dashboard', { session: { expiresInSeconds: 6 } });
     cy.get('.page-title').should('contain', 'Dashboard');
-    cy.hash({ timeout: 10000 }).should('eq', '#/login');
+    cy.hash({ timeout: 15000 }).should('eq', '#/login');
   });
 
 });

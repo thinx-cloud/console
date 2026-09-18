@@ -69,7 +69,11 @@ skip themselves when `CYPRESS_THINX_TEST_*` / `CYPRESS_ADMIN_*` are unset:
 carries its own inline `CYPRESS_ADMIN_USER` / `CYPRESS_ADMIN_PASS` check in its
 `beforeEach`, as does `cy.loginAsAdmin()` in `vue/cypress/support/commands.ts`.
 They are the only thing in the suite that would notice a backend contract
-change, so keep them configured in CI.
+change, so keep them configured in CI. The password in
+`vue/cypress/fixtures/thinx.json` is deliberately empty — the fixture account
+leaked, and the real password now lives only in
+`CYPRESS_THINX_TEST_PASSWORD` — so do not put a working credential back into
+that committed fixture.
 
 The trade this makes: stub-lane fixtures can drift from the real API and the
 suite would stay green against a payload shape that no longer exists. The live

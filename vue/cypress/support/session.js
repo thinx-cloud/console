@@ -23,16 +23,21 @@
 //     before the app boots is sufficient without touching Vuex directly.
 //
 // The token is forged with plain `btoa(JSON.stringify(...))`, NOT base64url.
-// vue-jwt-decode's decode() is plain `JSON.parse(atob(segment))`, and
-// src/core/api.js does the same — neither maps base64url ('-'/'_', stripped
-// padding) back to standard base64, so a base64url-encoded segment would fail
-// to decode as JSON and isJwtValid() would (correctly) reject it.
+// Plain `btoa` is used because vue-jwt-decode's decode() (and src/core/api.js,
+// which does the same thing) is just `JSON.parse(atob(segment))` with no
+// base64url mapping ('-'/'_', stripped padding) back to standard base64 — but
+// for this payload shape either encoding happens to decode cleanly through
+// `atob` every time, so a passing test here is not proof the encoding choice
+// itself is correct.
 function encodeSegment(value) {
   return btoa(JSON.stringify(value));
 }
 
 export function forgeJwt({ owner = 'test-owner-0000', expiresInSeconds = 3600 } = {}) {
-  const issuedAt = Math.floor(Date.now() / 1000);
+  // Math.ceil, not Math.floor: flooring discards up to 0.999s of the caller's
+  // requested lifetime, which matters when a spec (auth-extras.spec.js's
+  // AUTH-03) deliberately forges a short-lived token to race a redirect.
+  const issuedAt = Math.ceil(Date.now() / 1000);
   return [
     encodeSegment({ alg: 'HS256', typ: 'JWT' }),
     encodeSegment({ owner, iat: issuedAt, exp: issuedAt + expiresInSeconds }),
