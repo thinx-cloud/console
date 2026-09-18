@@ -698,6 +698,7 @@ function submitDevice( deviceForm ) {
       icon: deviceForm.icon,
       transformers: deviceForm.transformers,
       timezone_abbr: deviceForm.timezone_abbr,
+      timezone_utc: deviceForm.timezone_utc,
       timezone_offset: deviceForm.timezone_offset
     }
   };
