@@ -10,12 +10,12 @@
 
       <!-- Audit Log Tab -->
       <b-tab title="Audit Log">
-        <b-form-inline class="mb-2">
+        <b-form inline class="mb-2">
           <label class="mr-2 mb-0">From</label>
           <b-form-input type="date" data-cy="date-from" v-model="dateFrom" class="mr-3" style="max-width:180px" />
           <label class="mr-2 mb-0">To</label>
           <b-form-input type="date" data-cy="date-to" v-model="dateTo" style="max-width:180px" />
-        </b-form-inline>
+        </b-form>
         <b-form-input v-model="auditSearch" placeholder="Search audit log..." class="mb-3" style="max-width:400px" />
         <b-form-checkbox-group
           v-model="auditFlagFilter"
@@ -52,12 +52,12 @@
 
       <!-- Build Log Tab -->
       <b-tab title="Build Log">
-        <b-form-inline class="mb-2">
+        <b-form inline class="mb-2">
           <label class="mr-2 mb-0">From</label>
           <b-form-input type="date" data-cy="date-from" v-model="dateFrom" class="mr-3" style="max-width:180px" />
           <label class="mr-2 mb-0">To</label>
           <b-form-input type="date" data-cy="date-to" v-model="dateTo" style="max-width:180px" />
-        </b-form-inline>
+        </b-form>
         <b-form-input v-model="buildSearch" placeholder="Search build log..." class="mb-3" style="max-width:400px" />
         <div v-if="!filteredBuilds.length" class="text-muted">No build logs.</div>
         <table v-else class="table table-striped table-sm">
