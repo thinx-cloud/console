@@ -64,9 +64,12 @@ explicitly stub, so an unstubbed call fails the test rather than reaching
 production.
 
 **Live lane** — `login.spec.js` and `admin.spec.js`. These use the real API and
-skip themselves when `CYPRESS_THINX_TEST_*` / `CYPRESS_ADMIN_*` are unset
-(`vue/cypress/support/credentials.js`). They are the only thing in the suite
-that would notice a backend contract change, so keep them configured in CI.
+skip themselves when `CYPRESS_THINX_TEST_*` / `CYPRESS_ADMIN_*` are unset:
+`login.spec.js` skips via `vue/cypress/support/credentials.js`; `admin.spec.js`
+carries its own inline `CYPRESS_ADMIN_USER` / `CYPRESS_ADMIN_PASS` check in its
+`beforeEach`, as does `cy.loginAsAdmin()` in `vue/cypress/support/commands.ts`.
+They are the only thing in the suite that would notice a backend contract
+change, so keep them configured in CI.
 
 The trade this makes: stub-lane fixtures can drift from the real API and the
 suite would stay green against a payload shape that no longer exists. The live
