@@ -53,10 +53,33 @@ has no Traefik router, so it answers with Traefik's self-signed default certific
 browser then fails the TLS handshake and the console reports "Unexpected response from
 the server" on login, giving no hint that the hostname is at fault.
 
-The Cypress variables are optional: `vue/cypress/support/credentials.js` skips the
-login-dependent suites when they are unset rather than failing them. The password in
-`vue/cypress/fixtures/thinx.json` is deliberately empty — the fixture account leaked, and
-the real password now lives only in `CYPRESS_THINX_TEST_PASSWORD`.
+The Cypress suite runs in two lanes.
+
+**Stub lane** — `dashboard`, `devices`, `device-detail`, `history`, `profile`,
+`auth-extras` and `support-smoke`. These intercept every `/api/v2` call with
+fixtures from `vue/cypress/fixtures/api/` and boot the app with a forged
+session, so they need **no credentials and no network**. `cy.stubThinxApi()`
+registers a catch-all that returns HTTP 500 for any `/api/v2` route it does not
+explicitly stub, so an unstubbed call fails the test rather than reaching
+production.
+
+**Live lane** — `login.spec.js` and `admin.spec.js`. These use the real API and
+skip themselves when `CYPRESS_THINX_TEST_*` / `CYPRESS_ADMIN_*` are unset:
+`login.spec.js` skips via `vue/cypress/support/credentials.js`; `admin.spec.js`
+carries its own inline `CYPRESS_ADMIN_USER` / `CYPRESS_ADMIN_PASS` check in its
+`beforeEach`, as does `cy.loginAsAdmin()` in `vue/cypress/support/commands.ts`.
+They are the only thing in the suite that would notice a backend contract
+change, so keep them configured in CI. The password in
+`vue/cypress/fixtures/thinx.json` is deliberately empty — the fixture account
+leaked, and the real password now lives only in
+`CYPRESS_THINX_TEST_PASSWORD` — so do not put a working credential back into
+that committed fixture.
+
+The trade this makes: stub-lane fixtures can drift from the real API and the
+suite would stay green against a payload shape that no longer exists. The live
+lane covers login and the admin user list only — not the device, stats or log
+payloads. When a `/api/v2` response shape changes, re-record the matching
+fixture under `vue/cypress/fixtures/api/`.
 
 ## Testing in Docker
 

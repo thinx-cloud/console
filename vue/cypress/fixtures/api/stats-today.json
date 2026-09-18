@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "response": {
+    "DEVICE_CHECKIN": [4],
+    "DEVICE_NEW": [1],
+    "DEVICE_REVOCATION": [0],
+    "BUILD_STARTED": [1],
+    "BUILD_SUCCESS": [1]
+  }
+}

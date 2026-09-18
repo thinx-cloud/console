@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "response": {
+    "DEVICE_CHECKIN": [42],
+    "DEVICE_NEW": [5],
+    "DEVICE_REVOCATION": [2],
+    "BUILD_STARTED": [7],
+    "BUILD_SUCCESS": [6],
+    "timeline": {
+      "CHECKINS": [
+        { "date": "2026-09-18T08:00:00.000Z" },
+        { "date": "2026-09-18T09:00:00.000Z" },
+        { "date": "2026-09-17T08:00:00.000Z" }
+      ]
+    }
+  }
+}

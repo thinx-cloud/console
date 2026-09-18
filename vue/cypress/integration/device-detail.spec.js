@@ -1,33 +1,72 @@
-import { hasLoginCredentials, MISSING_LOGIN_CREDENTIALS } from '../support/credentials';
-
 describe('Device Detail feature', function() {
 
   beforeEach(function() {
-    // Login-dependent suite: skip gracefully when no test account is configured
-    // (local dev, forks, or CI without CYPRESS_THINX_TEST_* in the `console`
-    // context), mirroring admin.spec.js. Must be a function() hook, not an
-    // arrow — this.skip() needs the Mocha context.
-    if (!hasLoginCredentials()) {
-      cy.log(MISSING_LOGIN_CREDENTIALS);
-      this.skip();
-    }
     cy.viewport(1536, 754);
-    cy.login();
-    cy.visit('http://localhost:3000/#/app/devices');
+    cy.stubThinxApi();
   });
 
-  it('Should navigate to device detail on Detail button click (DEVI-10)', function() { /* TODO DEVI-10: click first Detail button, verify URL changes to /app/device/:udid */ });
+  it('Should navigate to device detail on Detail button click (DEVI-10)', function() {
+    cy.visitApp('/#/app/devices', {
+      session: true,
+      onBeforeLoad(win) {
+        // Cypress already fails on uncaught exceptions; a logged console.error is
+        // invisible to it, so stub it to make a "no JS errors" assertion real.
+        // DeviceDetail.vue took 7 new attributes on this branch, which is exactly
+        // the kind of change that surfaces as a `[Vue warn]` routed through
+        // console.error once the detail page renders below.
+        cy.stub(win.console, 'error').as('consoleError');
+      },
+    });
+    cy.wait('@getDevices');
+    cy.get('[data-cy=device-row]').first().find('[data-cy=row-detail]').click();
+    cy.hash().should('eq', '#/app/device/udid-z');
+    cy.get('.page-title').should('contain', 'zephyr-01');
+    cy.get('@consoleError').should('not.have.been.called');
+  });
 
-  it('Should display device info section (DEVI-11)', function() { /* TODO DEVI-11: verify Device Info card visible */ });
+  describe('once on the detail page', function() {
 
-  it('Should display environment variables section (DEVI-11)', function() { /* TODO DEVI-11: verify Environment Variables card present */ });
+    beforeEach(function() {
+      cy.visitApp('/#/app/device/udid-z', { session: true });
+      cy.wait(['@getDevices', '@getBuildLog', '@getProfile']);
+    });
 
-  it('Should display transformer assignment section (DEVI-11)', function() { /* TODO DEVI-11: verify Transformer Assignment card and b-form-select present */ });
+    it('Should display device info section (DEVI-11)', function() {
+      cy.get('[data-cy=card-device-info]').should('be.visible');
+      cy.get('[data-cy=card-device-info]').should('contain', 'udid-z');
+      cy.get('[data-cy=card-device-info]').should('contain', 'AA:BB:CC:00:00:01');
+      cy.get('[data-cy=card-device-info]').should('contain', 'esp32');
+    });
 
-  it('Should display build history section (DEVI-11)', function() { /* TODO DEVI-11: verify Build History card present (empty state allowed) */ });
+    it('Should display environment variables section (DEVI-11)', function() {
+      cy.get('[data-cy=card-enviros]').should('be.visible');
+      cy.get('[data-cy=card-enviros]').should('contain', 'ssid');
+      cy.get('[data-cy=card-enviros]').should('contain', 'mqtt_host');
+    });
 
-  it('Should display device logs section (DEVI-11)', function() { /* TODO DEVI-11: verify Device Logs card present when last_build_id is set */ });
+    it('Should display transformer assignment section (DEVI-11)', function() {
+      cy.get('[data-cy=card-transformers]').should('be.visible');
+      cy.get('[data-cy=card-transformers] select').should('exist');
+      cy.get('[data-cy=card-transformers] select option').should('contain', 'passthrough');
+    });
 
-  it('Should display Transfer button in Actions card (DEVI-11)', function() { /* TODO DEVI-11/D-12: Transfer button visible in Actions card */ });
+    it('Should display build history section (DEVI-11)', function() {
+      cy.get('[data-cy=card-build-history]').should('be.visible');
+      // build-log.json gives udid-z exactly one build.
+      cy.get('[data-cy=card-build-history] tbody tr').should('have.length', 1);
+      cy.get('[data-cy=card-build-history]').should('contain', 'build-1');
+    });
+
+    it('Should display device logs section (DEVI-11)', function() {
+      // The card is v-if'd on last_build_id, which udid-z sets to build-1.
+      cy.get('[data-cy=card-device-logs]').should('be.visible');
+      cy.get('[data-cy=card-device-logs] pre').should('contain', 'compiling module');
+    });
+
+    it('Should display Transfer button in Actions card (DEVI-11)', function() {
+      cy.get('[data-cy=card-actions] [data-cy=action-transfer]').should('be.visible').and('contain', 'Transfer Device');
+    });
+
+  });
 
 });

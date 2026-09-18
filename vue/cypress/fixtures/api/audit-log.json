@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "response": [
+    { "date": "2026-09-18T09:00:00.000Z", "message": "Device revoked by owner", "flags": ["danger"] },
+    { "date": "2026-09-17T09:00:00.000Z", "message": "Build started for zephyr-01", "flags": ["warning"] },
+    { "date": "2026-09-16T09:00:00.000Z", "message": "User logged in", "flags": ["info"] },
+    { "date": "2026-09-10T09:00:00.000Z", "message": "API key created", "flags": ["info"] }
+  ]
+}

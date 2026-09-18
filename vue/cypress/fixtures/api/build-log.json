@@ -1,0 +1,66 @@
+{
+  "success": true,
+  "response": [
+    {
+      "_id": "build-1",
+      "name": "zephyr-01",
+      "state": "completed",
+      "log": [
+        {
+          "build_id": "build-1",
+          "udid": "udid-z",
+          "alias": "zephyr-01",
+          "state": "completed",
+          "last_update": "2026-09-18T09:30:00.000Z",
+          "log": [
+            {
+              "udid": "udid-z",
+              "alias": "zephyr-01",
+              "state": "completed",
+              "last_update": "2026-09-18T09:30:00.000Z",
+              "contents": "[step 1] compiling module 1 of 12 for platform esp32 \n [step 2] compiling module 2 of 12 for platform esp32 \n [step 3] compiling module 3 of 12 for platform esp32 \n [step 4] compiling module 4 of 12 for platform esp32 \n [step 5] compiling module 5 of 12 for platform esp32 \n [step 6] compiling module 6 of 12 for platform esp32 \n [step 7] compiling module 7 of 12 for platform esp32 \n [step 8] compiling module 8 of 12 for platform esp32 \n [step 9] compiling module 9 of 12 for platform esp32 \n [step 10] compiling module 10 of 12 for platform esp32 \n [step 11] compiling module 11 of 12 for platform esp32 \n [step 12] compiling module 12 of 12 for platform esp32"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "build-2",
+      "name": "alpha-node",
+      "state": "failed",
+      "log": [
+        {
+          "build_id": "build-2",
+          "udid": "udid-a",
+          "alias": "alpha-node",
+          "state": "failed",
+          "last_update": "2026-09-17T09:30:00.000Z",
+          "log": [
+            {
+              "udid": "udid-a",
+              "alias": "alpha-node",
+              "state": "failed",
+              "last_update": "2026-09-17T09:30:00.000Z",
+              "contents": "build failed: missing source"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "build-3",
+      "name": "gamma-probe",
+      "state": "created",
+      "log": [
+        {
+          "build_id": "build-3",
+          "udid": "udid-g",
+          "alias": "gamma-probe",
+          "state": "created",
+          "last_update": "2026-09-16T09:30:00.000Z",
+          "log": []
+        }
+      ]
+    }
+  ]
+}

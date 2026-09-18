@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "response": {
+    "owner": "test-owner-0000",
+    "username": "cypress-test",
+    "admin": false,
+    "avatar": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+    "info": {
+      "first_name": "Cypress",
+      "last_name": "Tester",
+      "mobile_phone": "+420123456789",
+      "timezone_abbr": "Europe/Prague",
+      "email": "cypress@example.test",
+      "notifications": { "all": false, "important": false, "info": false },
+      "transformers": [
+        { "utid": "utid-1", "alias": "passthrough", "body": "dmFyIHRyYW5zZm9ybWVyID0gZnVuY3Rpb24oKXt9Ow==" }
+      ]
+    }
+  }
+}

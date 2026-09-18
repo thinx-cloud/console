@@ -1,0 +1,43 @@
+{
+  "success": true,
+  "response": [
+    {
+      "udid": "udid-z", "alias": "zephyr-01", "category": "green",
+      "platform": "esp32", "firmware": "fw-1.4.0", "version": "1.4.0",
+      "status": "connected", "mac": "AA:BB:CC:00:00:01",
+      "lastupdate": "2026-09-18T10:00:00.000Z", "commit": "abc1234",
+      "rssi": -52, "station": "lab-ap", "lat": 50.08, "lon": 14.44,
+      "source": "src-1", "last_build_id": "build-1",
+      "transformers": ["utid-1"],
+      "environment": { "ssid": "********", "mqtt_host": "********" },
+      "description": "reference device"
+    },
+    {
+      "udid": "udid-a", "alias": "alpha-node", "category": "blue",
+      "platform": "esp8266", "firmware": "fw-1.2.0", "version": "1.2.0",
+      "status": "connected", "mac": "AA:BB:CC:00:00:02",
+      "lastupdate": "2026-09-17T10:00:00.000Z", "commit": "def5678",
+      "rssi": -60, "station": "lab-ap", "lat": 50.08, "lon": 14.44,
+      "source": "src-1", "last_build_id": "", "transformers": [],
+      "environment": {}, "description": ""
+    },
+    {
+      "udid": "udid-b", "alias": "beta-node", "category": "green",
+      "platform": "esp32", "firmware": "fw-1.3.0", "version": "1.3.0",
+      "status": "disconnected", "mac": "AA:BB:CC:00:00:03",
+      "lastupdate": "2026-09-16T10:00:00.000Z", "commit": "0011223",
+      "rssi": -71, "station": "lab-ap", "lat": 50.08, "lon": 14.44,
+      "source": "src-1", "last_build_id": "", "transformers": [],
+      "environment": {}, "description": ""
+    },
+    {
+      "udid": "udid-g", "alias": "gamma-probe", "category": "red-intense",
+      "platform": "mongoose", "firmware": "fw-0.9.0", "version": "0.9.0",
+      "status": "disconnected", "mac": "AA:BB:CC:00:00:04",
+      "lastupdate": "2026-09-15T10:00:00.000Z", "commit": "4455667",
+      "rssi": -80, "station": "lab-ap", "lat": 50.08, "lon": 14.44,
+      "source": "", "last_build_id": "", "transformers": [],
+      "environment": {}, "description": ""
+    }
+  ]
+}
