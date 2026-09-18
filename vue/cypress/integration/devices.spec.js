@@ -25,18 +25,16 @@ describe('Devices feature', function() {
     // Default sort is lastupdate descending, which puts zephyr-01 first.
     cy.get('[data-cy=device-row]').first().should('contain', 'zephyr-01');
     cy.get('[data-cy=device-sort]').select('alias');
-    // Vue reorders the existing <tr> nodes in place (same :key, same elements,
-    // just moved) rather than detaching/recreating them. Cypress's retry-
-    // ability for .first()/.last() does not reliably re-query after a pure
-    // reorder like that — verified by forcing the race with a fresh repro:
-    // a function-style `.should(($els) => ...)` assertion (which always
-    // re-queries) sees the resorted rows within ~10ms, but the exact
-    // `.first().should('contain', ...)` chain below still times out at
-    // 10s without this wait. This tiny wait is a deliberate, documented
-    // workaround for that Cypress limitation, not a cover for flakiness.
-    cy.wait(100);
-    cy.get('[data-cy=device-row]').first().should('contain', 'alpha-node');
-    cy.get('[data-cy=device-row]').last().should('contain', 'zephyr-01');
+    // Function-style .should() re-runs the whole cy.get() on every retry, so it
+    // observes the reordered rows. A `.first().should('contain', ...)` chain does
+    // NOT: before Cypress 12, .first()/.last() are commands rather than queries and
+    // are not re-evaluated on retry, so after Vue reorders the existing <tr> nodes
+    // in place (same :key, moved not recreated) the chain keeps asserting against
+    // the stale first element until it times out.
+    cy.get('[data-cy=device-row]').should(($rows) => {
+      expect($rows.first().text()).to.contain('alpha-node');
+      expect($rows.last().text()).to.contain('zephyr-01');
+    });
   });
 
   it('Should search devices by alias substring (DEVI-03)', function() {
