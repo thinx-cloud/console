@@ -47,13 +47,34 @@ Cypress.Commands.add('restoreLocalStorage', () => {
 // Like loginAsAdmin, this does NOT skip on missing creds — `this.skip()` cannot
 // run from inside a cy.* chain. Spec files MUST gate in their own beforeEach
 // via hasLoginCredentials() before calling this.
+// The app persists its tokens in sessionStorage (see src/store/auth-storage.js).
+// Cypress 9 does not clear sessionStorage between tests of the same spec and has
+// no cy.clearSessionStorage(), so the session survives into the next test: the
+// app then routes straight to the dashboard, no login form renders, and the next
+// cy.login() dies on `Expected to find element: #username`. This surfaced only
+// once login started succeeding — while auth was broken every test began logged
+// out by accident.
+//
+// Visit first so the window belongs to the app origin (on the first test of a
+// spec the AUT is still about:blank), then clear and reload to drop the
+// in-memory Vuex/api state along with the stored tokens.
+function startLoggedOut() {
+  cy.visit('/');
+  cy.clearCookies();
+  cy.window().then((win) => {
+    win.sessionStorage.clear();
+    win.localStorage.clear();
+  });
+  cy.reload();
+}
+
 Cypress.Commands.add('login', (user, password) => {
     const { username, password: passwordValue } = loginCredentials(user, password);
     if (!username || !passwordValue) {
       throw new Error('Set CYPRESS_THINX_TEST_USER and CYPRESS_THINX_TEST_PASSWORD, or pass credentials to cy.login().');
     }
     cy.viewport(fixtures.viewport[0], fixtures.viewport[1]);
-    cy.visit('/');
+    startLoggedOut();
     cy.get('#username').type(username);
     cy.get('#password').type(passwordValue, { log: false });
     cy.get('button').contains('login', { matchCase: false }).click();
@@ -79,7 +100,7 @@ Cypress.Commands.add('loginAsAdmin', () => {
       throw new Error('Set CYPRESS_ADMIN_USER and CYPRESS_ADMIN_PASS before calling cy.loginAsAdmin().');
     }
     cy.viewport(fixtures.viewport[0], fixtures.viewport[1]);
-    cy.visit('/');
+    startLoggedOut();
     cy.get('#username').type(user);
     cy.get('#password').type(password, { log: false });
     cy.get('button').contains('login', { matchCase: false }).click();
