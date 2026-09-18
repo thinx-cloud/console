@@ -1,5 +1,7 @@
 # Cypress TODO Placeholders Implementation Plan
 
+<!-- doc-drift-ignore-file: this plan cites evidence as file:line (e.g. store/devices.js:47), which doc-drift's path checker cannot resolve -->
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace all 41 `/* TODO */` placeholder bodies in six Cypress specs with real assertions that run deterministically in CI without credentials.

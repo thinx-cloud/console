@@ -1,5 +1,7 @@
 # Design — Implementing the Cypress `/* TODO */` placeholders
 
+<!-- doc-drift-ignore-file: this design doc cites evidence as file:line (e.g. node_modules/cypress/types/net-stubbing.ts:363), which doc-drift's path checker cannot resolve -->
+
 **Date:** 2026-09-18
 **Scope:** `vue/cypress/` + ~30 additive `data-cy` attributes in `vue/src/`
 **Status:** approved design, ready for an implementation plan
