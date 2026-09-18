@@ -14,7 +14,7 @@
     <b-row>
       <!-- Left: metadata -->
       <b-col md="6">
-        <b-card title="Device Info" class="mb-3">
+        <b-card title="Device Info" class="mb-3" data-cy="card-device-info">
           <table class="table table-sm table-borderless mb-0">
             <tr><td class="text-muted" style="width:140px">UDID</td><td><code>{{ device.udid }}</code></td></tr>
             <tr><td class="text-muted">MAC</td><td>{{ device.mac }}</td></tr>
@@ -57,17 +57,17 @@
           </b-form-group>
         </b-card>
 
-        <b-card title="Actions" class="mb-3">
+        <b-card title="Actions" class="mb-3" data-cy="card-actions">
           <b-button variant="secondary" @click="buildDevice" class="mr-2 mb-2">Build Firmware</b-button>
           <b-button variant="danger" @click="revokeDevice" class="mr-2 mb-2">Revoke Device</b-button>
-          <b-button variant="warning" @click="$bvModal.show('transfer-modal')" class="mr-2 mb-2">Transfer Device</b-button>
+          <b-button variant="warning" data-cy="action-transfer" @click="$bvModal.show('transfer-modal')" class="mr-2 mb-2">Transfer Device</b-button>
         </b-card>
 
         <b-card v-if="device.source" title="Linked Repository" class="mb-3">
           <p class="text-monospace">{{ device.source }}</p>
         </b-card>
 
-        <b-card title="Environment Variables (masked)" class="mb-3">
+        <b-card title="Environment Variables (masked)" class="mb-3" data-cy="card-enviros">
           <div v-if="device.environment && Object.keys(device.environment).length">
             <table class="table table-sm table-borderless mb-0">
               <tr v-for="(val, key) in device.environment" :key="key">
@@ -79,14 +79,14 @@
           <p v-else class="text-muted mb-0">No environment variables.</p>
         </b-card>
 
-        <b-card title="Transformer Assignment" class="mb-3">
+        <b-card title="Transformer Assignment" class="mb-3" data-cy="card-transformers">
           <b-form-group label="Assigned transformers">
             <b-form-select multiple v-model="editForm.transformers" :options="transformerOptions" :select-size="5" />
           </b-form-group>
           <b-button variant="primary" size="sm" @click="saveTransformers">Save Transformers</b-button>
         </b-card>
 
-        <b-card title="Build History" class="mb-3">
+        <b-card title="Build History" class="mb-3" data-cy="card-build-history">
           <div v-if="buildHistory.length">
             <table class="table table-striped table-sm">
               <thead>
@@ -110,7 +110,7 @@
           <p v-else class="text-muted mb-0">No build history.</p>
         </b-card>
 
-        <b-card v-if="device.last_build_id" title="Device Logs (last build)" class="mb-3">
+        <b-card v-if="device.last_build_id" title="Device Logs (last build)" class="mb-3" data-cy="card-device-logs">
           <div v-if="deviceLogs.length">
             <pre
               v-for="(entry, i) in deviceLogs"
