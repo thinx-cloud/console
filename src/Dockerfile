@@ -43,7 +43,9 @@ COPY . .
 RUN npm install . \
     && echo "$VERSION_CODE" > version_code \
     && cat version_code \
-    && npm run build
+    && npm run test:csp \
+    && npm run build \
+    && npm run test:csp:built
 
 RUN rm -rf .git
 

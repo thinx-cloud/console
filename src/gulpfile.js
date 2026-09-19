@@ -265,6 +265,11 @@ gulp.task('prod', function() {
     .pipe(isProduction ? rename({suffix: '.min'}) : noop() )
     .pipe(gulp.dest(target + '/public'));
 
+  // Startup assets remain separate: each entry page chooses when to run them.
+  gulp.src('assets/thinx/csp-*.js', {base: '.'})
+    .pipe(injectEnvs(env))
+    .pipe(gulp.dest(target));
+
   // HTML
   merge(
     gulp.src('*.html', {base: '.'}),
