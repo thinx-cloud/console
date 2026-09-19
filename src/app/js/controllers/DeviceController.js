@@ -72,6 +72,11 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
   $scope.envForm = { draft: "" };
   $scope.envError = null;
   $scope.envLoading = false;
+  // Clearing every variable is a legitimate edit and an expensive mistake, so it
+  // takes a second click. envLoadedCount is what the device had when the editor
+  // opened; envConfirmClear is armed only while the draft would empty it.
+  $scope.envLoadedCount = 0;
+  $scope.envConfirmClear = false;
 
   $scope.buildrunning = false;
 
@@ -236,6 +241,8 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
           $scope.deviceForm.environment = stored;
           $scope.envForm.draft = JSON.stringify( stored, null, 2 );
           $scope.envError = null;
+          $scope.envLoadedCount = Object.keys( stored ).length;
+          $scope.envConfirmClear = false;
           $scope.envEditing = true;
         } );
       } )
@@ -251,6 +258,7 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
   $scope.validateEnvironment = function() {
     var result = parseEnvironmentJSON( $scope.envForm.draft );
     $scope.envError = result.ok ? null : result.error;
+    $scope.envConfirmClear = false; // editing again withdraws the confirmation
     return result;
   };
 
@@ -258,6 +266,7 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
     $scope.envEditing = false;
     $scope.envForm.draft = "";
     $scope.envError = null;
+    $scope.envConfirmClear = false;
   };
 
   $scope.saveEnvironment = function() {
@@ -268,10 +277,16 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
       return;
     }
 
+    if ( Object.keys( result.value ).length === 0 && $scope.envLoadedCount > 0 && !$scope.envConfirmClear ) {
+      $scope.envConfirmClear = true;
+      return;
+    }
+
     $scope.deviceForm.environment = result.value;
     $scope.submitDeviceFormChange( "environment" );
     $scope.envEditing = false;
     $scope.envForm.draft = "";
+    $scope.envConfirmClear = false;
   };
 
   $scope.submitDeviceFormChange = function( prop ) {
