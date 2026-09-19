@@ -62,6 +62,13 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
   $scope.deviceForm.timezone_utc = "Etc/GMT";
   $scope.deviceForm.environment = null;
 
+  // Device-environment editor. `envDraft` is the textarea's raw text; it is only
+  // written back to deviceForm.environment once parseEnvironmentJSON accepts it.
+  $scope.envEditing = false;
+  $scope.envDraft = "";
+  $scope.envError = null;
+  $scope.envLoading = false;
+
   $scope.buildrunning = false;
 
   $scope.showIcons = false;
@@ -184,6 +191,83 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
 
     // uúpdate device timezone offset and abbr
     $scope.submitDeviceFormChange( "timezone_offset" );
+  };
+
+  // The devices list masks ssid/pass, so entering edit mode fetches the stored
+  // environment first. Editing the masked copy would write "*****" over the real
+  // values on save.
+  $scope.editEnvironment = function() {
+
+    $scope.envError = null;
+    $scope.envLoading = true;
+
+    Thinx.getDeviceEnvs( $scope.deviceForm.udid )
+      .done( function( response ) {
+        safeApply( $scope, function() {
+
+          $scope.envLoading = false;
+
+          // An empty body means the device has no environment yet — that is the one
+          // case where an empty editor is correct. Anything else that is not a JSON
+          // object (the API answers errors as a bare string) must not open the
+          // editor: saving that would wipe the stored environment.
+          var stored = {};
+          var body = ( typeof( response ) === "string" ) ? response.trim() : "";
+
+          if ( body.length > 0 ) {
+            var decoded = null;
+            try {
+              decoded = JSON.parse( body );
+            } catch ( e ) {
+              $scope.envError = "Could not read the stored environment: " + e.message;
+              return;
+            }
+            if ( decoded === null || typeof( decoded ) !== "object" || Array.isArray( decoded ) ) {
+              $scope.envError = "Could not read the stored environment.";
+              return;
+            }
+            stored = decoded;
+          }
+
+          $scope.deviceForm.environment = stored;
+          $scope.envDraft = JSON.stringify( stored, null, 2 );
+          $scope.envError = null;
+          $scope.envEditing = true;
+        } );
+      } )
+      .fail( function( error ) {
+        safeApply( $scope, function() {
+          $scope.envLoading = false;
+          $scope.envError = "Could not load the stored environment.";
+        } );
+        $scope.$emit( "xhrFailed", error );
+      } );
+  };
+
+  $scope.validateEnvironment = function() {
+    var result = parseEnvironmentJSON( $scope.envDraft );
+    $scope.envError = result.ok ? null : result.error;
+    return result;
+  };
+
+  $scope.cancelEnvironmentEdit = function() {
+    $scope.envEditing = false;
+    $scope.envDraft = "";
+    $scope.envError = null;
+  };
+
+  $scope.saveEnvironment = function() {
+
+    var result = $scope.validateEnvironment();
+
+    if ( !result.ok ) {
+      return;
+    }
+
+    $scope.deviceForm.environment = result.value;
+    $scope.submitDeviceFormChange( "environment" );
+    $scope.envEditing = false;
+    $scope.envDraft = "";
   };
 
   $scope.submitDeviceFormChange = function( prop ) {

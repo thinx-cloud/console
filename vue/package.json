@@ -11,6 +11,7 @@
     "schema:advisor": "node ../dev/schema-advisor.js",
     "start": "node server.js",
     "cy:test": "cypress run",
+    "test:unit": "node tests/unit/env-json.cjs",
     "cy:open": "cypress open",
     "test": "start-server-and-test serve http://127.0.0.1:3000/ cy:test",
     "eslint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",

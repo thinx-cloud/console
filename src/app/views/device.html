@@ -311,7 +311,7 @@
       </div>
     </div>
 
-    <div class="form-group" ng-if="deviceForm.environment">
+    <div class="form-group">
       <label class="control-label col-md-3">Environment 
         <span ng-if="$root.meta.latestFirmwareEnvelope.env_hash != undefined && device.env_hash != undefined" class="ml-2">
           <span class="text-warning" ng-if="$root.meta.latestFirmwareEnvelope.env_hash == device.env_hash">DESYNC</span>
@@ -319,7 +319,27 @@
         </label>
       </label>
       <div class="col-md-9" style="padding-top: 8px;">
-        <pre>{{deviceForm.environment | json}}</pre>
+
+        <div ng-if="!envEditing">
+          <pre ng-if="deviceForm.environment">{{deviceForm.environment | json}}</pre>
+          <p class="text-muted" ng-if="deviceForm.environment"><small><i class="fa fa-info-circle"></i> ssid and pass are masked here; Edit loads the stored values.</small></p>
+          <p class="text-muted" ng-if="!deviceForm.environment">No environment variables.</p>
+          <p class="help-block text-danger" ng-if="envError">{{envError}}</p>
+          <button type="button" class="btn btn-sm default" ng-click="editEnvironment()" ng-disabled="envLoading">
+            <i class="fa fa-pencil"></i> {{envLoading ? "Loading..." : "Edit"}}
+          </button>
+        </div>
+
+        <div ng-if="envEditing">
+          <textarea class="form-control" rows="10" spellcheck="false" style="font-family: monospace;"
+                    ng-model="envDraft" ng-change="validateEnvironment()"
+                    aria-label="Device environment as JSON"></textarea>
+          <p class="help-block" ng-if="!envError">A JSON object of scalar values, for example <code>{ "ssid": "my-network", "interval": 300 }</code>.</p>
+          <p class="help-block text-danger" ng-if="envError">{{envError}}</p>
+          <button type="button" class="btn btn-sm blue" ng-click="saveEnvironment()" ng-disabled="envError">Save</button>
+          <button type="button" class="btn btn-sm default" ng-click="cancelEnvironmentEdit()">Cancel</button>
+        </div>
+
       </div>
     </div>
 
