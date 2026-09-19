@@ -1,4 +1,15 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+# commitlint is a devDependency of vue/package.json, but this hook runs from the
+# repository root, where there is no node_modules — `npx commitlint` therefore
+# resolves nothing locally and, on npm >= 9, fails the commit outright instead of
+# skipping ("npx canceled due to missing packages and no YES option").
+#
+# Call the binary where it actually lives, and treat "not installed" as "no check
+# to run" rather than as a failed commit. Install it with: npm --prefix vue install
+bin="$(dirname -- "$0")/../vue/node_modules/.bin/commitlint"
 
-npx --no -- commitlint --edit "$1"
+if [ -x "$bin" ]; then
+  "$bin" --edit "$1"
+else
+  echo "husky: commitlint not installed — skipping the commit-message check (npm --prefix vue install to enable it)" >&2
+fi
