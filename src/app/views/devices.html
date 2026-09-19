@@ -11,7 +11,7 @@
 <div>
 
   <!-- BEGIN QUICK NAV -->
-  <nav class="quick-nav" ng-show="selectedItems.length > 0">
+  <nav class="quick-nav" thinx-quick-nav ng-show="selectedItems.length > 0">
     <a class="quick-nav-trigger" href="#">
       <span aria-hidden="true"></span>
     </a>
@@ -99,7 +99,7 @@
             <ul class="dropdown-menu" uib-dropdown-menu="filterSelect" role="menu" aria-labelledby="filter-split-button">
               <li role="menuitem" ng-repeat="category in $root.categories">
                 <i class="pull-left bg-{{category.name}} color-ribbon-vert"></i>
-                <a href="javascript:;" ng-click="list.filterCategory = category.name">{{category.name}}</a>
+                <a href="" ng-click="list.filterCategory = category.name">{{category.name}}</a>
               </li>
             </ul>
           </div>
@@ -112,7 +112,7 @@
             </button>
             <ul class="dropdown-menu" uib-dropdown-menu="orderSelect" role="menu" aria-labelledby="order-split-button">
               <li role="menuitem" ng-repeat="order in list.orderOptions">
-                <a href="javascript:;" ng-click="list.orderBy = order"><i class="fa fa-{{order.icon}}"></i> {{order.alias}}</a>
+                <a href="" ng-click="list.orderBy = order"><i class="fa fa-{{order.icon}}"></i> {{order.alias}}</a>
               </li>
             </ul>
           </div>
@@ -412,8 +412,5 @@
 <!-- END PAGE LOG OVERLAY -->
 
 <!-- BEGIN MAIN JS & CSS -->
-<script>
-QuickNav.init();
-new Clipboard('.copy-btn');
-</script>
+<span thinx-view-init="clipboard" hidden></span>
 <!-- BEGIN MAIN JS & CSS

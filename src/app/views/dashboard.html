@@ -34,13 +34,13 @@
               </button>
               <ul class="dropdown-menu" uib-dropdown-menu="chartRangeSelector" role="menu" aria-labelledby="split-button-chart-range">
                 <li role="menuitem">
-                  <a href="javascript:;" ng-click="chartRange(7)">Last 7 Days</a>
+                  <a href="" ng-click="chartRange(7)">Last 7 Days</a>
                 </li>
                 <li role="menuitem">
-                  <a href="javascript:;" ng-click="chartRange(31)">Last 31 Days</a>
+                  <a href="" ng-click="chartRange(31)">Last 31 Days</a>
                 </li>
                 <li role="menuitem">
-                  <a href="javascript:;" ng-click="chartRange(365);">Last 365 Days</a>
+                  <a href="" ng-click="chartRange(365);">Last 365 Days</a>
                 </li>
               </ul>
             </div>
@@ -246,7 +246,7 @@
 <!-- NO DEVICES -->
 
 <!-- BEGIN QUICK NAV -->
-<nav class="quick-nav" ng-show="selectedItems.length > 0">
+<nav class="quick-nav" thinx-quick-nav ng-show="selectedItems.length > 0">
   <a class="quick-nav-trigger" href="#">
     <span aria-hidden="true"></span>
   </a>
@@ -307,7 +307,7 @@
             </button>
             <ul class="dropdown-menu" uib-dropdown-menu="orderDropdown" role="menu" aria-labelledby="split-button-order">
               <li role="menuitem" ng-repeat="order in list.orderOptions">
-                <a href="javascript:;" ng-click="list.orderBy = order"><i class="fa fa-{{order.icon}}"></i> {{order.alias}}</a>
+                <a href="" ng-click="list.orderBy = order"><i class="fa fa-{{order.icon}}"></i> {{order.alias}}</a>
               </li>
             </ul>
           </div>
@@ -319,7 +319,7 @@
             </button>
             <ul class="dropdown-menu" uib-dropdown-menu="groupDropdown" role="menu" aria-labelledby="split-button-group">
               <li role="menuitem" ng-repeat="groupBy in list.groupOptions">
-                <a href="javascript:;" ng-click="list.groupBy = groupBy"><i class="fa fa-{{groupBy.icon}}"></i> {{groupBy.alias}}</a>
+                <a href="" ng-click="list.groupBy = groupBy"><i class="fa fa-{{groupBy.icon}}"></i> {{groupBy.alias}}</a>
               </li>
             </ul>
           </div>
@@ -607,9 +607,5 @@
 <!-- END PAGE LOG OVERLAY -->
 
 <!-- BEGIN MAIN JS & CSS -->
-<script>
-// Dashboard.init();
-QuickNav.init();
-new Clipboard('.copy-btn');
-</script>
+<span thinx-view-init="clipboard" hidden></span>
 <!-- END MAIN JS & CSS -->

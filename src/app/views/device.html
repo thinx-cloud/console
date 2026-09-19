@@ -329,11 +329,11 @@
       <div class="col-md-9">
         <input bs-switch ng-change="submitDeviceFormChange('auto_update')" ng-model="deviceForm.auto_update" type="checkbox" switch-size="tiny" switch-on-text="On" switch-off-text="Off" ng-true-value="true" ng-false-value="false">
         <span style="float: right">
-          <!-- <a class="btn dark btn-outline" href="javascript:;" ng-if="hasBuildId(deviceForm.udid)" ng-dblclick="return false" ng-click="showDeviceLastBuild(deviceForm.udid, $event)" title="Open Build Log"> -->
+          <!-- <a class="btn dark btn-outline" href="" ng-if="hasBuildId(deviceForm.udid)" ng-dblclick="return false" ng-click="showDeviceLastBuild(deviceForm.udid, $event)" title="Open Build Log"> -->
           <!-- <i class="fa fa-eye"></i> View Log -->
           <!-- </a> -->
 
-          <button class="btn dark btn-outline" href="javascript:;"
+          <button class="btn dark btn-outline" href=""
             ng-if="$root.platforms[deviceForm.base_platform].build && deviceForm.source != null && !attachingSource"
             ng-hide="hasBuildId(deviceForm.udid) == null"
             ng-disabled="deviceForm.keyhash == null || buildrunning"
@@ -531,8 +531,5 @@
 <!-- END PAGE LOG OVERLAY -->
 
 <!-- BEGIN MAIN JS & CSS -->
-<script type="text/javascript">
-// init clipboard
-new Clipboard('.copy-btn');
-</script>
+<span thinx-view-init="clipboard" hidden></span>
 <!-- BEGIN MAIN JS & CSS

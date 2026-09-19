@@ -46,16 +46,9 @@
   <link rel="manifest" href="/manifest.json" />
   <!-- END WEB PUSH -->
 
-  <script type="text/javascript">window.$crisp=[];window.CRISP_WEBSITE_ID="<ENV::crispWebsiteId>";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();</script>
+  <script src="assets/thinx/csp-crisp.js" type="text/javascript"></script>
 <!--removeIf(!production)-->
-  <script type="text/javascript">
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-  ga('create', '<ENV::googleTrackingCode>', 'auto');
-  ga('send', 'pageview');
-  </script>
+  <script src="assets/thinx/csp-analytics.js" type="text/javascript"></script>
 <!--endRemoveIf(!production)-->
 </head>
 <!-- END HEAD -->
@@ -129,14 +122,14 @@
           <!-- <input type="checkbox" name="remember" value="1" /> Remember me -->
           <!-- <span></span> -->
           <!-- </label> -->
-          <a href="javascript:void(0);" id="register-btn" class="forget-password">Create Account</a>
+          <a href="#" id="register-btn" class="forget-password">Create Account</a>
         </div>
         <div class="pull-right forget-password-block">
-          <a href="javascript:void(0);" id="forget-password" class="forget-password">Forgot Password?</a>
+          <a href="#" id="forget-password" class="forget-password">Forgot Password?</a>
         </div>
       </div>
       <div class="create-account">
-        <!-- <p><a href="javascript:void(0);" id="register-btn" class="btn-primary btn">Create an account</a></p> -->
+        <!-- <p><a href="#" id="register-btn" class="btn-primary btn">Create an account</a></p> -->
       </div>
     </form>
     <!-- END LOGIN FORM -->
@@ -270,13 +263,7 @@
 <!--removeIf(!bundle)-->
   <script src="public/bundle.min.js" type="text/javascript"></script>
 <!--endRemoveIf(!bundle)-->
-  <script type="text/jscript">
-  window.addEventListener('popstate', function(event) {
-    jQuery('.login-form').show();
-    jQuery('.register-form').hide();
-    jQuery('.forget-form').hide();
-  });
-  </script>
+  <script src="assets/thinx/csp-login.js" type="text/javascript"></script>
 </body>
 
 </html>

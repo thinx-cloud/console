@@ -15,7 +15,10 @@
     "start": "http-server ./html -p 8080 -g",
     "cy:run": "./node_modules/cypress/bin/cypress run",
     "cy": "start-test 'npm run start' 8080 'npm run cy:run'",
-    "cy:open": "./node_modules/cypress/bin/cypress open"
+    "cy:open": "./node_modules/cypress/bin/cypress open",
+    "test:csp": "node test/csp/source-check.cjs && node test/csp/public-scripts.cjs",
+    "test:csp:built": "node test/csp/source-check.cjs html",
+    "test:csp:browser": "node test/csp/browser.cjs && node test/csp/app-browser.cjs"
   },
   "author": "Mikulas Sychra @ THiNX Cloud",
   "repository": {
