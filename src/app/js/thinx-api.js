@@ -160,6 +160,36 @@ var Thinx = {
   }
 };
 
+// AngularJS digest guard.
+//
+// The handlers below are reachable two ways: from a jQuery .done() callback
+// (outside Angular, so a digest has to be started) and from a $scope.$on
+// handler (inside a digest, when the event was emitted from Angular code).
+// updateProfile is the clearest case — thinx-api.js:453 routes the "updateProfile"
+// event into it, and the init path at the bottom of init() calls it from
+// Thinx.getProfile().done(). A bare $apply() on the event path throws
+// $rootScope:inprog, which aborts the rest of the handler (for updateProfile,
+// the $emit("initWebsocket") that follows it) and leaves the bindings it was
+// meant to flush — the header avatar among them — unrendered until some other
+// digest happens to run.
+//
+// When a digest is already running, mutations made now are picked up by that
+// digest, which loops until the model stops changing; there is nothing to start.
+function safeApply( scope, fn ) {
+  if ( typeof( scope ) === "undefined" || scope === null ) {
+    return;
+  }
+  var root = scope.$root || scope;
+  var phase = root.$$phase;
+  if ( phase === "$apply" || phase === "$digest" ) {
+    if ( typeof( fn ) === "function" ) {
+      fn();
+    }
+    return;
+  }
+  scope.$apply( fn );
+}
+
 function init( $rootScope, $scope ) {
 
   if ( typeof( $rootScope.xhrFailedListener ) === "undefined" ) {
@@ -200,7 +230,7 @@ function init( $rootScope, $scope ) {
       value.base_platform = value.platform.split( ":" )[ 0 ];
       $rootScope.sources.push( value );
     } );
-    $rootScope.$apply();
+    safeApply( $rootScope );
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -220,7 +250,7 @@ function init( $rootScope, $scope ) {
 
   function updateApikeys( response ) {
     $rootScope.apikeys = response.response;
-    $rootScope.$apply();
+    safeApply( $rootScope );
   }
 
   if ( typeof( $rootScope.updateRsakeysListener ) === "undefined" ) {
@@ -232,7 +262,7 @@ function init( $rootScope, $scope ) {
 
   function updateRsakeys( response ) {
     $rootScope.rsakeys = response.response;
-    $scope.$apply();
+    safeApply( $scope );
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -241,7 +271,7 @@ function init( $rootScope, $scope ) {
         $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
-    $rootScope.$apply();
+    safeApply( $rootScope );
   }
 
   if ( typeof( $rootScope.updateDeploykeysListener ) === "undefined" ) {
@@ -253,7 +283,7 @@ function init( $rootScope, $scope ) {
 
   function updateDeploykeys( data ) {
     $rootScope.deploykeys = data.response;
-    $scope.$apply();
+    safeApply( $scope );
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -262,7 +292,7 @@ function init( $rootScope, $scope ) {
         $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
-    $rootScope.$apply();
+    safeApply( $rootScope );
   }
 
   if ( typeof( $rootScope.updateChannelsListener ) === "undefined" ) {
@@ -278,7 +308,7 @@ function init( $rootScope, $scope ) {
     }
 
     $rootScope.channels = response.response;
-    $scope.$apply();
+    safeApply( $scope );
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -287,7 +317,7 @@ function init( $rootScope, $scope ) {
         $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
-    $rootScope.$apply();
+    safeApply( $rootScope );
   }
 
   if ( typeof( $rootScope.updateDevicesListener ) === "undefined" ) {
@@ -315,7 +345,7 @@ function init( $rootScope, $scope ) {
       updateTimeline();
     }
 
-    $scope.$apply();
+    safeApply( $scope );
 
     // save user-spcific goal achievements
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -483,13 +513,13 @@ return;
 
     updateRawTransformers( $rootScope.profile.info.transformers );
 
-    $scope.$apply();
+    safeApply( $scope );
 
     $scope.$emit( "initWebsocket", profile.owner );
   }
 
   $scope.$on( "updateRawTransformers", function( event, transformers ) {
-    $scope.$apply( function() {
+    safeApply( $scope, function() {
       updateRawTransformers( transformers );
     } );
   } );
@@ -551,7 +581,7 @@ return;
       if ( typeof( $scope.chartRange ) !== "undefined" ) {
         $scope.chartRange( $scope.chart.range );
       }
-      $scope.$apply();
+      safeApply( $scope );
     }
   }
 
@@ -561,7 +591,7 @@ return;
 
   function updateLatestFirmwareEnvelope( data ) {
     $rootScope.meta.latestFirmwareEnvelope = data;
-    $rootScope.$apply();
+    safeApply( $rootScope );
   }
 
 
@@ -629,7 +659,7 @@ return;
       for ( let index in $rootScope.meta.deviceBuilds ) {
         $rootScope.meta.deviceBuilds[ index ].sort( sortByLastUpdate );
       }
-      $scope.$apply();
+      safeApply( $scope );
     }
   }
 
