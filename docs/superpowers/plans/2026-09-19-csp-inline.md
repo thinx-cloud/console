@@ -27,7 +27,22 @@
 - [x] Review diff and run targeted checks; fix findings.
 
 ### Task 5: Deploy
-- [ ] Commit and push console change to thinx-staging, preserving branch history; update parent submodule pointer, commit and push current thinx-staging to trigger CircleCI.
-- [ ] Observe successful classic console image build and rollout; verify deployed external assets.
-- [ ] Back up and update only CSP in production mounted nginx configuration, validate and reload nginx on current task node.
-- [ ] Verify public live headers and browser behavior; document commit IDs, evidence, rollback and any authenticated-test limits.
+- [x] Commit and push console change to thinx-staging, preserving branch history; update parent submodule pointer, commit and push current thinx-staging to trigger CircleCI.
+- [x] Observe successful classic console image build and rollout; verify deployed external assets.
+- [x] Back up and update only CSP in production mounted nginx configuration, validate and reload nginx on current task node.
+- [x] Verify public live headers and browser behavior; document commit IDs, evidence, rollback and any authenticated-test limits.
+
+## Deployment verification — 2026-09-19
+
+- Console implementation: `33d20bca7573f6cf0bea6a0c8b3d95eae8cd5621`; parent staging: `529be527`.
+- Application tests and classic image build/push passed: https://circleci.com/gh/suculent/thinx-device-api/14869.
+- Separate Snyk container monitor https://circleci.com/gh/suculent/thinx-device-api/14870 failed at Docker registry login (timeout), before scanning. No vulnerability verdict was produced by that job.
+- Swarm autoredeploy reported repeated HTTP 408 timeouts. Deployed the CI-confirmed image directly: `registry.thinx.cloud:5000/thinx/console:swarm@sha256:27b1ca7204cb600f01491f1f80b5d4550069afe809e11b75eb7c400da9d4582a`.
+- Verified startup assets were HTTP 200 before changing CSP. Tested candidate header against live login, including real Crisp loader; zero unexpected errors or CSP violations.
+- Backed up mounted configuration to `/mnt/gluster/deployment/swarm/console/default.conf.csp-backup-20260919T201604Z`. Updated only CSP, preserving file inode; verified container saw new contents, ran nginx -t and reloaded nginx.
+- Verified actual live response: explicit script-src without unsafe-inline, script-src-attr none, inline style allowance kept separately. Fresh live-browser login registration/reset navigation and injected-script/event-handler blocking all passed.
+- Local verification: source/generated HTML guards, both Gulp build modes, targeted ESLint, seven browser behavior/enforcement checks and sixteen complete Angular route visits using isolated read-only API fixtures. Authenticated production write flows were not exercised.
+- Aikido login completed. Domain https://app.aikido.dev/domain/71256 still shows its scan from 19 hours before verification. Manual rescan opens a paid-plan upgrade prompt; no subscription change or manual issue dismissal performed.
+- Main remains unchanged: automatic approval review rejected direct default-branch writes. Draft review requests: https://github.com/thinx-cloud/console/pull/30 and https://github.com/suculent/thinx-device-api/pull/555. Merge these before another main-based deployment, which would otherwise restore inline-dependent assets under the stricter mounted policy.
+
+Rollback: restore the backup contents into the existing mounted file (do not replace its inode), run nginx -t and nginx -s reload on the current thinx_console task node. If reverting the console image, restore the permissive policy first.
