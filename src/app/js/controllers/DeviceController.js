@@ -62,10 +62,14 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
   $scope.deviceForm.timezone_utc = "Etc/GMT";
   $scope.deviceForm.environment = null;
 
-  // Device-environment editor. `envDraft` is the textarea's raw text; it is only
-  // written back to deviceForm.environment once parseEnvironmentJSON accepts it.
+  // Device-environment editor. `envForm.draft` is the textarea's raw text; it is
+  // only written back to deviceForm.environment once parseEnvironmentJSON accepts
+  // it. The draft lives on an object because the textarea sits inside an ng-if,
+  // which creates a child scope: binding a bare identifier there would write to
+  // the child and leave this controller reading its own untouched primitive — the
+  // field would look right and {} would be saved.
   $scope.envEditing = false;
-  $scope.envDraft = "";
+  $scope.envForm = { draft: "" };
   $scope.envError = null;
   $scope.envLoading = false;
 
@@ -230,7 +234,7 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
           }
 
           $scope.deviceForm.environment = stored;
-          $scope.envDraft = JSON.stringify( stored, null, 2 );
+          $scope.envForm.draft = JSON.stringify( stored, null, 2 );
           $scope.envError = null;
           $scope.envEditing = true;
         } );
@@ -245,14 +249,14 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
   };
 
   $scope.validateEnvironment = function() {
-    var result = parseEnvironmentJSON( $scope.envDraft );
+    var result = parseEnvironmentJSON( $scope.envForm.draft );
     $scope.envError = result.ok ? null : result.error;
     return result;
   };
 
   $scope.cancelEnvironmentEdit = function() {
     $scope.envEditing = false;
-    $scope.envDraft = "";
+    $scope.envForm.draft = "";
     $scope.envError = null;
   };
 
@@ -267,7 +271,7 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
     $scope.deviceForm.environment = result.value;
     $scope.submitDeviceFormChange( "environment" );
     $scope.envEditing = false;
-    $scope.envDraft = "";
+    $scope.envForm.draft = "";
   };
 
   $scope.submitDeviceFormChange = function( prop ) {
