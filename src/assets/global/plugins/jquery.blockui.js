@@ -170,10 +170,10 @@
 				'border-radius':		'10px'
 			},
 
-			// IE issues: 'about:blank' fails on HTTPS and javascript:false is s-l-o-w
+			// THiNX CSP patch: use an inert iframe document on every protocol.
 			// (hat tip to Jorge H. N. de Vasconcelos)
 			/*jshint scripturl:true */
-			iframeSrc: /^https/i.test(window.location.href || '') ? 'javascript:false' : 'about:blank',
+			iframeSrc: 'about:blank',
 
 			// force usage of iframe in non-IE browsers (handy for blocking applets)
 			forceIframe: false,
@@ -618,3 +618,5 @@
 	}
 
 })();
+
+// THiNX CSP patch: the legacy iframe overlay uses about:blank on HTTPS too.

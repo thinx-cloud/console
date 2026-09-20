@@ -74,7 +74,8 @@ RUN bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/insta
     npm install -g npm yarn eslint node-gyp @vue/cli-service && \
     npm install . --legacy-peer-deps && \
     yarn && \
-    yarn build'
+    yarn build && \
+    yarn test:csp:dist'
 
 #
 # Deployment Image
