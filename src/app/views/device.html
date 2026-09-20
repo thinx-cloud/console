@@ -332,11 +332,12 @@
 
         <div ng-if="envEditing">
           <textarea class="form-control" rows="10" spellcheck="false" style="font-family: monospace;"
-                    ng-model="envDraft" ng-change="validateEnvironment()"
+                    ng-model="envForm.draft" ng-change="validateEnvironment()"
                     aria-label="Device environment as JSON"></textarea>
           <p class="help-block" ng-if="!envError">A JSON object of scalar values, for example <code>{ "ssid": "my-network", "interval": 300 }</code>.</p>
           <p class="help-block text-danger" ng-if="envError">{{envError}}</p>
-          <button type="button" class="btn btn-sm blue" ng-click="saveEnvironment()" ng-disabled="envError">Save</button>
+          <p class="help-block text-warning" ng-if="envConfirmClear && !envError">This empties the environment — {{envLoadedCount}} variable(s) will be removed. Click Save again to confirm.</p>
+          <button type="button" class="btn btn-sm blue" ng-click="saveEnvironment()" ng-disabled="envError">{{envConfirmClear ? "Confirm clear" : "Save"}}</button>
           <button type="button" class="btn btn-sm default" ng-click="cancelEnvironmentEdit()">Cancel</button>
         </div>
 

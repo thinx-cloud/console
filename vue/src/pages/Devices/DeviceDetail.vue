@@ -93,8 +93,9 @@
               class="text-monospace mb-2"
               aria-label="Device environment as JSON" />
             <p v-if="envError" class="text-danger small" data-cy="env-error">{{ envError }}</p>
+            <p v-else-if="envConfirmClear" class="text-warning small" data-cy="env-confirm-clear">This empties the environment — {{ envLoadedCount }} variable(s) will be removed. Click again to confirm.</p>
             <p v-else class="text-muted small">A JSON object of scalar values, for example <code>{ "ssid": "my-network", "interval": 300 }</code>.</p>
-            <b-button variant="primary" size="sm" class="mr-2" data-cy="env-save" :disabled="!!envError" @click="saveEnvironment">Save</b-button>
+            <b-button variant="primary" size="sm" class="mr-2" data-cy="env-save" :disabled="!!envError" @click="saveEnvironment">{{ envConfirmClear ? 'Confirm clear' : 'Save' }}</b-button>
             <b-button variant="secondary" size="sm" data-cy="env-cancel" @click="cancelEnvironmentEdit">Cancel</b-button>
           </div>
         </b-card>
@@ -191,7 +192,17 @@ export default {
       envDraft: '',
       envLoading: false,
       envLoadError: null,
+      // Clearing every variable is a legitimate edit and an expensive mistake, so
+      // it takes a second click. envLoadedCount is what the device had when the
+      // editor opened; envConfirmClear is armed only while the draft would empty it.
+      envLoadedCount: 0,
+      envConfirmClear: false,
     };
+  },
+  watch: {
+    envDraft() {
+      this.envConfirmClear = false;
+    },
   },
   computed: {
     envError() {
@@ -286,6 +297,8 @@ export default {
       }
 
       this.envDraft = JSON.stringify(stored, null, 2);
+      this.envLoadedCount = Object.keys(stored).length;
+      this.envConfirmClear = false;
       this.envEditing = true;
       this.envLoading = false;
     },
@@ -293,10 +306,16 @@ export default {
       this.envEditing = false;
       this.envDraft = '';
       this.envLoadError = null;
+      this.envConfirmClear = false;
     },
     async saveEnvironment() {
       const parsed = parseEnvironmentJSON(this.envDraft);
       if (!parsed.ok) return;
+
+      if (!Object.keys(parsed.value).length && this.envLoadedCount > 0 && !this.envConfirmClear) {
+        this.envConfirmClear = true;
+        return;
+      }
 
       const result = await this.updateDevice({
         udid: this.device.udid,
@@ -307,6 +326,7 @@ export default {
         this.message = 'Environment saved.';
         this.envEditing = false;
         this.envDraft = '';
+        this.envConfirmClear = false;
         await this.loadDevice();
       } else {
         this.error = result.message || 'Failed to save the environment.';
