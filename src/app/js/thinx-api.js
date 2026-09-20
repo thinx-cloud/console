@@ -88,6 +88,9 @@ var Thinx = {
   submitDevice: function( deviceForm ) {
     return submitDevice( deviceForm );
   },
+  getDeviceEnvs: function( udid ) {
+    return getDeviceEnvs( udid );
+  },
   revokeDevices: function( deviceUdids ) {
     return revokeDevices( deviceUdids );
   },
@@ -160,6 +163,89 @@ var Thinx = {
   }
 };
 
+// Device-environment JSON validator, shared by the device view's editor.
+//
+// The stored environment is a flat map of scalars: the builder writes it to
+// environment.json for the firmware build, and both consoles render it as a
+// key/value table. Nesting, arrays and nulls have no representation there, so
+// they are rejected here rather than written and discovered at build time.
+//
+// Returns { ok: true, value: <object> } or { ok: false, error: <message> }.
+// Empty text means "no environment" and yields {}.
+function parseEnvironmentJSON( text ) {
+
+  var source = ( typeof( text ) === "string" ) ? text.trim() : "";
+
+  if ( source.length === 0 ) {
+    return { ok: true, value: {} };
+  }
+
+  var parsed;
+
+  try {
+    parsed = JSON.parse( source );
+  } catch ( e ) {
+    return { ok: false, error: "Not valid JSON: " + e.message };
+  }
+
+  if ( parsed === null || typeof( parsed ) !== "object" || Array.isArray( parsed ) ) {
+    return { ok: false, error: "Environment must be a JSON object, for example { \"ssid\": \"my-network\" }." };
+  }
+
+  for ( var key in parsed ) {
+    if ( !Object.prototype.hasOwnProperty.call( parsed, key ) ) {
+      continue;
+    }
+
+    if ( key.trim().length === 0 ) {
+      return { ok: false, error: "An environment key cannot be empty." };
+    }
+
+    var value = parsed[ key ];
+    var type = typeof( value );
+
+    if ( value === null || ( type !== "string" && type !== "number" && type !== "boolean" ) ) {
+      return { ok: false, error: "Value of \"" + key + "\" must be a string, number or boolean." };
+    }
+
+    if ( type === "number" && !isFinite( value ) ) {
+      return { ok: false, error: "Value of \"" + key + "\" must be a finite number." };
+    }
+  }
+
+  return { ok: true, value: parsed };
+}
+
+// AngularJS digest guard.
+//
+// The handlers below are reachable two ways: from a jQuery .done() callback
+// (outside Angular, so a digest has to be started) and from a $scope.$on
+// handler (inside a digest, when the event was emitted from Angular code).
+// updateProfile is the clearest case — thinx-api.js:453 routes the "updateProfile"
+// event into it, and the init path at the bottom of init() calls it from
+// Thinx.getProfile().done(). A bare $apply() on the event path throws
+// $rootScope:inprog, which aborts the rest of the handler (for updateProfile,
+// the $emit("initWebsocket") that follows it) and leaves the bindings it was
+// meant to flush — the header avatar among them — unrendered until some other
+// digest happens to run.
+//
+// When a digest is already running, mutations made now are picked up by that
+// digest, which loops until the model stops changing; there is nothing to start.
+function safeApply( scope, fn ) {
+  if ( typeof( scope ) === "undefined" || scope === null ) {
+    return;
+  }
+  var root = scope.$root || scope;
+  var phase = root.$$phase;
+  if ( phase === "$apply" || phase === "$digest" ) {
+    if ( typeof( fn ) === "function" ) {
+      fn();
+    }
+    return;
+  }
+  scope.$apply( fn );
+}
+
 function init( $rootScope, $scope ) {
 
   if ( typeof( $rootScope.xhrFailedListener ) === "undefined" ) {
@@ -200,7 +286,7 @@ function init( $rootScope, $scope ) {
       value.base_platform = value.platform.split( ":" )[ 0 ];
       $rootScope.sources.push( value );
     } );
-    $rootScope.$apply();
+    safeApply( $rootScope );
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -220,7 +306,7 @@ function init( $rootScope, $scope ) {
 
   function updateApikeys( response ) {
     $rootScope.apikeys = response.response;
-    $rootScope.$apply();
+    safeApply( $rootScope );
   }
 
   if ( typeof( $rootScope.updateRsakeysListener ) === "undefined" ) {
@@ -232,7 +318,7 @@ function init( $rootScope, $scope ) {
 
   function updateRsakeys( response ) {
     $rootScope.rsakeys = response.response;
-    $scope.$apply();
+    safeApply( $scope );
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -241,7 +327,7 @@ function init( $rootScope, $scope ) {
         $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
-    $rootScope.$apply();
+    safeApply( $rootScope );
   }
 
   if ( typeof( $rootScope.updateDeploykeysListener ) === "undefined" ) {
@@ -253,7 +339,7 @@ function init( $rootScope, $scope ) {
 
   function updateDeploykeys( data ) {
     $rootScope.deploykeys = data.response;
-    $scope.$apply();
+    safeApply( $scope );
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -262,7 +348,7 @@ function init( $rootScope, $scope ) {
         $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
-    $rootScope.$apply();
+    safeApply( $rootScope );
   }
 
   if ( typeof( $rootScope.updateChannelsListener ) === "undefined" ) {
@@ -278,7 +364,7 @@ function init( $rootScope, $scope ) {
     }
 
     $rootScope.channels = response.response;
-    $scope.$apply();
+    safeApply( $scope );
 
     // save user-spcific goal achievement
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -287,7 +373,7 @@ function init( $rootScope, $scope ) {
         $scope.$emit( "saveProfileChanges", [ "goals" ] );
       }
     }
-    $rootScope.$apply();
+    safeApply( $rootScope );
   }
 
   if ( typeof( $rootScope.updateDevicesListener ) === "undefined" ) {
@@ -315,7 +401,7 @@ function init( $rootScope, $scope ) {
       updateTimeline();
     }
 
-    $scope.$apply();
+    safeApply( $scope );
 
     // save user-spcific goal achievements
     if ( $rootScope.profile.info.goals.length > 0 ) {
@@ -483,13 +569,13 @@ return;
 
     updateRawTransformers( $rootScope.profile.info.transformers );
 
-    $scope.$apply();
+    safeApply( $scope );
 
     $scope.$emit( "initWebsocket", profile.owner );
   }
 
   $scope.$on( "updateRawTransformers", function( event, transformers ) {
-    $scope.$apply( function() {
+    safeApply( $scope, function() {
       updateRawTransformers( transformers );
     } );
   } );
@@ -551,7 +637,7 @@ return;
       if ( typeof( $scope.chartRange ) !== "undefined" ) {
         $scope.chartRange( $scope.chart.range );
       }
-      $scope.$apply();
+      safeApply( $scope );
     }
   }
 
@@ -561,7 +647,7 @@ return;
 
   function updateLatestFirmwareEnvelope( data ) {
     $rootScope.meta.latestFirmwareEnvelope = data;
-    $rootScope.$apply();
+    safeApply( $rootScope );
   }
 
 
@@ -629,7 +715,7 @@ return;
       for ( let index in $rootScope.meta.deviceBuilds ) {
         $rootScope.meta.deviceBuilds[ index ].sort( sortByLastUpdate );
       }
-      $scope.$apply();
+      safeApply( $scope );
     }
   }
 
@@ -699,7 +785,8 @@ function submitDevice( deviceForm ) {
       transformers: deviceForm.transformers,
       timezone_abbr: deviceForm.timezone_abbr,
       timezone_utc: deviceForm.timezone_utc,
-      timezone_offset: deviceForm.timezone_offset
+      timezone_offset: deviceForm.timezone_offset,
+      environment: deviceForm.environment
     }
   };
   return $.ajax( {
@@ -707,6 +794,24 @@ function submitDevice( deviceForm ) {
     type: "POST",
     data: JSON.stringify( data ),
     dataType: "json",
+    contentType: "application/json"
+  } );
+}
+
+// The devices list masks `ssid` and `pass` (lib/thinx/devices.js maskedEnvironment),
+// so the editor seeds itself from here instead — POST /device/envs returns the
+// stored environment as-is. Editing the masked copy would write "*****" over the
+// real values on the next save.
+//
+// Answered as text on purpose: a device with no environment yields an empty body
+// (Util.respond stringifies undefined), which a json dataType turns into a parse
+// failure. The caller parses what it gets.
+function getDeviceEnvs( udid ) {
+  return $.ajax( {
+    url: urlBase + "/device/envs",
+    type: "POST",
+    data: JSON.stringify( { udid: udid } ),
+    dataType: "text",
     contentType: "application/json"
   } );
 }

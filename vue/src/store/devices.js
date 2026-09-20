@@ -60,6 +60,15 @@ export default {
         const result = await this.$api.$post('/transfer/request', JSON.stringify({ udids, to, mig_sources, mig_apikeys }));
         return result;
       },
+      // The devices list masks `ssid` and `pass` (lib/thinx/devices.js
+      // maskedEnvironment), so anything that edits the environment has to read it
+      // from here first. POST /device -> getDeviceDetail returns the stored
+      // document as-is; editing the masked copy would write "*****" over the real
+      // values on the next save.
+      async fetchDeviceDetail(_, { udid }) {
+        const result = await this.$api.$post('/device', JSON.stringify({ udid }));
+        return result;
+      },
       async updateDevice(_, { udid, changes }) {
         // PUT /api/v2/device -> editDevice. POST is getDeviceDetail (read).
         // editDevice reads req.body.changes and requires changes.udid.

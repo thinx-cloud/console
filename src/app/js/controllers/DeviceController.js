@@ -62,6 +62,22 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
   $scope.deviceForm.timezone_utc = "Etc/GMT";
   $scope.deviceForm.environment = null;
 
+  // Device-environment editor. `envForm.draft` is the textarea's raw text; it is
+  // only written back to deviceForm.environment once parseEnvironmentJSON accepts
+  // it. The draft lives on an object because the textarea sits inside an ng-if,
+  // which creates a child scope: binding a bare identifier there would write to
+  // the child and leave this controller reading its own untouched primitive — the
+  // field would look right and {} would be saved.
+  $scope.envEditing = false;
+  $scope.envForm = { draft: "" };
+  $scope.envError = null;
+  $scope.envLoading = false;
+  // Clearing every variable is a legitimate edit and an expensive mistake, so it
+  // takes a second click. envLoadedCount is what the device had when the editor
+  // opened; envConfirmClear is armed only while the draft would empty it.
+  $scope.envLoadedCount = 0;
+  $scope.envConfirmClear = false;
+
   $scope.buildrunning = false;
 
   $scope.showIcons = false;
@@ -184,6 +200,93 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
 
     // uúpdate device timezone offset and abbr
     $scope.submitDeviceFormChange( "timezone_offset" );
+  };
+
+  // The devices list masks ssid/pass, so entering edit mode fetches the stored
+  // environment first. Editing the masked copy would write "*****" over the real
+  // values on save.
+  $scope.editEnvironment = function() {
+
+    $scope.envError = null;
+    $scope.envLoading = true;
+
+    Thinx.getDeviceEnvs( $scope.deviceForm.udid )
+      .done( function( response ) {
+        safeApply( $scope, function() {
+
+          $scope.envLoading = false;
+
+          // An empty body means the device has no environment yet — that is the one
+          // case where an empty editor is correct. Anything else that is not a JSON
+          // object (the API answers errors as a bare string) must not open the
+          // editor: saving that would wipe the stored environment.
+          var stored = {};
+          var body = ( typeof( response ) === "string" ) ? response.trim() : "";
+
+          if ( body.length > 0 ) {
+            var decoded = null;
+            try {
+              decoded = JSON.parse( body );
+            } catch ( e ) {
+              $scope.envError = "Could not read the stored environment: " + e.message;
+              return;
+            }
+            if ( decoded === null || typeof( decoded ) !== "object" || Array.isArray( decoded ) ) {
+              $scope.envError = "Could not read the stored environment.";
+              return;
+            }
+            stored = decoded;
+          }
+
+          $scope.deviceForm.environment = stored;
+          $scope.envForm.draft = JSON.stringify( stored, null, 2 );
+          $scope.envError = null;
+          $scope.envLoadedCount = Object.keys( stored ).length;
+          $scope.envConfirmClear = false;
+          $scope.envEditing = true;
+        } );
+      } )
+      .fail( function( error ) {
+        safeApply( $scope, function() {
+          $scope.envLoading = false;
+          $scope.envError = "Could not load the stored environment.";
+        } );
+        $scope.$emit( "xhrFailed", error );
+      } );
+  };
+
+  $scope.validateEnvironment = function() {
+    var result = parseEnvironmentJSON( $scope.envForm.draft );
+    $scope.envError = result.ok ? null : result.error;
+    $scope.envConfirmClear = false; // editing again withdraws the confirmation
+    return result;
+  };
+
+  $scope.cancelEnvironmentEdit = function() {
+    $scope.envEditing = false;
+    $scope.envForm.draft = "";
+    $scope.envError = null;
+    $scope.envConfirmClear = false;
+  };
+
+  $scope.saveEnvironment = function() {
+
+    var result = $scope.validateEnvironment();
+
+    if ( !result.ok ) {
+      return;
+    }
+
+    if ( Object.keys( result.value ).length === 0 && $scope.envLoadedCount > 0 && !$scope.envConfirmClear ) {
+      $scope.envConfirmClear = true;
+      return;
+    }
+
+    $scope.deviceForm.environment = result.value;
+    $scope.submitDeviceFormChange( "environment" );
+    $scope.envEditing = false;
+    $scope.envForm.draft = "";
+    $scope.envConfirmClear = false;
   };
 
   $scope.submitDeviceFormChange = function( prop ) {

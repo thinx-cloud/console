@@ -35,6 +35,20 @@ function scan(dir) {
 fs.readdirSync(htmlRoot).filter(name => name.endsWith('.html')).forEach(name => scanFile(path.join(htmlRoot, name)));
 scan(path.join(htmlRoot, 'app'));
 scan(path.join(htmlRoot, 'public'));
+// ui-select creates runtime HTML from its cached templates; static pages alone
+// cannot catch native handlers and JavaScript URLs embedded in those templates.
+for (const name of ['select.js', 'select.min.js']) {
+  const vendor = path.join(htmlRoot, 'assets/thinx/js/plugins/ui-select', name);
+  const source = fs.readFileSync(vendor, 'utf8');
+  if (/\son[a-z]+\s*=\s*\\?["']/i.test(source)) errors.push(name + ': native inline event handler in vendor template');
+  if (/\b(?:href|src|action)\s*=\s*\\?["']\s*javascript:/i.test(source)) errors.push(name + ': javascript URL in vendor template');
+}
+// BlockUI's legacy iframe overlay is still an executable URL on HTTPS unless
+// its old IE workaround is patched, even though Chromium normally skips it.
+for (const name of ['jquery.blockui.js', 'jquery.blockui.min.js']) {
+  const source = fs.readFileSync(path.join(htmlRoot, 'assets/global/plugins', name), 'utf8');
+  if (/["']javascript\s*:/i.test(source)) errors.push(name + ': javascript URL in iframe overlay');
+}
 const conf = fs.readFileSync(path.join(root, 'default.conf'), 'utf8');
 const policy = conf.match(/add_header\s+"Content-Security-Policy"\s+"([^"]+)"/);
 const directives = Object.fromEntries((policy ? policy[1] : '').split(';').map(s => s.trim().split(/\s+/)).map(([key, ...values]) => [key, values]));
