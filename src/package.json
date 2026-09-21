@@ -17,6 +17,7 @@
     "cy": "start-test 'npm run start' 8080 'npm run cy:run'",
     "cy:open": "./node_modules/cypress/bin/cypress open",
     "test:csp": "node test/csp/source-check.cjs && node test/csp/public-scripts.cjs",
+    "test:digest": "node test/digest-guard.cjs",
     "test:csp:built": "node test/csp/source-check.cjs html",
     "test:csp:browser": "node test/csp/browser.cjs && node test/csp/app-browser.cjs"
   },

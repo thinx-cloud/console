@@ -32,17 +32,54 @@
 - [x] Back up and update only CSP in production mounted nginx configuration, validate and reload nginx on current task node.
 - [x] Verify public live headers and browser behavior; document commit IDs, evidence, rollback and any authenticated-test limits.
 
-## Deployment verification — 2026-09-19
+## Deploy record — 2026-09-19
 
-- Console implementation: `33d20bca7573f6cf0bea6a0c8b3d95eae8cd5621`; parent staging: `529be527`.
-- Application tests and classic image build/push passed: https://circleci.com/gh/suculent/thinx-device-api/14869.
-- Separate Snyk container monitor https://circleci.com/gh/suculent/thinx-device-api/14870 failed at Docker registry login (timeout), before scanning. No vulnerability verdict was produced by that job.
-- Swarm autoredeploy reported repeated HTTP 408 timeouts. Deployed the CI-confirmed image directly: `registry.thinx.cloud:5000/thinx/console:swarm@sha256:27b1ca7204cb600f01491f1f80b5d4550069afe809e11b75eb7c400da9d4582a`.
-- Verified startup assets were HTTP 200 before changing CSP. Tested candidate header against live login, including real Crisp loader; zero unexpected errors or CSP violations.
-- Backed up mounted configuration to `/mnt/gluster/deployment/swarm/console/default.conf.csp-backup-20260919T201604Z`. Updated only CSP, preserving file inode; verified container saw new contents, ran nginx -t and reloaded nginx.
-- Verified actual live response: explicit script-src without unsafe-inline, script-src-attr none, inline style allowance kept separately. Fresh live-browser login registration/reset navigation and injected-script/event-handler blocking all passed.
-- Local verification: source/generated HTML guards, both Gulp build modes, targeted ESLint, seven browser behavior/enforcement checks and sixteen complete Angular route visits using isolated read-only API fixtures. Authenticated production write flows were not exercised.
-- Aikido login completed. Domain https://app.aikido.dev/domain/71256 still shows its scan from 19 hours before verification. Manual rescan opens a paid-plan upgrade prompt; no subscription change or manual issue dismissal performed.
-- Main remains unchanged: automatic approval review rejected direct default-branch writes. Draft review requests: https://github.com/thinx-cloud/console/pull/30 and https://github.com/suculent/thinx-device-api/pull/555. Merge these before another main-based deployment, which would otherwise restore inline-dependent assets under the stricter mounted policy.
+**Commits**
 
-Rollback: restore the backup contents into the existing mounted file (do not replace its inode), run nginx -t and nginx -s reload on the current thinx_console task node. If reverting the console image, restore the permissive policy first.
+| Repo | Commit | Branch |
+|---|---|---|
+| thinx-cloud/console | `33d20bca` — fix(console): remove inline script CSP dependency | thinx-staging |
+| suculent/thinx-device-api | `529be527` — fix(console): deploy CSP-compatible external scripts (submodule pointer) | thinx-staging |
+
+**Build and rollout.** CircleCI pipeline `52302a32`, workflow `main`:
+`console-classic-registry` succeeded 20:11:36Z and published
+`registry.thinx.cloud:5000/thinx/console:swarm`. Swarm rolled `thinx_console`
+at 20:14:38Z onto node `core`, running digest `sha256:27b1ca7204cb…`.
+`snyk-monitor-console-classic` failed on its first attempt — `docker login
+registry.thinx.cloud:5000` hit `context deadline exceeded` while the registry
+was still absorbing the image push — and passed unchanged on rerun (job
+`0cf3f6fd`), so the earlier missing-context fix is confirmed good.
+
+**nginx.** `/mnt/gluster/deployment/swarm/console/default.conf` backed up to
+`default.conf.csp-backup-20260919T201604Z` and updated in place at 20:16:04Z.
+`diff` against the backup is the `Content-Security-Policy` header and nothing
+else: `default-src` loses `'unsafe-inline'` and `'unsafe-eval'`, and explicit
+`script-src` (keeping `'unsafe-eval'`, deferred), `script-src-attr 'none'` and
+`style-src` (keeping `'unsafe-inline'`) are added. In the running container
+(`af4cc8fbfe9f`) `nginx -t` is clean and the mounted file and
+`/etc/nginx/conf.d/default.conf` share one md5 (`1c097d00…`), i.e. the bind
+mount is live.
+
+**Live verification** (https://rtm.thinx.cloud):
+- Response header carries the new policy — `script-src … 'unsafe-eval'` with no
+  `'unsafe-inline'`, plus `script-src-attr 'none'`.
+- All five migrated assets serve 200: `csp-analytics.js`, `csp-crisp.js`,
+  `csp-login.js`, `csp-error.js`, `csp-transfer-result.js`.
+- Static scan of the served HTML — `/`, `auth.html`, `error.html`,
+  `password.html`, `transfer_result.html`, `public/{cookies,privacy,terms}.html`,
+  all 14 `app/views/**` templates and the four `app/tpl` partials — finds zero
+  executable inline script blocks, zero native `on*` attributes and zero live
+  `javascript:` hrefs.
+
+**Limits.** Authenticated in-browser interaction was not re-checked against the
+deployed instance from this session (no browser automation and no console
+credentials here). That surface is covered pre-deploy by `src/test/csp/browser.cjs`
+and `app-browser.cjs`, which run the real `default.conf` policy over the built
+HTML. `'unsafe-eval'` remains in `script-src` — AngularJS 1.x needs it; removing
+it is out of scope for this plan.
+
+**Rollback.** Restore the nginx header with
+`cp default.conf.csp-backup-20260919T201604Z default.conf` (same directory,
+preserve the inode) and `docker service update --force thinx_console` on the
+swarm manager. To roll the image back as well, pin the previous digest
+`sha256:1906bd5fa585…`.
