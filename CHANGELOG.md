@@ -16,6 +16,7 @@ Changes are grouped by release date and conventional-commit type.
 - **OBS-ROLLBAR-01**: Legacy console reported every item as `environment: development`; both consoles now report the deployment environment and the build hash as `code_version`.
 - **OBS-ROLLBAR-01**: Both consoles now set `captureUnhandledRejections`, and the Vue console forwards component render/watcher errors through `Vue.config.errorHandler` (Vue swallows those before they reach `window.onerror`).
 - **OBS-ROLLBAR-01**: Legacy console no longer initialises Rollbar when `ROLLBAR_ACCESS_TOKEN` is unset, instead of posting items with a literal `undefined` token.
+- **OBS-ROLLBAR-02**: The token guard required exactly 32 hex characters, which disabled Rollbar outright on the classic console (its token is 96 characters). Accept any hex token of 32+ characters and warn on the console when one was not injected.
 
 ### Changed
 - **OBS-ROLLBAR-01**: Vendored `ng-rollbar` now embeds the rollbar.js v3.1.0 snippet, replacing the v1.9.1 one that loaded the retired `d37gvrvc0wt4s1.cloudfront.net` CDN (301 to cdnjs).

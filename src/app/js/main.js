@@ -25,9 +25,15 @@ RTM.config( [ "RollbarProvider", function( RollbarProvider ) {
   var rollbarEnvironment = "<ENV::environment>";
   var rollbarCodeVersion = "<ENV::versionCode>";
 
-  // Without a real post_client_item token Rollbar would POST rejected payloads
-  // on every error; leave the module loaded but inert instead.
-  if ( !/^[0-9a-f]{32}$/i.test( rollbarAccessToken ) ) {
+  // Guard against a token that was never injected: gulp-inject-envs writes the
+  // literal string "undefined" when ROLLBAR_ACCESS_TOKEN is missing, and the
+  // injection placeholder survives verbatim when the source is served unbuilt.
+  // Without this Rollbar POSTs payloads it will reject on every error.
+  // Do NOT pin the length -- post_client_item tokens are not fixed-width, and
+  // the two THiNX projects are configured with 32 and 96 hex characters.
+  if ( !/^[0-9a-f]{32,}$/i.test( rollbarAccessToken ) ) {
+    // Loud on purpose: a silent deinit here hides Rollbar being off entirely.
+    console.warn( "[rollbar] disabled, ROLLBAR_ACCESS_TOKEN was not injected at build time" );
     RollbarProvider.deinit();
     return;
   }

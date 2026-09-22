@@ -28,7 +28,13 @@ Vue.use(CrispChat, {
   hideOnLoad: true
 });
 const rollbarAccessToken = process.env.VUE_APP_ROLLBAR_ACCESS_TOKEN;
-if (/^[0-9a-f]{32}$/i.test(rollbarAccessToken || '')) {
+// Do NOT pin the length -- post_client_item tokens are not fixed-width, and the
+// two THiNX projects are configured with 32 and 96 hex characters. This only
+// has to reject a token that was never injected at build time.
+if (!/^[0-9a-f]{32,}$/i.test(rollbarAccessToken || '')) {
+  // Loud on purpose: a silent skip here hides Rollbar being off entirely.
+  console.warn('[rollbar] disabled, VUE_APP_ROLLBAR_ACCESS_TOKEN was not injected at build time');
+} else {
   Vue.use(Rollbar, {
     accessToken: rollbarAccessToken,
     captureUncaught: true,
