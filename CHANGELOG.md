@@ -23,6 +23,7 @@ Changes are grouped by release date and conventional-commit type.
 ### Security
 - **SEC-CSP-01**: Legacy and Vue nginx CSP templates now use pinned THiNX, Crisp, Google, and Rollbar host allowlists instead of broad `https:`/`wss:` scheme wildcards.
 - **OBS-ROLLBAR-01**: Legacy CSP swaps `d37gvrvc0wt4s1.cloudfront.net` and `cdnjs.cloudflare.com` for `cdn.rollbar.com`; both consoles scrub API keys, tokens and authorization fields from Rollbar payloads.
+- **SEC-IMG-01**: Both console runtime images remove `curl` (and with it `libcurl`, `c-ares`, `libidn2`, `libunistring`); only the discarded builder stages ever used it.
 
 ---
 
