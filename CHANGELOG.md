@@ -9,6 +9,7 @@ Changes are grouped by release date and conventional-commit type.
 
 ### Added
 - **SEC-CSRF-02**: Classic login, registration, forgot-password, and reset forms now include hidden `_csrf` fields and load shared CSRF priming before auth requests.
+- **OBS-ROLLBAR-03**: Classic console pre-login pages (login, OAuth return, password reset, error, transfer result) now load Rollbar; previously only the AngularJS app had it, so auth-flow errors went unreported.
 - **SEC-CSRF-02**: Vue Login, PasswordReset, and OAuthReturn flows now prime the CSRF cookie and send `X-XSRF-TOKEN` through shared API request headers.
 
 ### Fixed
