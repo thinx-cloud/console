@@ -20,12 +20,45 @@ var RTM = angular.module( "RTM", [
 ] );
 
 RTM.config( [ "RollbarProvider", function( RollbarProvider ) {
+  // deepcode ignore HardcodedNonCryptoSecret: client-side post_client_item token, injected at build time
+  var rollbarAccessToken = "<ENV::rollbarAccessToken>";
+  var rollbarEnvironment = "<ENV::environment>";
+  var rollbarCodeVersion = "<ENV::versionCode>";
+
+  // Without a real post_client_item token Rollbar would POST rejected payloads
+  // on every error; leave the module loaded but inert instead.
+  if ( !/^[0-9a-f]{32}$/i.test( rollbarAccessToken ) ) {
+    RollbarProvider.deinit();
+    return;
+  }
+
   RollbarProvider.init( {
-    // deepcode ignore HardcodedNonCryptoSecret: this is a placeholder
-    accessToken: "<ENV::rollbarAccessToken>",
+    accessToken: rollbarAccessToken,
     captureUncaught: true,
+    captureUnhandledRejections: true,
+    // Appended to Rollbar's own defaults (no overwriteScrubFields here).
+    scrubFields: [
+      "api_key",
+      "apikey",
+      "authorization",
+      "jwt",
+      "owner_api_key",
+      "refresh_token",
+      "session_key",
+      "token"
+    ],
+    // rollbar.js v2+ records DOM/network telemetry by default; keep typed
+    // values out of it.
+    scrubTelemetryInputs: true,
     payload: {
-      environment: "development"
+      environment: /^[a-z]+$/.test( rollbarEnvironment ) ? rollbarEnvironment : "development",
+      client: {
+        javascript: {
+          code_version: /^[0-9a-f]{4,40}$/i.test( rollbarCodeVersion ) ? rollbarCodeVersion : undefined,
+          // gulp writes sourcemaps but they are not uploaded to Rollbar.
+          source_map_enabled: false
+        }
+      }
     }
   } );
 } ] );

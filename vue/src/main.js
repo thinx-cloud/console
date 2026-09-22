@@ -32,10 +32,42 @@ if (/^[0-9a-f]{32}$/i.test(rollbarAccessToken || '')) {
   Vue.use(Rollbar, {
     accessToken: rollbarAccessToken,
     captureUncaught: true,
+    captureUnhandledRejections: true,
+    // Appended to Rollbar's own defaults (no overwriteScrubFields here).
+    scrubFields: [
+      'api_key',
+      'apikey',
+      'authorization',
+      'jwt',
+      'owner_api_key',
+      'refresh_token',
+      'session_key',
+      'token'
+    ],
+    // rollbar.js records DOM/network telemetry by default; keep typed values
+    // out of it.
+    scrubTelemetryInputs: true,
     payload: {
-      environment: process.env.NODE_ENV,
+      // NODE_ENV describes the webpack mode, not the deployment, and the
+      // Dockerfile pins it to 'development' for the whole build stage; the
+      // deployment name comes from the ENVIRONMENT build arg (vue.config.js).
+      environment: process.env.VUE_APP_ENVIRONMENT || process.env.NODE_ENV,
+      client: {
+        javascript: {
+          code_version: process.env.VUE_APP_BUILD_HASH,
+          // vue.config.js sets productionSourceMap: false, nothing is uploaded.
+          source_map_enabled: false
+        }
+      }
     }
   });
+
+  // vue-rollbar only exposes the client; component render/watcher errors are
+  // swallowed by Vue's own handler and never reach window.onerror.
+  Vue.config.errorHandler = (error, vm, info) => {
+    Vue.rollbar.error(error, { vueInfo: info, component: vm && vm.$options && vm.$options.name });
+    if (process.env.NODE_ENV !== 'production') console.error(error);
+  };
 }
 Vue.use(Moment);
 Vue.use(BootstrapVue);

@@ -13,9 +13,16 @@ Changes are grouped by release date and conventional-commit type.
 
 ### Fixed
 - **TRAN**: Replace `Math.random()`-based utid with `crypto.randomUUID()` for cryptographically secure transaction IDs
+- **OBS-ROLLBAR-01**: Legacy console reported every item as `environment: development`; both consoles now report the deployment environment and the build hash as `code_version`.
+- **OBS-ROLLBAR-01**: Both consoles now set `captureUnhandledRejections`, and the Vue console forwards component render/watcher errors through `Vue.config.errorHandler` (Vue swallows those before they reach `window.onerror`).
+- **OBS-ROLLBAR-01**: Legacy console no longer initialises Rollbar when `ROLLBAR_ACCESS_TOKEN` is unset, instead of posting items with a literal `undefined` token.
+
+### Changed
+- **OBS-ROLLBAR-01**: Vendored `ng-rollbar` now embeds the rollbar.js v3.1.0 snippet, replacing the v1.9.1 one that loaded the retired `d37gvrvc0wt4s1.cloudfront.net` CDN (301 to cdnjs).
 
 ### Security
 - **SEC-CSP-01**: Legacy and Vue nginx CSP templates now use pinned THiNX, Crisp, Google, and Rollbar host allowlists instead of broad `https:`/`wss:` scheme wildcards.
+- **OBS-ROLLBAR-01**: Legacy CSP swaps `d37gvrvc0wt4s1.cloudfront.net` and `cdnjs.cloudflare.com` for `cdn.rollbar.com`; both consoles scrub API keys, tokens and authorization fields from Rollbar payloads.
 
 ---
 

@@ -33,7 +33,7 @@ const server = http.createServer((req, res) => {
   try {
     browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined });
     const context = await browser.newContext({ serviceWorkers: 'block' });
-    const hosted = new Set(['https://www.google-analytics.com/analytics.js', 'https://d37gvrvc0wt4s1.cloudfront.net/js/v1.9/rollbar.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/rollbar.js/1.9.0/rollbar.min.js']);
+    const hosted = new Set(['https://www.google-analytics.com/analytics.js', 'https://cdn.rollbar.com/rollbarjs/refs/tags/v3.1.0/rollbar.min.js']);
     await context.route('**/*', route => {
       const req = route.request();
       if (req.url().startsWith(base + '/') || (req.method() === 'GET' && req.resourceType() === 'script' && hosted.has(req.url()))) return route.continue();
@@ -50,8 +50,7 @@ const server = http.createServer((req, res) => {
     await page.goto(base);
     await page.waitForFunction(() => window.ga && ga.loaded && window._rollbarInitialized === true, null, { timeout: 20000 });
     for (const url of hosted) {
-      const expectedStatus = url.includes('cloudfront.net') ? 301 : 200;
-      assert(loaded.some(response => response.url === url && response.status === expectedStatus), JSON.stringify(loaded));
+      assert(loaded.some(response => response.url === url && response.status === 200), JSON.stringify(loaded));
     }
     assert.deepEqual(errors, []);
     assert.deepEqual(await page.evaluate(() => violations), []);
