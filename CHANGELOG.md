@@ -9,13 +9,23 @@ Changes are grouped by release date and conventional-commit type.
 
 ### Added
 - **SEC-CSRF-02**: Classic login, registration, forgot-password, and reset forms now include hidden `_csrf` fields and load shared CSRF priming before auth requests.
+- **OBS-ROLLBAR-03**: Classic console pre-login pages (login, OAuth return, password reset, error, transfer result) now load Rollbar; previously only the AngularJS app had it, so auth-flow errors went unreported.
 - **SEC-CSRF-02**: Vue Login, PasswordReset, and OAuthReturn flows now prime the CSRF cookie and send `X-XSRF-TOKEN` through shared API request headers.
 
 ### Fixed
 - **TRAN**: Replace `Math.random()`-based utid with `crypto.randomUUID()` for cryptographically secure transaction IDs
+- **OBS-ROLLBAR-01**: Legacy console reported every item as `environment: development`; both consoles now report the deployment environment and the build hash as `code_version`.
+- **OBS-ROLLBAR-01**: Both consoles now set `captureUnhandledRejections`, and the Vue console forwards component render/watcher errors through `Vue.config.errorHandler` (Vue swallows those before they reach `window.onerror`).
+- **OBS-ROLLBAR-01**: Legacy console no longer initialises Rollbar when `ROLLBAR_ACCESS_TOKEN` is unset, instead of posting items with a literal `undefined` token.
+- **OBS-ROLLBAR-02**: The token guard required exactly 32 hex characters, which disabled Rollbar outright on the classic console (its token is 96 characters). Accept any hex token of 32+ characters and warn on the console when one was not injected.
+
+### Changed
+- **OBS-ROLLBAR-01**: Vendored `ng-rollbar` now embeds the rollbar.js v3.1.0 snippet, replacing the v1.9.1 one that loaded the retired `d37gvrvc0wt4s1.cloudfront.net` CDN (301 to cdnjs).
 
 ### Security
 - **SEC-CSP-01**: Legacy and Vue nginx CSP templates now use pinned THiNX, Crisp, Google, and Rollbar host allowlists instead of broad `https:`/`wss:` scheme wildcards.
+- **OBS-ROLLBAR-01**: Legacy CSP swaps `d37gvrvc0wt4s1.cloudfront.net` and `cdnjs.cloudflare.com` for `cdn.rollbar.com`; both consoles scrub API keys, tokens and authorization fields from Rollbar payloads.
+- **SEC-IMG-01**: Both console runtime images remove `curl` (and with it `libcurl`, `c-ares`, `libidn2`, `libunistring`); only the discarded builder stages ever used it.
 
 ---
 

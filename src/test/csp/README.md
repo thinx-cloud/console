@@ -39,8 +39,8 @@ built validators/scripts. All API calls use fixtures, including CSRF verificatio
 It does not create accounts, reset real passwords, or authenticate with providers.
 
 `npm run test:csp:external` is an opt-in network test with the same Playwright
-setup. It loads actual hosted Analytics and Rollbar (including its legacy CDN
-redirect to cdnjs); telemetry is intercepted and credentials are dummy values.
+setup. It loads actual hosted Analytics and Rollbar (rollbar.js v3.1.0 from
+cdn.rollbar.com); telemetry is intercepted and credentials are dummy values.
 The offline browser suite does not depend on availability of those CDNs.
 
 On 2026-09-20, a fresh headed browser also verified the live classic Crisp widget:

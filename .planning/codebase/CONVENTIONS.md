@@ -169,7 +169,7 @@ if (result.success) {
 - `pushIfNeeded(location)` guards against duplicate navigation errors (`NavigationDuplicated` suppressed)
 
 **Rollbar:**
-- Optional error tracking via `vue-rollbar`; only activated when `VUE_APP_ROLLBAR_ACCESS_TOKEN` matches `/^[0-9a-f]{32}$/`
+- Optional error tracking via `vue-rollbar`; only activated when `VUE_APP_ROLLBAR_ACCESS_TOKEN` matches `/^[0-9a-f]{32,}$/`
 
 ## Comment and Documentation Style
 

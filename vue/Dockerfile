@@ -95,5 +95,13 @@ COPY default.conf /etc/nginx/conf.d/default.conf
 RUN nginx_host="${NGINX_HOST:-localhost}" \
     && sed -i "s|__NGINX_HOST__|${nginx_host}|g" /etc/nginx/conf.d/default.conf
 
+# The runtime image only serves static files: nothing here, in the entrypoint
+# scripts or in the swarm service definition calls curl, and the builder stage
+# that does use it (nvm) is discarded. Dropping it also purges libcurl, c-ares,
+# libidn2 and libunistring -- nginx links against none of them -- which removes
+# curl's TLS/DNS stack from the CVE surface of the shipped image. Busybox wget
+# remains, so add a HEALTHCHECK with that if one is ever needed.
+RUN apk del curl
+
 # Expose port (HOST:CONTAINER; nginx, may be configured from outside with docker-compose)
 EXPOSE 7440:80

@@ -82,7 +82,7 @@ Both OAuth flows are server-side redirects — the frontend merely links to the 
 - Legacy app: `tandibar/ng-rollbar` (CDN-loaded AngularJS module, `src/app/js/main.js`)
 
 **Configuration:**
-- Vue: conditionally initialized only when `VUE_APP_ROLLBAR_ACCESS_TOKEN` matches `/^[0-9a-f]{32}$/i` — silently skipped if not set
+- Vue: conditionally initialized only when `VUE_APP_ROLLBAR_ACCESS_TOKEN` matches `/^[0-9a-f]{32,}$/i` — skipped with a console warning if not injected
 - Legacy: access token injected at build time via `<ENV::rollbarAccessToken>`
 
 **Captures:** Uncaught exceptions; reports environment (`production` / `development`)
