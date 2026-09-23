@@ -188,6 +188,7 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
+import { avatarDataUri } from '@/utils/avatar';
 
 export default {
   name: "Profile",
@@ -228,10 +229,8 @@ export default {
   },
   computed: {
     avatarSrc() {
-      if (this.profile && this.profile.avatar && this.profile.avatar.length > 0) {
-        return 'data:image/png;base64,' + this.profile.avatar;
-      }
-      return require('@/assets/thinx/default_avatar_sm.png');
+      return avatarDataUri(this.profile && this.profile.avatar) ||
+        require('@/assets/thinx/default_avatar_sm.png');
     },
   },
   created() {

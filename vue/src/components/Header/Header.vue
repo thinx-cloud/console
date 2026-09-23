@@ -83,6 +83,7 @@
 <script>
 import { mapState, mapActions, mapGetters } from "vuex";
 import Notifications from "@/components/Notifications/Notifications";
+import { avatarDataUri } from "@/utils/avatar";
 
 export default {
   name: "Header",
@@ -107,14 +108,10 @@ export default {
     },
     avatarFallback() {
       const fallbackPath = "thinx/default_avatar_sm.png";
-      if (
-        this.profile &&
-        typeof this.profile.avatar !== "undefined" &&
-        this.profile.avatar.length > 0
-      ) {
-        return this.profile.avatar;
-      }
-      return require(`@/assets/${fallbackPath}`);
+      return (
+        avatarDataUri(this.profile && this.profile.avatar) ||
+        require(`@/assets/${fallbackPath}`)
+      );
     },
   },
   methods: {
