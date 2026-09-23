@@ -1,14 +1,15 @@
 import VueJwtDecode from "vue-jwt-decode";
-import {
-  clearPersistedAuthTokens,
-  getPersistedAuthTokens,
-  persistAuthTokens,
-} from "./auth-storage";
+import { clearLegacyAuthStorage } from "./auth-storage";
+import { getCookie } from "../utils/cookies";
 
 // Module-private setTimeout id for the session-expiry watcher (AUTH-03).
 // Kept outside Vuex state so we can clear/replace it across action dispatches
 // without triggering reactivity overhead or committing a mutation.
 let expiryTimerId = null;
+
+// In-flight cookie -> token exchange, shared so the router guard, App.vue and
+// Login.vue hitting it at once on a cold reload issue a single request.
+let hydratePromise = null;
 
 function isJwtValid(token) {
   if (!token) return false;
@@ -44,12 +45,10 @@ export default {
         },
       },
     actions: {
-      removeAccessToken({ commit, state }) {
-        persistAuthTokens({ accessToken: null, refreshToken: state.refreshToken });
+      removeAccessToken({ commit }) {
         commit('setAccessToken', null);
       },
-      removeRefreshToken({ commit, state }) {
-        persistAuthTokens({ accessToken: state.accessToken, refreshToken: null });
+      removeRefreshToken({ commit }) {
         commit('setRefreshToken', null);
       },
       isTokenValid(_, token) {
@@ -60,32 +59,58 @@ export default {
           dispatch('clearSession');
           return false;
         }
-        persistAuthTokens({ accessToken, refreshToken });
+        // Memory only — see auth-storage.js. Scrub anything an older build left.
+        clearLegacyAuthStorage();
         commit('setAccessToken', accessToken);
         commit('setRefreshToken', refreshToken);
         dispatch('scheduleExpiry', accessToken);
         return true;
       },
-      hydrateSession({ commit, dispatch }) {
-        const { accessToken, refreshToken } = getPersistedAuthTokens();
-        if (!accessToken || !isJwtValid(accessToken) || (refreshToken && !isJwtValid(refreshToken))) {
-          dispatch('clearSession');
-          return false;
+      // Restore the in-memory access token after a reload by exchanging the
+      // httpOnly session cookie for a fresh one. Resolves true when authenticated.
+      hydrateSession({ state, dispatch }) {
+        clearLegacyAuthStorage();
+        if (isJwtValid(state.accessToken)) return Promise.resolve(true);
+        if (!hydratePromise) {
+          hydratePromise = (async () => {
+            try {
+              if (!getCookie("XSRF-TOKEN")) await this.$api.$get('/csrf-token');
+              const result = await this.$api.$post('/session/token');
+              const accessToken = result && result.success ? result.response : null;
+              if (!isJwtValid(accessToken)) return false;
+              return await dispatch('persistSession', { accessToken });
+            } catch (_error) {
+              return false;
+            } finally {
+              hydratePromise = null;
+            }
+          })();
         }
-        commit('setAccessToken', accessToken);
-        commit('setRefreshToken', refreshToken);
-        dispatch('scheduleExpiry', accessToken);
-        return true;
+        return hydratePromise;
       },
       clearSession({ commit }) {
         if (expiryTimerId) {
           clearTimeout(expiryTimerId);
           expiryTimerId = null;
         }
-        clearPersistedAuthTokens();
+        clearLegacyAuthStorage();
         commit('setAccessToken', null);
         commit('setRefreshToken', null);
         commit('setUser', null);
+      },
+      // Explicit sign-out: also destroy the server session cookie, otherwise the
+      // next hydrateSession would silently sign the user back in.
+      async logout({ dispatch }) {
+        try {
+          await fetch(this.$api.composePath('/logout'), {
+            method: 'GET',
+            credentials: 'include',
+            redirect: 'manual',
+          });
+        } catch (_error) {
+          // Server unreachable — still drop the local session.
+        }
+        await dispatch('clearSession');
       },
       scheduleExpiry({ dispatch }, token) {
         if (expiryTimerId) {
@@ -97,15 +122,17 @@ export default {
           const decoded = VueJwtDecode.decode(token);
           if (!decoded || typeof decoded.exp !== 'number') return;
           const msUntilExpiry = decoded.exp * 1000 - Date.now();
-          if (msUntilExpiry <= 0) {
+          const expire = async () => {
             dispatch('clearSession');
+            // The session cookie usually outlives the 1h token: renew silently.
+            if (await dispatch('hydrateSession')) return;
             if (typeof window !== 'undefined') window.location.hash = '#/login';
+          };
+          if (msUntilExpiry <= 0) {
+            expire();
             return;
           }
-          expiryTimerId = setTimeout(() => {
-            dispatch('clearSession');
-            if (typeof window !== 'undefined') window.location.hash = '#/login';
-          }, msUntilExpiry);
+          expiryTimerId = setTimeout(expire, msUntilExpiry);
         } catch (e) {
           // Bad token shape — let the normal auth flow (next API call → 401) handle it.
           // No need to dispatch clearSession here; the user has not yet logged in or the rehydrate

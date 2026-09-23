@@ -1,4 +1,3 @@
-import { clearPersistedAuthTokens } from "@/store/auth-storage";
 import { getCookie } from "./../utils/cookies";
 
 export default class Api {
@@ -28,7 +27,6 @@ export default class Api {
         if (parts.length === 3) {
           const payload = JSON.parse(atob(parts[1]));
           if (payload && typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()) {
-            clearPersistedAuthTokens();
             this.accessToken = null;
             this.refreshToken = null;
             if (typeof window !== 'undefined') window.location.hash = '#/login';

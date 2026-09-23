@@ -71,14 +71,12 @@ export default {
   },
   methods: {
     ...mapMutations({
-      setAccessToken: "auth/setAccessToken",
-      setRefreshToken: "auth/setRefreshToken",
       setUser: "auth/setUser",
     }),
     ...mapActions({
       fetchProfile: "profile/fetchProfile",
       isTokenValid: "auth/isTokenValid",
-      scheduleExpiry: "auth/scheduleExpiry",
+      persistSession: "auth/persistSession",
     }),
     ...mapGetters({
       isAuthenticated: "auth/isAuthenticated",
@@ -186,16 +184,10 @@ export default {
         (await this.isTokenValid(access_token)) &&
         (await this.isTokenValid(refresh_token))
       ) {
-        this.setAccessToken(access_token);
-        this.setRefreshToken(refresh_token);
-        this.scheduleExpiry(access_token);
+        await this.persistSession({ accessToken: access_token, refreshToken: refresh_token });
       }
 
       if (this.isAuthenticated()) {
-        window.localStorage.setItem("accessToken", access_token);
-        window.localStorage.setItem("refreshToken", refresh_token);
-        window.localStorage.setItem("authenticated", true);
-
         await this.fetchProfile();
         this.setUser(this.getProfile());
         this.$router.push("/app/dashboard");

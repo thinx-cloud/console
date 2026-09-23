@@ -397,7 +397,7 @@ export default {
         // routing. Without this, the router.beforeEach guard treats the
         // orphaned page as still logged in
         // (same chokepoint as Header.vue#logout — Phase 8 Wave 2, 0295a69).
-        await this.$store.dispatch('auth/clearSession');
+        await this.$store.dispatch('auth/logout');
         this.$router.push('/login');
       } else {
         this.error = result.message || 'Failed to delete account.';
