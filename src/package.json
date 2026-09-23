@@ -18,8 +18,11 @@
     "cy:open": "./node_modules/cypress/bin/cypress open",
     "test:csp": "node test/csp/source-check.cjs && node test/csp/public-scripts.cjs",
     "test:digest": "node test/digest-guard.cjs",
+    "test:env": "node test/env-json.cjs",
+    "test:ng-scope": "node test/ng-scope.cjs",
     "test:csp:built": "node test/csp/source-check.cjs html",
-    "test:csp:browser": "node test/csp/browser.cjs && node test/csp/app-browser.cjs"
+    "test:csp:browser": "node test/csp/browser.cjs && node test/csp/app-browser.cjs && node test/csp/auth-browser.cjs && node test/csp/vendor-browser.cjs",
+    "test:csp:external": "node test/csp/external-browser.cjs"
   },
   "author": "Mikulas Sychra @ THiNX Cloud",
   "repository": {

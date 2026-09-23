@@ -67,16 +67,37 @@
           <p class="text-monospace">{{ device.source }}</p>
         </b-card>
 
-        <b-card title="Environment Variables (masked)" class="mb-3" data-cy="card-enviros">
-          <div v-if="device.environment && Object.keys(device.environment).length">
-            <table class="table table-sm table-borderless mb-0">
-              <tr v-for="(val, key) in device.environment" :key="key">
-                <td class="text-muted" style="width:200px">{{ key }}</td>
-                <td><code>{{ val }}</code></td>
-              </tr>
-            </table>
+        <b-card title="Environment Variables" class="mb-3" data-cy="card-enviros">
+          <div v-if="!envEditing">
+            <div v-if="device.environment && Object.keys(device.environment).length">
+              <table class="table table-sm table-borderless mb-2">
+                <tr v-for="(val, key) in device.environment" :key="key">
+                  <td class="text-muted" style="width:200px">{{ key }}</td>
+                  <td><code>{{ val }}</code></td>
+                </tr>
+              </table>
+              <p class="text-muted small">ssid and pass are masked here; Edit loads the stored values.</p>
+            </div>
+            <p v-else class="text-muted">No environment variables.</p>
+            <b-button variant="secondary" size="sm" data-cy="env-edit" :disabled="envLoading" @click="editEnvironment">
+              {{ envLoading ? 'Loading…' : 'Edit' }}
+            </b-button>
           </div>
-          <p v-else class="text-muted mb-0">No environment variables.</p>
+
+          <div v-else>
+            <b-form-textarea
+              v-model="envDraft"
+              data-cy="env-draft"
+              rows="10"
+              spellcheck="false"
+              class="text-monospace mb-2"
+              aria-label="Device environment as JSON" />
+            <p v-if="envError" class="text-danger small" data-cy="env-error">{{ envError }}</p>
+            <p v-else-if="envConfirmClear" class="text-warning small" data-cy="env-confirm-clear">This empties the environment — {{ envLoadedCount }} variable(s) will be removed. Click again to confirm.</p>
+            <p v-else class="text-muted small">A JSON object of scalar values, for example <code>{ "ssid": "my-network", "interval": 300 }</code>.</p>
+            <b-button variant="primary" size="sm" class="mr-2" data-cy="env-save" :disabled="!!envError" @click="saveEnvironment">{{ envConfirmClear ? 'Confirm clear' : 'Save' }}</b-button>
+            <b-button variant="secondary" size="sm" data-cy="env-cancel" @click="cancelEnvironmentEdit">Cancel</b-button>
+          </div>
         </b-card>
 
         <b-card title="Transformer Assignment" class="mb-3" data-cy="card-transformers">
@@ -145,6 +166,7 @@
 <script>
 import { mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
+import { parseEnvironmentJSON } from '@/utils/envJson';
 
 export default {
   name: "DeviceDetail",
@@ -164,9 +186,30 @@ export default {
       buildHistory: [],
       deviceLogs: [],
       transferForm: { to: '', mig_sources: false, mig_apikeys: false },
+      // Environment editor. envDraft is the textarea's raw text; it only reaches
+      // the device once parseEnvironmentJSON accepts it.
+      envEditing: false,
+      envDraft: '',
+      envLoading: false,
+      envLoadError: null,
+      // Clearing every variable is a legitimate edit and an expensive mistake, so
+      // it takes a second click. envLoadedCount is what the device had when the
+      // editor opened; envConfirmClear is armed only while the draft would empty it.
+      envLoadedCount: 0,
+      envConfirmClear: false,
     };
   },
+  watch: {
+    envDraft() {
+      this.envConfirmClear = false;
+    },
+  },
   computed: {
+    envError() {
+      if (this.envLoadError) return this.envLoadError;
+      const result = parseEnvironmentJSON(this.envDraft);
+      return result.ok ? null : result.error;
+    },
     transformerOptions() {
       return (this.getTransformers() || []).map(t => ({ value: t.utid, text: t.alias || t.utid }));
     },
@@ -184,6 +227,7 @@ export default {
       fetchBuildLog: 'buildlog/fetchBuildLog',
       fetchTransformers: 'transformers/fetchItems',
       transferDevices: 'devices/transferDevices',
+      fetchDeviceDetail: 'devices/fetchDeviceDetail',
     }),
     async loadDevice() {
       this.loading = true;
@@ -227,6 +271,65 @@ export default {
         this.$router.push('/app/devices');
       } else {
         this.error = result.message || 'Failed to revoke device.';
+      }
+    },
+    async editEnvironment() {
+      this.envLoading = true;
+      this.envLoadError = null;
+      this.error = null;
+
+      const detail = await this.fetchDeviceDetail({ udid: this.device.udid });
+
+      // getDeviceDetail answers with the device document itself; an error comes
+      // back as a { success: false } envelope instead. Opening the editor on a
+      // failed read would show an empty object and saving it would wipe the
+      // stored environment, so bail out loudly instead.
+      if (!detail || typeof detail !== 'object' || detail.success === false || !detail.udid) {
+        this.envLoading = false;
+        this.error = 'Could not load the stored environment.';
+        return;
+      }
+
+      const stored = detail.environment || {};
+
+      if (typeof stored !== 'object' || Array.isArray(stored)) {
+        this.envLoadError = 'Stored environment is not a JSON object.';
+      }
+
+      this.envDraft = JSON.stringify(stored, null, 2);
+      this.envLoadedCount = Object.keys(stored).length;
+      this.envConfirmClear = false;
+      this.envEditing = true;
+      this.envLoading = false;
+    },
+    cancelEnvironmentEdit() {
+      this.envEditing = false;
+      this.envDraft = '';
+      this.envLoadError = null;
+      this.envConfirmClear = false;
+    },
+    async saveEnvironment() {
+      const parsed = parseEnvironmentJSON(this.envDraft);
+      if (!parsed.ok) return;
+
+      if (!Object.keys(parsed.value).length && this.envLoadedCount > 0 && !this.envConfirmClear) {
+        this.envConfirmClear = true;
+        return;
+      }
+
+      const result = await this.updateDevice({
+        udid: this.device.udid,
+        changes: { environment: parsed.value },
+      });
+
+      if (result.success) {
+        this.message = 'Environment saved.';
+        this.envEditing = false;
+        this.envDraft = '';
+        this.envConfirmClear = false;
+        await this.loadDevice();
+      } else {
+        this.error = result.message || 'Failed to save the environment.';
       }
     },
     async saveTransformers() {

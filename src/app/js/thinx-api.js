@@ -88,6 +88,9 @@ var Thinx = {
   submitDevice: function( deviceForm ) {
     return submitDevice( deviceForm );
   },
+  getDeviceEnvs: function( udid ) {
+    return getDeviceEnvs( udid );
+  },
   revokeDevices: function( deviceUdids ) {
     return revokeDevices( deviceUdids );
   },
@@ -159,6 +162,59 @@ var Thinx = {
     return init( $rootScope, $scope );
   }
 };
+
+// Device-environment JSON validator, shared by the device view's editor.
+//
+// The stored environment is a flat map of scalars: the builder writes it to
+// environment.json for the firmware build, and both consoles render it as a
+// key/value table. Nesting, arrays and nulls have no representation there, so
+// they are rejected here rather than written and discovered at build time.
+//
+// Returns { ok: true, value: <object> } or { ok: false, error: <message> }.
+// Empty text means "no environment" and yields {}.
+function parseEnvironmentJSON( text ) {
+
+  var source = ( typeof( text ) === "string" ) ? text.trim() : "";
+
+  if ( source.length === 0 ) {
+    return { ok: true, value: {} };
+  }
+
+  var parsed;
+
+  try {
+    parsed = JSON.parse( source );
+  } catch ( e ) {
+    return { ok: false, error: "Not valid JSON: " + e.message };
+  }
+
+  if ( parsed === null || typeof( parsed ) !== "object" || Array.isArray( parsed ) ) {
+    return { ok: false, error: "Environment must be a JSON object, for example { \"ssid\": \"my-network\" }." };
+  }
+
+  for ( var key in parsed ) {
+    if ( !Object.prototype.hasOwnProperty.call( parsed, key ) ) {
+      continue;
+    }
+
+    if ( key.trim().length === 0 ) {
+      return { ok: false, error: "An environment key cannot be empty." };
+    }
+
+    var value = parsed[ key ];
+    var type = typeof( value );
+
+    if ( value === null || ( type !== "string" && type !== "number" && type !== "boolean" ) ) {
+      return { ok: false, error: "Value of \"" + key + "\" must be a string, number or boolean." };
+    }
+
+    if ( type === "number" && !isFinite( value ) ) {
+      return { ok: false, error: "Value of \"" + key + "\" must be a finite number." };
+    }
+  }
+
+  return { ok: true, value: parsed };
+}
 
 // AngularJS digest guard.
 //
@@ -729,7 +785,8 @@ function submitDevice( deviceForm ) {
       transformers: deviceForm.transformers,
       timezone_abbr: deviceForm.timezone_abbr,
       timezone_utc: deviceForm.timezone_utc,
-      timezone_offset: deviceForm.timezone_offset
+      timezone_offset: deviceForm.timezone_offset,
+      environment: deviceForm.environment
     }
   };
   return $.ajax( {
@@ -737,6 +794,24 @@ function submitDevice( deviceForm ) {
     type: "POST",
     data: JSON.stringify( data ),
     dataType: "json",
+    contentType: "application/json"
+  } );
+}
+
+// The devices list masks `ssid` and `pass` (lib/thinx/devices.js maskedEnvironment),
+// so the editor seeds itself from here instead — POST /device/envs returns the
+// stored environment as-is. Editing the masked copy would write "*****" over the
+// real values on the next save.
+//
+// Answered as text on purpose: a device with no environment yields an empty body
+// (Util.respond stringifies undefined), which a json dataType turns into a parse
+// failure. The caller parses what it gets.
+function getDeviceEnvs( udid ) {
+  return $.ajax( {
+    url: urlBase + "/device/envs",
+    type: "POST",
+    data: JSON.stringify( { udid: udid } ),
+    dataType: "text",
     contentType: "application/json"
   } );
 }
