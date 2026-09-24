@@ -555,6 +555,11 @@ return;
     // set default avatar if one's missing
     if ( typeof( profile.avatar ) === "undefined" || profile.avatar.length == 0 ) {
       profile.avatar = "/assets/thinx/img/default_avatar_sm.png";
+    } else if ( !/^(data:|https?:\/\/|blob:)/i.test( profile.avatar ) ) {
+      // The API stores avatars as bare base64. Bound to ng-src as-is, the
+      // browser requests /app/iVBORw0KGgo... (414). JPEG base64 starts "/9j/".
+      var mime = profile.avatar.indexOf( "/9j/" ) === 0 ? "image/jpeg" : "image/png";
+      profile.avatar = "data:" + mime + ";base64," + profile.avatar;
     }
     if ( typeof( profile.info.goals ) === "undefined" ) {
       profile.info[ "goals" ] = $rootScope.profile.info.goals;
