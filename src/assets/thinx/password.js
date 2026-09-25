@@ -119,6 +119,10 @@ var PasswordReset = ( function() {
 
                   console.log( "--Redirecting to login--" );
                   $( ".login-button" ).attr( "href", "/" );
+                  // Leave the success message readable, then go to login.
+                  setTimeout( function() {
+                    window.location.href = "/";
+                  }, 3000 );
                 }
               } else {
                 console.log( response.status );
