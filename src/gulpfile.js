@@ -228,6 +228,7 @@ gulp.task('prod', function() {
           'assets/thinx/js/plugins/ui-select/select.js',
           //'assets/global/plugins/select2/js/select2.js',
           'assets/global/scripts/app.js', // this is shared with Private
+          'assets/thinx/csrf.js', // SEC-CSRF-01: must precede login.js, same order as the dev <script> tags in index.html
           'assets/thinx/login.js'
         ], {base: '.'})
     )
