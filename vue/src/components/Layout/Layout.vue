@@ -20,6 +20,7 @@ import { mapState, mapActions } from 'vuex';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import Header from '@/components/Header/Header';
 import ImpersonationBanner from '@/components/ImpersonationBanner/ImpersonationBanner';
+import hostnameMixin from '@/mixins/hostnames';
 // Removed: Helper (Flatlogic template "Configuration" panel — Purchase / Go FULL / Documentation / social-sharing).
 // Not part of THiNX product surface; was leftover from the light-blue-vue template.
 
@@ -28,6 +29,7 @@ import './Layout.scss';
 export default {
   name: 'Layout',
   components: { Sidebar, Header, ImpersonationBanner },
+  mixins: [hostnameMixin],
   methods: {
     ...mapActions(
       'layout', ['switchSidebar', 'changeSidebarActive'],

@@ -14,7 +14,7 @@
     "test:csp": "node tests/security/csp.cjs",
     "test:csp:browser": "node tests/security/csp-browser.cjs",
     "test:csp:dist": "node tests/security/csp.cjs --dist",
-    "test:unit": "node tests/unit/env-json.cjs",
+    "test:unit": "node tests/unit/env-json.cjs && node tests/unit/footer-hostnames.cjs",
     "cy:open": "cypress open",
     "test": "start-server-and-test serve http://127.0.0.1:3000/ cy:test",
     "eslint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
