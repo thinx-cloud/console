@@ -103,7 +103,7 @@
 import Widget from "@/components/Widget/Widget";
 import { mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
-import { ensureCsrfToken } from "@/utils/cookies";
+import { ensureCsrfToken, isCsrfRejectedPayload, reportCsrfRejection, CSRF_REJECTED_MESSAGE } from "@/utils/cookies";
 
 export default {
   name: "PasswordReset",
@@ -138,6 +138,9 @@ export default {
         if (result && result.success === true) {
           this.successMessage = "Reset email sent. Check your inbox.";
           this.email = "";
+        } else if (isCsrfRejectedPayload(result)) {
+          reportCsrfRejection(this.$rollbar, "POST /password/reset");
+          this.errorMessage = CSRF_REJECTED_MESSAGE;
         } else {
           this.errorMessage =
             (result && result.response) || "Could not initiate reset.";
@@ -176,6 +179,9 @@ export default {
           this.successMessage = "Password set. You can now log in.";
           this.password = "";
           this.rpassword = "";
+        } else if (isCsrfRejectedPayload(result)) {
+          reportCsrfRejection(this.$rollbar, "POST /password/set");
+          this.errorMessage = CSRF_REJECTED_MESSAGE;
         } else {
           this.errorMessage =
             (result && result.response) || "Could not set password.";

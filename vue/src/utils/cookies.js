@@ -70,7 +70,24 @@ export function getCsrfToken() {
 
 // True for the API's 403 {"success":false,"response":"csrf_token_invalid"}.
 export function isCsrfRejection(status, payload) {
-  return status === 403 && !!payload && payload.response === "csrf_token_invalid";
+  return status === 403 && isCsrfRejectedPayload(payload);
+}
+
+// Same check for an Api.request() result, which carries the body but not the status.
+export function isCsrfRejectedPayload(payload) {
+  return !!payload && payload.success !== true && payload.response === "csrf_token_invalid";
+}
+
+// Best-effort Rollbar signal for a rejection that survived the retry (WR-05), so
+// it is visible without server logs. Never includes token values.
+export function reportCsrfRejection(rollbar, route) {
+  try {
+    if (rollbar && typeof rollbar.warning === "function") {
+      rollbar.warning("CSRF rejection after retry", { route: route });
+    }
+  } catch (_error) {
+    // Reporting must never break the page.
+  }
 }
 
 async function responseIsCsrfRejection(response) {
@@ -94,4 +111,4 @@ export async function fetchWithCsrf(apiBase, url, init = {}) {
   return send(await ensureCsrfToken(apiBase, { force: true }));
 }
 
-export default { getCookie, ensureCsrfToken, getCsrfToken, isCsrfRejection, fetchWithCsrf };
+export default { getCookie, ensureCsrfToken, getCsrfToken, isCsrfRejection, isCsrfRejectedPayload, reportCsrfRejection, fetchWithCsrf };

@@ -1,3 +1,4 @@
+/* global Csrf */ // assets/thinx/csrf.js, loaded before this file
 var PasswordReset = ( function() {
 
   var urlBase = "<ENV::apiBaseUrl>";
@@ -88,7 +89,7 @@ var PasswordReset = ( function() {
             .html( originalBtnHtml );
         };
 
-        $.ajax( {
+        Csrf.ajax( {
           url: urlBase + "/user/password/set",
           data: JSON.stringify( data ),
           type: "POST",
@@ -136,7 +137,7 @@ var PasswordReset = ( function() {
           error: function( data ) {
             console.log( "--password reset request failure--" );
 
-            $( ".msg-error", $( ".reset-form" ) ).text( "Server error, try again later." );
+            $( ".msg-error", $( ".reset-form" ) ).text( Csrf.isRejection( data ) ? Csrf.REJECTED_MESSAGE : "Server error, try again later." );
             $( ".msg-error", $( ".reset-form" ) ).show();
 
             console.log( data );

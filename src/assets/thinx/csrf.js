@@ -26,10 +26,84 @@ var Csrf = ( function() {
     } );
   };
 
+  // shown when a CSRF rejection survives the one automatic retry (21-REVIEW WR-05)
+  var REJECTED_MESSAGE = "Session security check failed. Reload the page and try again.";
+
+  // true when a failed jqXHR is the API's 403 {"success":false,"response":"csrf_token_invalid"}
+  var isRejection = function( xhr ) {
+    return !!xhr && xhr.status === 403 && !!xhr.responseJSON &&
+      xhr.responseJSON.response === "csrf_token_invalid";
+  };
+
+  // best-effort Rollbar signal (csp-rollbar.js); never includes token values
+  var reportRejection = function( route ) {
+    try {
+      if ( window.Rollbar && typeof window.Rollbar.warning === "function" ) {
+        window.Rollbar.warning( "CSRF rejection after retry", { route: route } );
+      }
+    } catch ( e ) {
+      // reporting must never break the page
+    }
+  };
+
+  // $.ajax() for a CSRF-protected call. On a csrf_token_invalid rejection it re-primes and
+  // retries ONCE, sending the token the server echoes back (the cookie value it actually
+  // parsed). success/error/complete fire once, for the final attempt only.
+  var ajax = function( options ) {
+    var route = ( options.type || "GET" ) + " " + String( options.url ).replace( urlBase, "" );
+    var send = function( token, isRetry ) {
+      var attempt = $.extend( {}, options );
+      if ( token ) {
+        attempt.beforeSend = function( xhr ) {
+          xhr.setRequestHeader( "X-XSRF-TOKEN", token );
+        };
+      }
+      if ( !isRetry ) {
+        attempt.complete = null;
+        attempt.success = function( data, textStatus, xhr ) {
+          if ( options.success ) {
+            options.success.apply( this, arguments );
+          }
+          if ( options.complete ) {
+            options.complete.call( this, xhr, textStatus );
+          }
+        };
+        attempt.error = function( xhr, textStatus ) {
+          if ( isRejection( xhr ) ) {
+            prime().always( function( body ) {
+              send( body && body.csrf_token, true );
+            } );
+            return;
+          }
+          if ( options.error ) {
+            options.error.apply( this, arguments );
+          }
+          if ( options.complete ) {
+            options.complete.call( this, xhr, textStatus );
+          }
+        };
+      } else {
+        attempt.error = function( xhr ) {
+          if ( isRejection( xhr ) ) {
+            reportRejection( route );
+          }
+          if ( options.error ) {
+            options.error.apply( this, arguments );
+          }
+        };
+      }
+      return $.ajax( attempt );
+    };
+    return send( null, false );
+  };
+
   return {
     getCsrfCookie: getCsrfCookie,
     syncHiddenFields: syncHiddenFields,
-    prime: prime
+    prime: prime,
+    ajax: ajax,
+    isRejection: isRejection,
+    REJECTED_MESSAGE: REJECTED_MESSAGE
   };
 
 } )();

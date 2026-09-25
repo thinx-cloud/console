@@ -1,3 +1,4 @@
+/* global Csrf */ // assets/thinx/csrf.js, loaded before this file
 var Login = ( function() {
 
   var urlBase = "<ENV::apiBaseUrl>";
@@ -74,7 +75,7 @@ var Login = ( function() {
           remember: false
         };
 
-        $.ajax( {
+        Csrf.ajax( {
           url: urlBase + "/login",
           xhrFields: {
             withCredentials: urlBase.indexOf( "localhost" ) !== -1 ? false : true
@@ -109,8 +110,10 @@ var Login = ( function() {
           },
           error: function( xdata, status, xhr ) {
             console.log( "--login or server failure--", xdata );
-            var response = xdata.responseJSON;
-            if ( response.response == "unauthorized" ) {
+            var response = xdata.responseJSON || {};
+            if ( Csrf.isRejection( xdata ) ) {
+              $( "#login-error" ).text( Csrf.REJECTED_MESSAGE );
+            } else if ( response.response == "unauthorized" ) {
               $( "#login-error" ).text( "Username or password does not match" );
             } else if ( response.response == "user_not_found" ) {
               $( "#login-error" ).text( "User not found." );
@@ -198,7 +201,7 @@ var Login = ( function() {
             .html( originalBtnHtml );
         };
 
-        $.ajax( {
+        Csrf.ajax( {
           url: urlBase + "/user/password/reset",
           data: { email: $( ".forget-form input[name=email]" ).val() }, //parameters go here in object literal form
           type: "POST",
@@ -235,7 +238,7 @@ var Login = ( function() {
           error: function( data ) {
             console.log( "--password reset request failure--" );
             console.log( data );
-            $( ".msg-error" ).text( "Server error, try again later." );
+            $( ".msg-error" ).text( Csrf.isRejection( data ) ? Csrf.REJECTED_MESSAGE : "Server error, try again later." );
             $( ".msg-error" ).show();
           }
         } );
@@ -342,7 +345,7 @@ var Login = ( function() {
             .html( originalBtnHtml );
         };
 
-        $.ajax( {
+        Csrf.ajax( {
           url: urlBase + "/user/create",
           data: {
             first_name: $( ".register-form input[name=first_name]" ).val(),
@@ -384,7 +387,7 @@ var Login = ( function() {
           error: function( response ) {
             console.log( "--user create request failure--" );
             console.log( response );
-            $( ".msg-error", $( ".register-form" ) ).text( "Registration failed. Please try again later." );
+            $( ".msg-error", $( ".register-form" ) ).text( Csrf.isRejection( response ) ? Csrf.REJECTED_MESSAGE : "Registration failed. Please try again later." );
             $( ".msg-error", $( ".register-form" ) ).show();
           }
         } );

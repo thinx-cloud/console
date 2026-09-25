@@ -99,7 +99,7 @@
 import Widget from "@/components/Widget/Widget";
 import { mapGetters, mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
-import { fetchWithCsrf } from "@/utils/cookies";
+import { fetchWithCsrf, isCsrfRejection, reportCsrfRejection, CSRF_REJECTED_MESSAGE } from "@/utils/cookies";
 
 export default {
   name: "LoginPage",
@@ -191,6 +191,14 @@ export default {
       }
 
       const { success, access_token, refresh_token } = payload || {};
+
+      // A CSRF rejection that survived fetchWithCsrf's one retry is not a
+      // credentials problem; say so instead of "Invalid username or password".
+      if (isCsrfRejection(response.status, payload)) {
+        reportCsrfRejection(this.$rollbar, "POST /login");
+        this.errorMessage = CSRF_REJECTED_MESSAGE;
+        return;
+      }
 
       if (!success) {
         this.errorMessage = (payload && payload.message)
