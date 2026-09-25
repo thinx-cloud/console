@@ -1,6 +1,6 @@
 import VueJwtDecode from "vue-jwt-decode";
 import { clearLegacyAuthStorage } from "./auth-storage";
-import { getCookie } from "../utils/cookies";
+import { ensureCsrfToken } from "../utils/cookies";
 
 // Module-private setTimeout id for the session-expiry watcher (AUTH-03).
 // Kept outside Vuex state so we can clear/replace it across action dispatches
@@ -74,7 +74,9 @@ export default {
         if (!hydratePromise) {
           hydratePromise = (async () => {
             try {
-              if (!getCookie("XSRF-TOKEN")) await this.$api.$get('/csrf-token');
+              // Shared single-flight prime (no-op when the cookie exists); $post
+              // also retries once on csrf_token_invalid. See utils/cookies.js.
+              await ensureCsrfToken(this.$api.csrfBase());
               const result = await this.$api.$post('/session/token');
               const accessToken = result && result.success ? result.response : null;
               if (!isJwtValid(accessToken)) return false;

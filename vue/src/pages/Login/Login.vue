@@ -99,7 +99,7 @@
 import Widget from "@/components/Widget/Widget";
 import { mapGetters, mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
-import { getCookie } from "@/utils/cookies";
+import { fetchWithCsrf } from "@/utils/cookies";
 
 export default {
   name: "LoginPage",
@@ -158,14 +158,14 @@ export default {
 
       let response;
       try {
-        response = await fetch(this.$hostnames.API + "/login", {
+        // Awaits the shared XSRF prime and retries once on csrf_token_invalid.
+        response = await fetchWithCsrf(this.$hostnames.API, this.$hostnames.API + "/login", {
           method: "POST",
           // mode: 'no-cors', // no-cors, *cors, same-origin
           redirect: "manual",
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
-            "X-XSRF-TOKEN": getCookie("XSRF-TOKEN") || "",
           },
           body: JSON.stringify({
             username: usernameValue,
@@ -216,13 +216,10 @@ export default {
     },
   },
   async created() {
-    // Prime the XSRF-TOKEN cookie for a cold session (fire-and-forget - the human
-    // types username/password before submitting, so there is no race with login()).
-    fetch(this.$hostnames.API + "/csrf-token", {
-      method: "GET",
-      credentials: "include",
-    }).catch(() => {});
-
+    // No separate XSRF prime here: App.vue's hydrateSession already runs the shared
+    // single-flight prime (utils/cookies.js ensureCsrfToken), and a second cookieless
+    // GET racing it would mint a divergent token (21-REVIEW CR-01). login() awaits
+    // the same prime before it POSTs.
     if (await this.hydrateSession()) {
       void this.pushIfNeeded("/app/dashboard");
     }

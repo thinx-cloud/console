@@ -42,7 +42,7 @@
 <script>
 import { mapMutations, mapGetters, mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
-import { getCookie } from "@/utils/cookies";
+import { ensureCsrfToken, fetchWithCsrf } from "@/utils/cookies";
 
 // Landing page for the OAuth callback when the API was told to return to this
 // console (?return=<origin>). The API redirected here as
@@ -85,24 +85,22 @@ export default {
 
     // Prime the XSRF-TOKEN cookie for a cold session. This page is reached directly
     // via the OAuth-provider redirect and created() dispatches immediately to a
-    // protected POST with no human-typing delay, so callers must AWAIT this.
+    // protected POST with no human-typing delay, so callers must AWAIT this. It
+    // joins App.vue's in-flight hydrate prime rather than racing it with a second
+    // cookieless GET that would mint a divergent token (21-REVIEW CR-01).
     async primeCsrfCookie() {
-      await fetch(this.$hostnames.API + "/csrf-token", {
-        method: "GET",
-        credentials: "include",
-      }).catch(() => {});
+      await ensureCsrfToken(this.$hostnames.API);
     },
 
     // PUT /api/v2/gdpr is the consent setter (setGDPR); POST is transferGDPR, so
     // we must use PUT here. The one-shot token authorizes the change.
     async submitConsent(consent) {
       const token = this.$route.query.t;
-      const response = await fetch(this.$hostnames.API + "/gdpr", {
+      const response = await fetchWithCsrf(this.$hostnames.API, this.$hostnames.API + "/gdpr", {
         method: "PUT",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-XSRF-TOKEN": getCookie("XSRF-TOKEN") || "",
         },
         body: JSON.stringify({ token: token, gdpr: consent, gdpr_consent: consent }),
       });
@@ -150,12 +148,13 @@ export default {
 
       let response;
       try {
-        response = await fetch(this.$hostnames.API + "/login", {
+        // Awaits the shared XSRF prime and retries once on csrf_token_invalid (the
+        // CSRF check rejects before the one-shot token is consumed, so the retry is safe).
+        response = await fetchWithCsrf(this.$hostnames.API, this.$hostnames.API + "/login", {
           method: "POST",
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
-            "X-XSRF-TOKEN": getCookie("XSRF-TOKEN") || "",
           },
           body: JSON.stringify({ token: token }),
         });

@@ -1,4 +1,4 @@
-import { getCookie } from "./../utils/cookies";
+import { getCsrfToken, fetchWithCsrf } from "./../utils/cookies";
 
 export default class Api {
 
@@ -51,7 +51,7 @@ export default class Api {
   composeHeaders() {
     const headers = {
       "Content-Type": "application/json",
-      "X-XSRF-TOKEN": getCookie("XSRF-TOKEN") || "",
+      "X-XSRF-TOKEN": getCsrfToken(),
     };
     if (this.accessToken) {
       headers.Authorization = 'Bearer ' + this.accessToken;
@@ -61,6 +61,10 @@ export default class Api {
 
   composePath(path) {
     return this.baseApiUrl + this.apiPath + path;
+  }
+
+  csrfBase() {
+    return this.baseApiUrl + this.apiPath;
   }
 
   parseResult(result) {
@@ -83,7 +87,12 @@ export default class Api {
   }
 
   async request(method, path, body) {
-      const response = await fetch(this.composePath(path), this.composeOptions(method, body));
+      // SEC-CSRF-01 (21-REVIEW CR-01): mutating calls await the shared XSRF prime
+      // and retry once on a csrf_token_invalid rejection. GETs are never checked.
+      const options = this.composeOptions(method, body);
+      const response = (method === 'GET')
+        ? await fetch(this.composePath(path), options)
+        : await fetchWithCsrf(this.csrfBase(), this.composePath(path), options);
       const text = await response.text();
 
       if (!text) {

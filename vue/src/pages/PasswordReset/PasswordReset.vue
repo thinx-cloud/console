@@ -103,6 +103,7 @@
 import Widget from "@/components/Widget/Widget";
 import { mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
+import { ensureCsrfToken } from "@/utils/cookies";
 
 export default {
   name: "PasswordReset",
@@ -187,13 +188,12 @@ export default {
     },
   },
   created() {
-    // Reached directly via the /#/password-reset?reset_key=... email link (never
-    // through the login page), so it must prime the XSRF-TOKEN cookie independently.
-    // Fire-and-forget is safe - the human fills the form before submitting.
-    fetch(this.$hostnames.API + "/csrf-token", {
-      method: "GET",
-      credentials: "include",
-    }).catch(() => {});
+    // Reached directly via the /#/password-reset?reset_key=... email link. Joins the
+    // shared single-flight XSRF prime that App.vue's hydrateSession has already
+    // started, instead of racing it with a second cookieless GET (21-REVIEW CR-01).
+    // The submit handlers go through $api.$post, which awaits the same prime and
+    // retries once on csrf_token_invalid.
+    void ensureCsrfToken(this.$hostnames.API);
   },
 };
 </script>
