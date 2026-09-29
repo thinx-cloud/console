@@ -14,6 +14,20 @@ if ( urlBase.indexOf( "localhost" ) !== -1 ) {
   } );
 }
 
+// Phase 25 D-18 seam: same wire contract as assets/thinx/csrf.js (XSRF-TOKEN cookie -> X-XSRF-TOKEN header),
+// read at send time, API-bound calls only (urlBase or same-origin relative), never to a foreign origin.
+$.ajaxSetup( {
+  beforeSend: function( xhr, settings ) {
+    var url = ( settings && typeof( settings.url ) === "string" ) ? settings.url : "";
+    var apiBound = url === urlBase || url.indexOf( urlBase + "/" ) === 0 ||
+      ( url.charAt( 0 ) === "/" && url.charAt( 1 ) !== "/" && url.charAt( 1 ) !== "\\" );
+    var match = document.cookie.match( /(?:^|; )XSRF-TOKEN=([^;]*)/ );
+    if ( apiBound && match && match[ 1 ] ) {
+      xhr.setRequestHeader( "X-XSRF-TOKEN", decodeURIComponent( match[ 1 ] ) );
+    }
+  }
+} );
+
 // eslint-disable-next-line  no-redeclare
 var Thinx = {
   // RSA
