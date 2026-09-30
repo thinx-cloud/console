@@ -103,5 +103,18 @@ RUN nginx_host="${NGINX_HOST:-localhost}" \
 # remains, so add a HEALTHCHECK with that if one is ever needed.
 RUN apk del curl
 
+# Serve as the unprivileged `nginx` user (uid 101) instead of root. nginx keeps
+# listening on 80 -- the port traefik targets in docker-swarm.yml -- through the
+# NET_BIND_SERVICE file capability, which is in Docker's default capability set.
+# The master no longer switches users, so the `user` directive goes; the pid file
+# moves to /tmp and the proxy/temp cache dir is handed to nginx.
+RUN apk add --no-cache --virtual .setcap libcap-setcap \
+    && setcap cap_net_bind_service=+ep /usr/sbin/nginx \
+    && apk del .setcap \
+    && sed -i -e '/^user /d' -e 's|^pid .*|pid        /tmp/nginx.pid;|' /etc/nginx/nginx.conf \
+    && chown -R nginx:nginx /var/cache/nginx
+
+USER nginx
+
 # Expose port (HOST:CONTAINER; nginx, may be configured from outside with docker-compose)
 EXPOSE 7440:80
