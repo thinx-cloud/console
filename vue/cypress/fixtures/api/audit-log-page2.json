@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "response": [
+    {
+      "date": "2026-08-15T09:00:00.000Z",
+      "message": "Older API key created",
+      "flags": [
+        "info"
+      ]
+    },
+    {
+      "date": "2026-08-10T09:00:00.000Z",
+      "message": "Older device registered",
+      "flags": [
+        "info"
+      ]
+    }
+  ],
+  "paging": {
+    "limit": 100,
+    "has_more": false,
+    "next_cursor": null
+  }
+}

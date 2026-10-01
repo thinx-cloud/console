@@ -1,0 +1,31 @@
+{
+  "success": true,
+  "response": [
+    {
+      "date": "2026-09-22T09:00:00.000Z",
+      "message": "Paged device revoked by owner",
+      "flags": [
+        "danger"
+      ]
+    },
+    {
+      "date": "2026-09-21T09:00:00.000Z",
+      "message": "Paged build started for kappa-01",
+      "flags": [
+        "warning"
+      ]
+    },
+    {
+      "date": "2026-09-20T09:00:00.000Z",
+      "message": "Paged user logged in",
+      "flags": [
+        "info"
+      ]
+    }
+  ],
+  "paging": {
+    "limit": 100,
+    "has_more": true,
+    "next_cursor": "audit-cursor-2"
+  }
+}
