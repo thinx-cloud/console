@@ -87,9 +87,10 @@ export default {
     // via the OAuth-provider redirect and created() dispatches immediately to a
     // protected POST with no human-typing delay, so callers must AWAIT this. It
     // joins App.vue's in-flight hydrate prime rather than racing it with a second
-    // cookieless GET that would mint a divergent token (21-REVIEW CR-01).
+    // cookieless GET that would mint a divergent token (21-REVIEW CR-01). Forced:
+    // GET /api/oauth/* destroyed the session the existing cookie is bound to.
     async primeCsrfCookie() {
-      await ensureCsrfToken(this.$hostnames.API);
+      await ensureCsrfToken(this.$hostnames.API, { force: true });
     },
 
     // PUT /api/v2/gdpr is the consent setter (setGDPR); POST is transferGDPR, so

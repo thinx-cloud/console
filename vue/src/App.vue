@@ -34,7 +34,9 @@ export default {
   },
   async created() {
     const currentPath = this.$router.history.current.path;
-    const authenticated = await this.hydrateSession();
+    // GET /api/oauth/* destroyed the API session before the provider redirect,
+    // so the XSRF-TOKEN cookie on /oauth-return is stale: re-prime, don't trust it.
+    const authenticated = await this.hydrateSession({ forcePrime: currentPath === "/oauth-return" });
 
     if (!authenticated) {
       if (!PUBLIC_PATHS.includes(currentPath)) {

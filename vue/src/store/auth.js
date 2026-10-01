@@ -68,7 +68,9 @@ export default {
       },
       // Restore the in-memory access token after a reload by exchanging the
       // httpOnly session cookie for a fresh one. Resolves true when authenticated.
-      hydrateSession({ state, dispatch }) {
+      // `forcePrime` re-primes even when an XSRF-TOKEN cookie exists: on
+      // /oauth-return that cookie is bound to the session GET /oauth/* destroyed.
+      hydrateSession({ state, dispatch }, { forcePrime = false } = {}) {
         clearLegacyAuthStorage();
         if (isJwtValid(state.accessToken)) return Promise.resolve(true);
         if (!hydratePromise) {
@@ -76,7 +78,7 @@ export default {
             try {
               // Shared single-flight prime (no-op when the cookie exists); $post
               // also retries once on csrf_token_invalid. See utils/cookies.js.
-              await ensureCsrfToken(this.$api.csrfBase());
+              await ensureCsrfToken(this.$api.csrfBase(), { force: forcePrime });
               const result = await this.$api.$post('/session/token');
               const accessToken = result && result.success ? result.response : null;
               if (!isJwtValid(accessToken)) return false;
