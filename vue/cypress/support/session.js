@@ -1,26 +1,23 @@
 // Session seeding for the stub-backed specs.
 //
-// The auth mechanism on this commit (verified by reading source, not assumed —
-// a previous pass on this file got this wrong because its branch had been cut
-// from an older commit with a different auth model; that has since been fixed):
+// The auth mechanism on this commit (verified by reading source, not assumed):
 //
-//   - src/store/auth-storage.js persists tokens under sessionStorage keys
-//     `accessToken` / `refreshToken` (getPersistedAuthTokens() reads
-//     sessionStorage first; it also has a legacy localStorage fallback that it
-//     migrates into sessionStorage and then clears — relevant only for carrying
-//     forward a pre-existing session, not for a fresh Cypress visit).
-//   - src/App.vue#created awaits `auth/hydrateSession` on every hard load. That
-//     action (src/store/auth.js) calls getPersistedAuthTokens() and validates
-//     the access token with isJwtValid(): VueJwtDecode.decode(token) — plain
-//     JSON.parse(atob(segment)) — checked against `decoded.exp > now`.
-//   - hydrateSession rejects the WHOLE session if a PRESENT refreshToken fails
-//     validation, but an ABSENT refreshToken is fine. So we deliberately never
-//     write a refreshToken below: writing a garbage one would fail a session
-//     that omitting it entirely keeps valid.
-//   - src/Routes.js has a `beforeEach` guard that separately allows `/app/*`
-//     when either the in-memory `store.state.auth.accessToken` or
-//     `getPersistedAuthTokens().accessToken` is set, so seeding sessionStorage
-//     before the app boots is sufficient without touching Vuex directly.
+//   - Auth tokens live in memory only (Vuex + the API client). The console never
+//     writes them to sessionStorage/localStorage; src/store/auth-storage.js only
+//     scrubs keys that older builds persisted (clearLegacyAuthStorage()).
+//   - src/App.vue#created awaits `auth/hydrateSession` on every hard load, and
+//     the src/Routes.js `beforeEach` guard does the same for any `/app/*` route
+//     when Vuex holds no token. hydrateSession (src/store/auth.js) primes the
+//     CSRF cookie through GET /api/v2/csrf-token and then exchanges the httpOnly
+//     session cookie for an access token through POST /api/v2/session/token. The
+//     returned token is validated with isJwtValid(): VueJwtDecode.decode(token)
+//     — plain JSON.parse(atob(segment)) — checked against `decoded.exp > now`.
+//   - So a stubbed session is a stubbed token exchange: visitApp() registers an
+//     intercept for POST /api/v2/session/token that answers with a forged token
+//     (below). It is registered AFTER cy.stubThinxApi()'s catch-all (specs call
+//     stubThinxApi() in beforeEach, visitApp() later), so it outranks it. A
+//     logged-out visit registers nothing, the catch-all answers 500, and
+//     hydrateSession resolves false — exactly what a real expired cookie does.
 //
 // The token is forged with plain `btoa(JSON.stringify(...))`, NOT base64url.
 // Plain `btoa` is used because vue-jwt-decode's decode() (and src/core/api.js,
@@ -51,22 +48,25 @@ export function forgeJwt({ owner = 'test-owner-0000', expiresInSeconds = 3600 } 
 //   cy.visitApp('/#/app/devices', { session: true })           // valid 1h token
 //   cy.visitApp('/#/app/dashboard', { session: { expiresInSeconds: 2 } })
 //
-// Always writing OR clearing (never leaving storage alone) is deliberate:
-// Cypress 9 does not clear sessionStorage/localStorage between tests of the
-// same spec and offers no built-in per-test reset wired into this suite, so a
-// session seeded in one test would otherwise leak into the next — the same
-// class of bug 5970c2e fixed for cy.login() (there via an explicit
-// startLoggedOut() clear+reload before every login; here by making every
-// visitApp call itself authoritative over the token keys on every visit).
+// For a logged-in visit the session-token exchange is stubbed (alias
+// `@sessionToken`) BEFORE cy.visit, so hydrateSession receives the forged token
+// on the very first load. Re-registering it on every visit is what makes each
+// visitApp() call authoritative over the session for that test: Cypress drops
+// intercepts between tests, and a logged-out visit simply registers none.
 //
-// Both sessionStorage (the live read path) and localStorage (the legacy
-// fallback getPersistedAuthTokens() still checks) are cleared on every call,
-// so a stray key from an earlier test can't leak through the fallback path
-// either. Only sessionStorage is written for a logged-in session, since that
-// is what auth-storage.js treats as authoritative today.
+// Legacy token keys are still cleared from both storages on every visit. The
+// app scrubs them itself on hydrate, so this is belt and braces: no stray key
+// from an older build or an earlier test can influence a run.
 Cypress.Commands.add('visitApp', (url, options = {}) => {
   const { session, onBeforeLoad: userOnBeforeLoad, ...visitOptions } = options;
   const token = session ? forgeJwt(session === true ? {} : session) : null;
+
+  if (token) {
+    cy.intercept(
+      { method: 'POST', pathname: '/api/v2/session/token' },
+      { statusCode: 200, body: { success: true, response: token } },
+    ).as('sessionToken');
+  }
 
   return cy.visit(url, {
     ...visitOptions,
@@ -77,14 +77,33 @@ Cypress.Commands.add('visitApp', (url, options = {}) => {
       win.localStorage.removeItem('refreshToken');
       win.localStorage.removeItem('authenticated');
 
-      if (token) {
-        win.sessionStorage.setItem('accessToken', token);
-      }
-      // refreshToken is deliberately never written — see the block comment
-      // above: hydrateSession() only fails on a PRESENT-but-invalid
-      // refreshToken, so omitting it entirely keeps the seeded session valid.
-
       if (userOnBeforeLoad) userOnBeforeLoad(win);
     },
+  });
+});
+
+// Enter the app at a route other than the dashboard.
+//
+//   cy.visitAppRoute('/app/history', { session: true })
+//   cy.visitAppRoute('/app/device/udid-z', { session: true, onBeforeLoad(win) { ... } })
+//
+// A hard load of a deep link such as `/#/app/history` currently lands on the
+// dashboard: after hydrateSession, src/App.vue reads
+// `$router.history.current.path` before the initial navigation has confirmed,
+// sees `/`, and pushes /app/dashboard. That is a pre-existing app bug, recorded
+// as a follow-up and deliberately NOT fixed from the test harness. This command
+// works around it without touching the app: it loads the dashboard (the route
+// the app settles on anyway), waits until it has rendered, then navigates in
+// app by setting the hash, which the hash-mode router handles like a link.
+//
+// Side effect: the dashboard requests the first audit and build pages (and the
+// devices, stats and profile) before the target route mounts. A
+// cy.wait('@alias') after this command may therefore match the dashboard's
+// request, not the target page's — assert on the target page's rendered rows.
+Cypress.Commands.add('visitAppRoute', (route, options = {}) => {
+  cy.visitApp('/#/app/dashboard', options);
+  cy.get('.page-title').should('contain', 'Dashboard');
+  return cy.window().then((win) => {
+    win.location.hash = '#' + route;
   });
 });

@@ -6,7 +6,7 @@ describe('Device Detail feature', function() {
   });
 
   it('Should navigate to device detail on Detail button click (DEVI-10)', function() {
-    cy.visitApp('/#/app/devices', {
+    cy.visitAppRoute('/app/devices', {
       session: true,
       onBeforeLoad(win) {
         // Cypress already fails on uncaught exceptions; a logged console.error is
@@ -27,7 +27,10 @@ describe('Device Detail feature', function() {
   describe('once on the detail page', function() {
 
     beforeEach(function() {
-      cy.visitApp('/#/app/device/udid-z', { session: true });
+      // visitAppRoute enters through the dashboard (see cypress/support/session.js),
+      // which may satisfy these waits itself; the assertions below retry on the
+      // rendered detail page, so they do not depend on which request matched.
+      cy.visitAppRoute('/app/device/udid-z', { session: true });
       cy.wait(['@getDevices', '@getBuildLog', '@getProfile']);
     });
 
