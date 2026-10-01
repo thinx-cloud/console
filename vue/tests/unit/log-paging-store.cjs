@@ -47,6 +47,11 @@ Vue.prototype.$router = {
 
 let failures = 0;
 
+// A rejection nobody handles (e.g. a promise dropped by created()) is recorded so
+// the test that caused it fails, instead of killing the whole run.
+const unhandled = [];
+process.on('unhandledRejection', (err) => { unhandled.push(err); });
+
 function check(name, condition, detail) {
   console.log((condition ? 'ok   ' : 'FAIL ') + name + (condition || !detail ? '' : ' (' + detail + ')'));
   if (!condition) failures++;
@@ -134,7 +139,7 @@ function makeApi(handler) {
   const calls = [];
   api.request = async function request(method, p) {
     calls.push(p);
-    const raw = handler(p, calls.filter((c) => c === p).length);
+    const raw = await handler(p, calls.filter((c) => c === p).length);
     if (raw instanceof Error) throw raw;
     return this.parseResult(JSON.parse(JSON.stringify(raw)));
   };
@@ -188,6 +193,13 @@ function buildRows(prefix, n) {
 
 function page(items, hasMore, cursor) {
   return { success: true, response: items, paging: { limit: 100, has_more: hasMore, next_cursor: hasMore ? cursor : null } };
+}
+
+// A promise the test resolves by hand, to observe the in-flight state.
+function deferred() {
+  let resolve;
+  const promise = new Promise((r) => { resolve = r; });
+  return { promise, resolve };
 }
 
 // Default two-page server for both logs.
@@ -417,6 +429,156 @@ test('History ignores a background first-page refresh', async () => {
     vm.auditlog.length === 5 && same(vm.auditPaging, paging) &&
     vm.buildlog.length === 2 && same(vm.buildPaging, buildPaging),
     JSON.stringify({ len: vm.auditlog.length, paging: vm.auditPaging })];
+});
+
+// ---------------------------------------------------------------------------
+// Task 3: UI-SPEC states (hint, no-match, error + retry, initial load, busy, live region)
+
+const NO_MATCH = 'No loaded entries match these filters.';
+const LOAD_ERROR = "Couldn't load older entries. Select Load more to try again.";
+
+function hintOf(tree, table) {
+  const h = byCy(tree, table + '-filter-hint');
+  return h.length ? textOf(h[0]) : null;
+}
+
+test('History filter hint singular and plural', async () => {
+  const { vm, api } = await makeHistory(twoPageHandler({
+    '/logs/audit?limit=100': () => page(auditRows('a1', 1), true, 'audit-c1'),
+  }));
+  const calls0 = api.calls.length;
+  const idle = hintOf(render(vm), 'audit') === null && hintOf(render(vm), 'build') === null;
+  vm.dateFrom = '2020-01-01';
+  let tree = render(vm);
+  const one = hintOf(tree, 'audit') === 'Filtering 1 loaded entry; older entries exist.';
+  const buildTwo = hintOf(tree, 'build') === 'Filtering 2 loaded entries; older entries exist.';
+  vm.dateFrom = '';
+  vm.auditFlagFilter = ['danger', 'warning'];
+  vm.auditlog = auditRows('x', 1200);
+  tree = render(vm);
+  const many = hintOf(tree, 'audit') === 'Filtering ' + (1200).toLocaleString() + ' loaded entries; older entries exist.';
+  const buildIdle = hintOf(tree, 'build') === null; // flags are audit-only
+  vm.auditFlagFilter = ['danger', 'warning', 'info'];
+  vm.auditSearch = '   ';
+  const blankSearch = hintOf(render(vm), 'audit') === null;
+  vm.auditSearch = 'event';
+  const search = hintOf(render(vm), 'audit') !== null;
+  vm.auditPaging = { limit: 100, has_more: false, next_cursor: null };
+  const complete = hintOf(render(vm), 'audit') === null;
+  await settle();
+  // Filters stay client-side: none of the changes above requested anything (D-05, D-06).
+  const noRequests = api.calls.length === calls0;
+  return [idle && one && buildTwo && many && buildIdle && blankSearch && search && complete && noRequests,
+    JSON.stringify({ idle, one, buildTwo, many, buildIdle, blankSearch, search, complete, noRequests })];
+});
+
+test('History no-match line keeps Load more', async () => {
+  const { vm } = await makeHistory(twoPageHandler());
+  vm.auditSearch = 'zzz-no-such-entry';
+  vm.buildSearch = 'zzz-no-such-build';
+  const tree = render(vm);
+  const text = textOf(tree);
+  const noMatch = text.split(NO_MATCH).length - 1 === 2 && !text.includes('No audit events.') &&
+    !text.includes('No build logs.') && byCy(tree, 'audit-row').length === 0 &&
+    byCy(tree, 'audit-load-more').length === 1 && byCy(tree, 'build-load-more').length === 1;
+  // Nothing loaded at all: the existing empty-state lines and no Load more.
+  const empty = await makeHistory(() => page([], false, null));
+  const etree = render(empty.vm);
+  const etext = textOf(etree);
+  const emptyOk = etext.includes('No audit events.') && etext.includes('No build logs.') && !etext.includes(NO_MATCH) &&
+    byCy(etree, 'audit-load-more').length === 0 && byCy(etree, 'build-load-more').length === 0 &&
+    byCy(etree, 'audit-paging').length === 1 && byCy(etree, 'build-paging').length === 1;
+  return [noMatch && emptyOk, JSON.stringify({ noMatch, emptyOk })];
+});
+
+test('History load error keeps rows and allows retry', async () => {
+  const { vm, api } = await makeHistory(twoPageHandler({
+    '/logs/audit?limit=100&cursor=audit-c1': (n) => (n === 1
+      ? { success: false, status: 500, response: null }
+      : page(auditRows('a2', 2), false, null)),
+  }));
+  const rows = vm.auditlog.slice();
+  const paging = Object.assign({}, vm.auditPaging);
+  await vm.loadMoreAudit();
+  vm.dateFrom = '2020-01-01'; // show the hint too, for the colour rules
+  let tree = render(vm);
+  const err = byCy(tree, 'audit-load-more-error');
+  const hint = byCy(tree, 'audit-filter-hint');
+  const kept = vm.auditlog.length === 3 && vm.auditlog.every((x, i) => x === rows[i]) && same(vm.auditPaging, paging) &&
+    byCy(tree, 'audit-load-more').length === 1 && byCy(tree, 'audit-row').length === 3;
+  const shown = err.length === 1 && attr(err[0], 'role') === 'alert' && textOf(err[0]) === LOAD_ERROR &&
+    byCy(tree, 'build-load-more-error').length === 0;
+  // UI-SPEC colour rules: body colour text; red only on the error icon.
+  const icons = [];
+  if (err.length) walk(err[0], (v) => { if (v.tag === 'i') icons.push(v); });
+  const colours = err.length === 1 && hint.length === 1 &&
+    !classesOf(err[0]).includes('text-muted') && !classesOf(err[0]).includes('text-danger') &&
+    !classesOf(hint[0]).includes('text-muted') && !classesOf(hint[0]).includes('text-danger') &&
+    icons.length === 1 && classesOf(icons[0]).includes('text-danger') && classesOf(icons[0]).includes('la-exclamation-circle') &&
+    attr(icons[0], 'aria-hidden') === 'true';
+  await vm.loadMoreAudit();
+  tree = render(vm);
+  const retried = vm.auditlog.length === 5 && byCy(tree, 'audit-load-more-error').length === 0 &&
+    api.calls.filter((c) => c === '/logs/audit?limit=100&cursor=audit-c1').length === 2;
+  return [kept && shown && colours && retried, JSON.stringify({ kept, shown, colours, retried })];
+});
+
+test('History initial load clears loading on rejection', async () => {
+  const unhandled0 = unhandled.length;
+  const { vm } = await makeHistory(twoPageHandler({
+    '/logs/audit?limit=100': () => new Error('network down'),
+  }));
+  const tree = render(vm);
+  const ok = vm.loading === false && vm.auditlog.length === 0 && vm.auditPaging.has_more === false &&
+    byCy(tree, 'audit-load-more').length === 0 && textOf(tree).includes('No audit events.') &&
+    !textOf(tree).includes('Loading...') && unhandled.length === unhandled0;
+  return [ok, JSON.stringify({ loading: vm.loading, audit: vm.auditlog.length, build: vm.buildlog.length,
+    unhandled: unhandled.length - unhandled0 })];
+});
+
+test('History busy state blocks a second request', async () => {
+  const gate = deferred();
+  const { vm, api } = await makeHistory(twoPageHandler({
+    '/logs/audit?limit=100&cursor=audit-c1': () => gate.promise.then(() => page(auditRows('a2', 2), false, null)),
+  }));
+  const pending = vm.loadMoreAudit();
+  await flush();
+  let tree = render(vm);
+  const btn = byCy(tree, 'audit-load-more')[0];
+  const wrap = byCy(tree, 'audit-paging')[0];
+  const tables = [];
+  walk(tree, (v) => { if (v.tag === 'table') tables.push(v); });
+  const busy = !!btn && attr(btn, 'aria-disabled') === 'true' && classesOf(btn).includes('disabled') &&
+    !(btn.data.attrs && 'disabled' in btn.data.attrs) && !(btn.data.domProps && btn.data.domProps.disabled) &&
+    textOf(btn) === 'Loading…' && attr(wrap, 'aria-busy') === 'true' &&
+    tables.length === 2 && attr(tables[0], 'aria-busy') === 'true' && attr(tables[1], 'aria-busy') === 'false' &&
+    attr(byCy(tree, 'build-paging')[0], 'aria-busy') === 'false';
+  await vm.loadMoreAudit();
+  await vm.loadMoreAudit();
+  const single = api.calls.filter((c) => c.indexOf('/logs/audit?limit=100&cursor=') === 0).length === 1;
+  gate.resolve();
+  await pending;
+  tree = render(vm);
+  const idle = attr(byCy(tree, 'audit-paging')[0], 'aria-busy') === 'false' && vm.auditlog.length === 5;
+  return [busy && single && idle, JSON.stringify({ busy, single, idle })];
+});
+
+test('History live region announces appended entries', async () => {
+  const { vm } = await makeHistory(twoPageHandler({
+    '/logs/audit?limit=100&cursor=audit-c1': () => page(auditRows('a2', 2), true, 'audit-c2'),
+    '/logs/audit?limit=100&cursor=audit-c2': () => page(auditRows('a3', 1), false, null),
+  }));
+  const status = () => {
+    const s = byCy(render(vm), 'audit-paging-status');
+    return s.length === 1 && classesOf(s[0]).includes('sr-only') && attr(s[0], 'aria-live') === 'polite' &&
+      attr(s[0], 'aria-atomic') === 'true' ? textOf(s[0]) : null;
+  };
+  const atRest = status() === '' && byCy(render(vm), 'build-paging-status').length === 1;
+  await vm.loadMoreAudit();
+  const more = status() === 'Loaded 2 more entries. 5 entries loaded.';
+  await vm.loadMoreAudit();
+  const last = status() === 'Loaded 1 more entry. All 6 entries loaded.';
+  return [atRest && more && last, JSON.stringify({ atRest, more, last, text: status() })];
 });
 
 // ---------------------------------------------------------------------------
