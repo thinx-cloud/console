@@ -340,6 +340,86 @@ test('History audit Load more hidden when has_more is false', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Task 2: buildlog store, History build Load more, independence, background refresh
+
+const BUILD_KEYS = ['build_id', 'date', 'id', 'log', 'name', 'raw', 'status', 'udid'];
+
+test('buildlog first page requests /logs/build?limit=100', async () => {
+  const api = makeApi(() => page(buildRows('b1', 2), true, 'b1'));
+  const store = makeStore(api);
+  const items = await store.dispatch('buildlog/fetchBuildLog');
+  const paging = store.getters['buildlog/getPaging'];
+  return [same(api.calls, ['/logs/build?limit=100']) && items.length === 2 &&
+    same(paging, { limit: 100, has_more: true, next_cursor: 'b1' }) &&
+    same(Object.keys(items[0]).sort(), BUILD_KEYS),
+    JSON.stringify({ calls: api.calls, paging })];
+});
+
+test('buildlog pages are normalized', async () => {
+  // One nested-shape doc and one flat item. Buildlog.toBuildListItem reduces a flat
+  // doc (no log) to {date, udid}; both shapes come back from the paged list.
+  const flat = { date: '2026-09-01T00:00:00.000Z', udid: 'flat-udid' };
+  const api = makeApi(() => page(buildRows('b2', 1).concat([flat]), false, null));
+  const store = makeStore(api);
+  const before = store.state.buildlog.items;
+  const res = await store.dispatch('buildlog/fetchBuildPage', { cursor: 'b/1' });
+  const ok = res && res.ok === true && res.items.length === 2 &&
+    res.items.every((it) => same(Object.keys(it).sort(), BUILD_KEYS)) &&
+    res.items[0].build_id === 'b2-build-0' && res.items[0].udid === 'b2-udid-0' && res.items[0].status === 'OK' &&
+    same(res.items[0].log, ['line 0']) && res.items[1].udid === 'flat-udid' &&
+    res.items[1].date === '2026-09-01T00:00:00.000Z' &&
+    api.calls[0] === '/logs/build?limit=100&cursor=b%2F1' && store.state.buildlog.items === before &&
+    res.paging.has_more === false;
+  const fail = await makeStore(makeApi(() => new Error('down'))).dispatch('buildlog/fetchBuildPage', { cursor: 'x' });
+  return [ok && same(fail, { ok: false }), JSON.stringify({ calls: api.calls, items: res && res.items && res.items.map((it) => [it.udid, it.date]), fail })];
+});
+
+test('History build Load more appends the next page', async () => {
+  const { vm, api } = await makeHistory(twoPageHandler());
+  const btn = byCy(render(vm), 'build-load-more');
+  const before = btn.length === 1 && attr(btn[0], 'aria-label') === 'Load more builds' && textOf(btn[0]) === 'Load more';
+  const firstLen = vm.buildlog.length;
+  await vm.loadMoreBuilds();
+  const tree = render(vm);
+  return [before && firstLen === 2 && vm.buildlog.length === 3 && vm.buildPaging.has_more === false &&
+    api.calls.includes('/logs/build?limit=100&cursor=build-c1') &&
+    byCy(tree, 'build-load-more').length === 0 && byCy(tree, 'build-paging').length === 1,
+    JSON.stringify({ before, firstLen, len: vm.buildlog.length, paging: vm.buildPaging })];
+});
+
+test('History tables page independently', async () => {
+  const { vm } = await makeHistory(twoPageHandler());
+  const build0 = { rows: vm.buildlog.slice(), paging: Object.assign({}, vm.buildPaging) };
+  await vm.loadMoreAudit();
+  let tree = render(vm);
+  const buildUntouched = vm.buildlog.length === build0.rows.length &&
+    vm.buildlog.every((x, i) => x === build0.rows[i]) && same(vm.buildPaging, build0.paging) &&
+    byCy(tree, 'build-load-more').length === 1 && vm.buildLoadingMore === false;
+  const audit1 = { rows: vm.auditlog.slice(), paging: Object.assign({}, vm.auditPaging) };
+  await vm.loadMoreBuilds();
+  tree = render(vm);
+  const auditUntouched = vm.auditlog.length === 5 && vm.auditlog.every((x, i) => x === audit1.rows[i]) &&
+    same(vm.auditPaging, audit1.paging) && vm.buildlog.length === 3;
+  return [buildUntouched && auditUntouched, JSON.stringify({ buildUntouched, auditUntouched })];
+});
+
+test('History ignores a background first-page refresh', async () => {
+  const { vm, store, api } = await makeHistory(twoPageHandler());
+  await vm.loadMoreAudit();
+  const paging = Object.assign({}, vm.auditPaging);
+  const buildPaging = Object.assign({}, vm.buildPaging);
+  const n = api.calls.length;
+  // What Header / Notifications / the dashboard do on their own schedule.
+  await store.dispatch('auditlog/fetchAuditlog');
+  await store.dispatch('buildlog/fetchBuildLog');
+  await settle();
+  return [api.calls.length === n + 2 && store.state.auditlog.items.length === 3 &&
+    vm.auditlog.length === 5 && same(vm.auditPaging, paging) &&
+    vm.buildlog.length === 2 && same(vm.buildPaging, buildPaging),
+    JSON.stringify({ len: vm.auditlog.length, paging: vm.auditPaging })];
+});
+
+// ---------------------------------------------------------------------------
 
 (async () => {
   for (const t of tests) {
