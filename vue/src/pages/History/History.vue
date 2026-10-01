@@ -48,6 +48,17 @@
             </tr>
           </tbody>
         </table>
+        <!-- Paging footer: outside the v-if/v-else pair so a filter can never hide Load more. -->
+        <div class="log-paging" data-cy="audit-paging" tabindex="-1" ref="auditPaging">
+          <button
+            v-if="auditPaging.has_more"
+            type="button"
+            class="btn btn-outline-secondary btn-sm log-paging-more"
+            data-cy="audit-load-more"
+            aria-label="Load more audit log entries"
+            @click="loadMoreAudit"
+          ><template v-if="auditLoadingMore"><b-spinner small aria-hidden="true" class="log-paging-icon" />Loading…</template><template v-else>Load more</template></button>
+        </div>
       </b-tab>
 
       <!-- Build Log Tab -->
@@ -104,6 +115,7 @@
 
 <script>
 import { mapGetters, mapActions } from "vuex";
+import { normPaging } from "@/store/logPaging";
 
 export default {
   name: "History",
@@ -131,6 +143,12 @@ export default {
       // Array of build keys (build_id, falling back to id, falling back to row index) that are currently expanded.
       // Per-row, component-local state; not persisted across reload. Variant (b) of locked HIST-03 decision.
       expandedBuilds: [],
+      // Paging (phase 26). History owns its rows and cursors: it copies the store's
+      // first page once and appends only the pages it requested itself, so a
+      // first-page refresh from Header / Notifications / DeviceDetail cannot
+      // shrink, reset or duplicate a table the user has paged.
+      auditPaging: normPaging(null),
+      auditLoadingMore: false,
     };
   },
   computed: {
@@ -196,10 +214,12 @@ export default {
     ...mapGetters({
       getAuditItems: "auditlog/getItems",
       getBuildItems: "buildlog/getItems",
+      getAuditPaging: "auditlog/getPaging",
     }),
     ...mapActions({
       fetchAuditlog: "auditlog/fetchAuditlog",
       fetchBuildlog: "buildlog/fetchBuildLog",
+      fetchAuditPage: "auditlog/fetchAuditPage",
     }),
     rowClass(item) {
       if (!item.flags) return '';
@@ -265,11 +285,26 @@ export default {
     },
     loadData() {
       this.loading = true;
-      Promise.all([this.fetchAuditlog(), this.fetchBuildlog()]).then(() => {
-        this.auditlog = this.getAuditItems() || [];
+      return Promise.all([this.fetchAuditlog(), this.fetchBuildlog()]).then(() => {
+        this.auditlog = (this.getAuditItems() || []).slice();
         this.buildlog = this.getBuildItems() || [];
+        this.auditPaging = normPaging(this.getAuditPaging());
         this.loading = false;
       });
+    },
+    // Load more (D-01): only an explicit activation requests a page, for that table only (D-03).
+    async loadMoreAudit() {
+      if (this.auditLoadingMore || !this.auditPaging.has_more) return;
+      this.auditLoadingMore = true;
+      try {
+        const res = await this.fetchAuditPage({ cursor: this.auditPaging.next_cursor });
+        if (res && res.ok) {
+          this.auditlog = this.auditlog.concat(res.items);
+          this.auditPaging = res.paging;
+        }
+      } finally {
+        this.auditLoadingMore = false;
+      }
     },
     syncFiltersToQuery() {
       const query = Object.assign({}, this.$route.query, {

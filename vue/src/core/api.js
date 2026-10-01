@@ -69,11 +69,16 @@ export default class Api {
 
   parseResult(result) {
     if (result && typeof result.success !== 'undefined' && result.success) {
-      let keys = Object.keys(result).filter( key => key !== 'success' );
-      return {
+      let keys = Object.keys(result).filter( key => key !== 'success' && key !== 'paging' );
+      const out = {
         'success': result.success,
         'response': result[keys[0]]
       };
+      // Paged log endpoints (phase 26, D-19) send `paging` next to `response`.
+      if (result.paging && typeof result.paging === 'object') {
+        out.paging = result.paging;
+      }
+      return out;
     }
     return result || { success: false };
   }
