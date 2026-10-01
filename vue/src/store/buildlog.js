@@ -1,7 +1,13 @@
+import { PAGE_SIZE, normPaging, pagedPath } from './logPaging';
+
+const BUILD_PATH = '/logs/build';
 
 export default {
     namespaced: true,
     state: {
+        // Paging of the first page in `items` (phase 26). Further pages are
+        // fetched with fetchBuildPage and kept by the caller (History.vue).
+        paging: { limit: PAGE_SIZE, has_more: false, next_cursor: null },
         items: [
           /*
           
@@ -35,17 +41,41 @@ export default {
       saveBuildItems(state, data) { 
         state.items = data.items;
       },
+      savePaging(state, paging) {
+        state.paging = normPaging(paging);
+      },
     },
     actions: {
+        // First page (newest 100) for every consumer: Header, Notifications,
+        // DeviceDetail, the dashboard and History (D-02, D-04).
         async fetchBuildLog({ state, commit }) {
-          const result = await this.$api.$get('/logs/build');
+          const result = await this.$api.$get(pagedPath(BUILD_PATH, null));
           if (result.success) {
             commit('saveBuildItems', { items: normalizeBuildItems(result.response) });
+            commit('savePaging', normPaging(result.paging));
           }
           return state.items;
         },
+        // One further page, normalized like the first. Never mutates state and
+        // never throws: the caller owns the appended list.
+        async fetchBuildPage(ctx, { cursor } = {}) {
+          try {
+            const result = await this.$api.$get(pagedPath(BUILD_PATH, cursor));
+            if (!result || !result.success) return { ok: false };
+            return {
+              ok: true,
+              items: normalizeBuildItems(result.response),
+              paging: normPaging(result.paging),
+            };
+          } catch (e) {
+            return { ok: false };
+          }
+        },
     },
     getters: {
+        getPaging(state) {
+            return state.paging;
+        },
         getItems(state) {
             return state.items;
         },
@@ -68,8 +98,9 @@ function normalizeBuildItems(items) {
     return {
       id: item._id || latestLog.build_id || latestLog.udid || String(index),
       build_id: latestLog.build_id || item._id || '',
-      udid: latestLog.udid || latestEntry.udid || '',
-      date: latestEntry.last_update || latestLog.last_update || latestLog.timestamp || item.last_update || '',
+      // Flat builds come back as {date, udid} (Buildlog.toBuildListItem), so fall back to those.
+      udid: latestLog.udid || latestEntry.udid || item.udid || '',
+      date: latestEntry.last_update || latestLog.last_update || latestLog.timestamp || item.last_update || item.date || '',
       name: item.name || latestLog.alias || latestEntry.alias || '',
       status: normalizeStatus(item.state || latestLog.state || latestEntry.state || latestEntry.message),
       log: entries

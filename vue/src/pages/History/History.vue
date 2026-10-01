@@ -107,6 +107,17 @@
             </tr>
           </tbody>
         </table>
+        <!-- Paging footer: outside the v-if/v-else pair so a filter can never hide Load more. -->
+        <div class="log-paging" data-cy="build-paging" tabindex="-1" ref="buildPaging">
+          <button
+            v-if="buildPaging.has_more"
+            type="button"
+            class="btn btn-outline-secondary btn-sm log-paging-more"
+            data-cy="build-load-more"
+            aria-label="Load more builds"
+            @click="loadMoreBuilds"
+          ><template v-if="buildLoadingMore"><b-spinner small aria-hidden="true" class="log-paging-icon" />Loading…</template><template v-else>Load more</template></button>
+        </div>
       </b-tab>
 
     </b-tabs>
@@ -149,6 +160,8 @@ export default {
       // shrink, reset or duplicate a table the user has paged.
       auditPaging: normPaging(null),
       auditLoadingMore: false,
+      buildPaging: normPaging(null),
+      buildLoadingMore: false,
     };
   },
   computed: {
@@ -215,11 +228,13 @@ export default {
       getAuditItems: "auditlog/getItems",
       getBuildItems: "buildlog/getItems",
       getAuditPaging: "auditlog/getPaging",
+      getBuildPaging: "buildlog/getPaging",
     }),
     ...mapActions({
       fetchAuditlog: "auditlog/fetchAuditlog",
       fetchBuildlog: "buildlog/fetchBuildLog",
       fetchAuditPage: "auditlog/fetchAuditPage",
+      fetchBuildPage: "buildlog/fetchBuildPage",
     }),
     rowClass(item) {
       if (!item.flags) return '';
@@ -287,23 +302,34 @@ export default {
       this.loading = true;
       return Promise.all([this.fetchAuditlog(), this.fetchBuildlog()]).then(() => {
         this.auditlog = (this.getAuditItems() || []).slice();
-        this.buildlog = this.getBuildItems() || [];
+        this.buildlog = (this.getBuildItems() || []).slice();
         this.auditPaging = normPaging(this.getAuditPaging());
+        this.buildPaging = normPaging(this.getBuildPaging());
         this.loading = false;
       });
     },
-    // Load more (D-01): only an explicit activation requests a page, for that table only (D-03).
-    async loadMoreAudit() {
-      if (this.auditLoadingMore || !this.auditPaging.has_more) return;
-      this.auditLoadingMore = true;
+    // Load more (D-01): only an explicit activation requests a page, and only for
+    // that table, with that table's own cursor (D-03).
+    loadMoreAudit() {
+      return this.loadMore('audit', this.fetchAuditPage);
+    },
+    loadMoreBuilds() {
+      return this.loadMore('build', this.fetchBuildPage);
+    },
+    async loadMore(table, fetchPage) {
+      const pagingKey = table + 'Paging';
+      const loadingKey = table + 'LoadingMore';
+      const rowsKey = table + 'log';
+      if (this[loadingKey] || !this[pagingKey].has_more) return;
+      this[loadingKey] = true;
       try {
-        const res = await this.fetchAuditPage({ cursor: this.auditPaging.next_cursor });
+        const res = await fetchPage({ cursor: this[pagingKey].next_cursor });
         if (res && res.ok) {
-          this.auditlog = this.auditlog.concat(res.items);
-          this.auditPaging = res.paging;
+          this[rowsKey] = this[rowsKey].concat(res.items);
+          this[pagingKey] = res.paging;
         }
       } finally {
-        this.auditLoadingMore = false;
+        this[loadingKey] = false;
       }
     },
     syncFiltersToQuery() {
