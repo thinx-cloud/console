@@ -24,8 +24,9 @@
           data-cy="flag-filter"
           switches
         />
-        <div v-if="!filteredAudit.length" class="text-muted">No audit events.</div>
-        <table v-else class="table table-striped table-sm">
+        <div v-if="!auditlog.length" class="text-muted">No audit events.</div>
+        <div v-else-if="!filteredAudit.length">No loaded entries match these filters.</div>
+        <table v-else class="table table-striped table-sm" :aria-busy="auditLoadingMore ? 'true' : 'false'">
           <thead>
             <tr>
               <th>Date</th>
@@ -48,17 +49,38 @@
             </tr>
           </tbody>
         </table>
-        <!-- Paging footer: outside the v-if/v-else pair so a filter can never hide Load more. -->
-        <div class="log-paging" data-cy="audit-paging" tabindex="-1" ref="auditPaging">
+        <!-- Paging footer: outside the empty/table branches so a filter can never hide Load more. -->
+        <div
+          class="log-paging"
+          data-cy="audit-paging"
+          tabindex="-1"
+          ref="auditPaging"
+          :aria-busy="auditLoadingMore ? 'true' : 'false'"
+        >
           <button
             v-if="auditPaging.has_more"
+            ref="auditLoadMore"
             type="button"
             class="btn btn-outline-secondary btn-sm log-paging-more"
+            :class="{ disabled: auditLoadingMore }"
+            :aria-disabled="auditLoadingMore ? 'true' : null"
             data-cy="audit-load-more"
             aria-label="Load more audit log entries"
             @click="loadMoreAudit"
           ><template v-if="auditLoadingMore"><b-spinner small aria-hidden="true" class="log-paging-icon" />Loading…</template><template v-else>Load more</template></button>
+          <span
+            v-if="auditPaging.has_more && auditFilterActive"
+            class="log-paging-text"
+            data-cy="audit-filter-hint"
+          ><i class="la la-info-circle log-paging-icon" aria-hidden="true"></i>{{ filterHint(auditlog.length) }}</span>
+          <span
+            v-if="auditLoadError"
+            role="alert"
+            class="log-paging-text"
+            data-cy="audit-load-more-error"
+          ><i class="la la-exclamation-circle text-danger log-paging-icon" aria-hidden="true"></i>Couldn't load older entries. Select Load more to try again.</span>
         </div>
+        <div class="sr-only" aria-live="polite" aria-atomic="true" data-cy="audit-paging-status">{{ auditStatus }}</div>
       </b-tab>
 
       <!-- Build Log Tab -->
@@ -70,8 +92,9 @@
           <b-form-input type="date" data-cy="date-to" v-model="dateTo" style="max-width:180px" />
         </b-form>
         <b-form-input v-model="buildSearch" placeholder="Search build log..." class="mb-3" style="max-width:400px" />
-        <div v-if="!filteredBuilds.length" class="text-muted">No build logs.</div>
-        <table v-else class="table table-striped table-sm">
+        <div v-if="!buildlog.length" class="text-muted">No build logs.</div>
+        <div v-else-if="!filteredBuilds.length">No loaded entries match these filters.</div>
+        <table v-else class="table table-striped table-sm" :aria-busy="buildLoadingMore ? 'true' : 'false'">
           <thead>
             <tr>
               <th>Date</th>
@@ -107,17 +130,38 @@
             </tr>
           </tbody>
         </table>
-        <!-- Paging footer: outside the v-if/v-else pair so a filter can never hide Load more. -->
-        <div class="log-paging" data-cy="build-paging" tabindex="-1" ref="buildPaging">
+        <!-- Paging footer: outside the empty/table branches so a filter can never hide Load more. -->
+        <div
+          class="log-paging"
+          data-cy="build-paging"
+          tabindex="-1"
+          ref="buildPaging"
+          :aria-busy="buildLoadingMore ? 'true' : 'false'"
+        >
           <button
             v-if="buildPaging.has_more"
+            ref="buildLoadMore"
             type="button"
             class="btn btn-outline-secondary btn-sm log-paging-more"
+            :class="{ disabled: buildLoadingMore }"
+            :aria-disabled="buildLoadingMore ? 'true' : null"
             data-cy="build-load-more"
             aria-label="Load more builds"
             @click="loadMoreBuilds"
           ><template v-if="buildLoadingMore"><b-spinner small aria-hidden="true" class="log-paging-icon" />Loading…</template><template v-else>Load more</template></button>
+          <span
+            v-if="buildPaging.has_more && buildFilterActive"
+            class="log-paging-text"
+            data-cy="build-filter-hint"
+          ><i class="la la-info-circle log-paging-icon" aria-hidden="true"></i>{{ filterHint(buildlog.length) }}</span>
+          <span
+            v-if="buildLoadError"
+            role="alert"
+            class="log-paging-text"
+            data-cy="build-load-more-error"
+          ><i class="la la-exclamation-circle text-danger log-paging-icon" aria-hidden="true"></i>Couldn't load older entries. Select Load more to try again.</span>
         </div>
+        <div class="sr-only" aria-live="polite" aria-atomic="true" data-cy="build-paging-status">{{ buildStatus }}</div>
       </b-tab>
 
     </b-tabs>
@@ -162,6 +206,11 @@ export default {
       auditLoadingMore: false,
       buildPaging: normPaging(null),
       buildLoadingMore: false,
+      auditLoadError: false,
+      buildLoadError: false,
+      // Live-region text, set only after a successful append (empty at rest).
+      auditStatus: '',
+      buildStatus: '',
     };
   },
   computed: {
@@ -194,6 +243,15 @@ export default {
         if (q && !(item.message || '').toLowerCase().includes(q)) return false;
         return true;
       });
+    },
+    // D-05: filters run over the loaded entries only; with older entries on the
+    // server the page says so next to Load more. Text search counts as a filter.
+    auditFilterActive() {
+      return !!(this.dateFrom || this.dateTo || (this.auditSearch || '').trim() ||
+        (this.auditFlagFilter || []).length !== 3);
+    },
+    buildFilterActive() {
+      return !!(this.dateFrom || this.dateTo || (this.buildSearch || '').trim());
     },
     filteredBuilds() {
       const q = this.buildSearch ? this.buildSearch.toLowerCase() : '';
@@ -300,13 +358,32 @@ export default {
     },
     loadData() {
       this.loading = true;
-      return Promise.all([this.fetchAuditlog(), this.fetchBuildlog()]).then(() => {
-        this.auditlog = (this.getAuditItems() || []).slice();
-        this.buildlog = (this.getBuildItems() || []).slice();
-        this.auditPaging = normPaging(this.getAuditPaging());
-        this.buildPaging = normPaging(this.getBuildPaging());
+      // Each table takes its first page independently; a rejected request leaves
+      // that table empty (no Load more) and never keeps "Loading..." on screen.
+      return Promise.allSettled([this.fetchAuditlog(), this.fetchBuildlog()]).then(([audit, build]) => {
+        if (audit.status === 'fulfilled') {
+          this.auditlog = (this.getAuditItems() || []).slice();
+          this.auditPaging = normPaging(this.getAuditPaging());
+        }
+        if (build.status === 'fulfilled') {
+          this.buildlog = (this.getBuildItems() || []).slice();
+          this.buildPaging = normPaging(this.getBuildPaging());
+        }
+      }).finally(() => {
         this.loading = false;
       });
+    },
+    filterHint(n) {
+      return `Filtering ${n.toLocaleString()} loaded ${n === 1 ? 'entry' : 'entries'}; older entries exist.`;
+    },
+    appendStatus(added, total, more) {
+      const entries = (n) => `${n.toLocaleString()} ${n === 1 ? 'entry' : 'entries'}`;
+      const loaded = `Loaded ${added.toLocaleString()} more ${added === 1 ? 'entry' : 'entries'}.`;
+      return more ? `${loaded} ${entries(total)} loaded.` : `${loaded} All ${entries(total)} loaded.`;
+    },
+    hasFocus(refName) {
+      const el = this.$refs[refName];
+      return !!el && typeof document !== 'undefined' && document.activeElement === el;
     },
     // Load more (D-01): only an explicit activation requests a page, and only for
     // that table, with that table's own cursor (D-03).
@@ -320,13 +397,28 @@ export default {
       const pagingKey = table + 'Paging';
       const loadingKey = table + 'LoadingMore';
       const rowsKey = table + 'log';
+      const errorKey = table + 'LoadError';
+      // aria-disabled, not disabled: repeat activations while loading are no-ops here.
       if (this[loadingKey] || !this[pagingKey].has_more) return;
+      this[errorKey] = false;
       this[loadingKey] = true;
       try {
         const res = await fetchPage({ cursor: this[pagingKey].next_cursor });
         if (res && res.ok) {
+          const hadFocus = this.hasFocus(table + 'LoadMore');
           this[rowsKey] = this[rowsKey].concat(res.items);
           this[pagingKey] = res.paging;
+          this[table + 'Status'] = this.appendStatus(res.items.length, this[rowsKey].length, res.paging.has_more);
+          if (!res.paging.has_more && hadFocus) {
+            // The button is about to disappear: keep keyboard users on the footer.
+            this.$nextTick(() => {
+              const wrapper = this.$refs[pagingKey];
+              if (wrapper && typeof wrapper.focus === 'function') wrapper.focus();
+            });
+          }
+        } else {
+          // Rows, cursor and has_more stay as they were, so a retry asks for the same page.
+          this[errorKey] = true;
         }
       } finally {
         this[loadingKey] = false;
@@ -349,3 +441,31 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.log-paging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+.log-paging:empty {
+  margin: 0;
+}
+.log-paging-more {
+  min-width: 112px;
+}
+.log-paging-more:focus-visible {
+  outline: 2px solid #2477FF;
+  outline-offset: 2px;
+}
+.log-paging-text {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.log-paging-icon {
+  margin-right: 4px;
+}
+</style>
