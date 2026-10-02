@@ -155,6 +155,32 @@ legend {
   }
 }
 
+// Bootstrap's warning and danger row variants paint a pale fill and keep the
+// light body text, which is unreadable in the dark theme (G-26-1). Tint the
+// cells instead, over a transparent row so the panel and the stripe show
+// through, and lift the text to $header-color for WCAG AA. The tr. qualifier
+// outranks Bootstrap's .table-<variant> selectors regardless of import order.
+// Guarded by tests/unit/table-row-contrast.cjs.
+tr.table-warning,
+tr.table-danger {
+  background-color: transparent;
+  color: $header-color;
+}
+
+tr.table-warning > td,
+tr.table-warning > th {
+  background-color: rgba(theme-color('warning'), .2);
+  color: $header-color;
+  border-color: $table-border-color;
+}
+
+tr.table-danger > td,
+tr.table-danger > th {
+  background-color: rgba(theme-color('danger'), .2);
+  color: $header-color;
+  border-color: $table-border-color;
+}
+
 .small,
 small {
   font-size: 85%;
