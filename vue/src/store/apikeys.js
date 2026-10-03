@@ -3,22 +3,14 @@
 //   <i class="fa fa-key"></i> {{apikey.name | limitTo : 10 : apikey.name.length - 10}}
 //   <span class="apikey-alias">{{apikey.alias}}</span>
 // — i.e. the list shows ONLY the alias and the last 10 chars of `name` (the
-// pre-masked fingerprint the backend returns). The full `key` is shown ONCE
+// pre-masked fingerprint the backend returns). The full key (`api_key`) is shown ONCE
 // in the create-result modal, then never again. The `hash` is internal-only
 // (used for delete operations) — never in the UI.
 export default {
     namespaced: true,
     state: {
-        items: [
-          /*
-          {
-            "name": "******************************81d35b35a7ea1705e77b7d356a8447dcc3",
-            "key": "55557c0229220a75e9946724f52a0481d35b35a7ea1705e77b7d356a8447dcc3",
-            "hash": "5262bca2be441ec28998b16d059228ce990c9c8f67fcc617237fbac0a614a515",
-            "alias": "Default MQTT API Key"
-          }
-          */
-        ],
+        // Items from GET /apikey are {name, hash, alias}; the key itself is never listed.
+        items: [],
         // Only Alias + masked Key shown in the list. `hash` stays on items[]
         // for the delete flow but is never rendered (pos: null hides it from
         // List.vue's filteredHeaders).
@@ -26,7 +18,6 @@ export default {
           { title: 'Alias',  prop: 'alias',   pos: 0 },
           { title: 'Key',    prop: 'display', pos: 1 },
           { title: 'hash',   prop: 'hash',    pos: null },
-          { title: 'key',    prop: 'key',     pos: null },
           { title: 'name',   prop: 'name',    pos: null },
         ]
     },
