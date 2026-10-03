@@ -21,6 +21,7 @@
     "test:xsrf": "node test/xsrf-seam.cjs",
     "test:env": "node test/env-json.cjs",
     "test:ng-scope": "node test/ng-scope.cjs",
+    "test:toast": "node test/toast-escape.cjs",
     "test:csp:built": "node test/csp/source-check.cjs html",
     "test:csp:browser": "node test/csp/browser.cjs && node test/csp/app-browser.cjs && node test/csp/auth-browser.cjs && node test/csp/vendor-browser.cjs",
     "test:csp:external": "node test/csp/external-browser.cjs"
