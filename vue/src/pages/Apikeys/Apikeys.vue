@@ -73,7 +73,7 @@ export default {
       if (!this.form.alias.trim()) return;
       const result = await this.createItem(this.form.alias.trim());
       if (result.success) {
-        this.createdKey = result.response && result.response.key ? result.response.key : null;
+        this.createdKey = result.response && result.response.api_key ? result.response.api_key : null;
         this.form.alias = '';
         this.$bvModal.hide('create-apikey-modal');
         if (this.createdKey) this.$bvModal.show('apikey-result-modal');
