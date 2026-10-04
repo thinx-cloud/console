@@ -88,7 +88,7 @@
       </Widget>
     </b-container>
     <footer class="auth-footer">
-      <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by
+      &copy; 2018 - 2026 <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by
       <a :href="this.$hostnames.LANDING" target="_blank">THiNX Cloud</a>
       <span class="build-id" style="display:block;font-size:0.7rem;opacity:0.5;margin-top:4px">{{ buildHash }}</span>
     </footer>

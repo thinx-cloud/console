@@ -9,7 +9,7 @@
     </transition>
   </div>
   <footer class="contentFooter">
-    <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by <a :href="this.$hostnames.LANDING" target="_blank">THiNX Cloud</a>
+    &copy; 2018 - 2026 <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by <a :href="this.$hostnames.LANDING" target="_blank">THiNX Cloud</a>
   </footer>
 </div>
 </template>

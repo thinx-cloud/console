@@ -93,7 +93,7 @@
       </Widget>
     </b-container>
     <footer class="auth-footer">
-      <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by
+      &copy; 2018 - 2026 <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by
       <a :href="this.$hostnames.LANDING" target="_blank">THiNX Cloud</a>
     </footer>
   </div>
