@@ -24,7 +24,8 @@
     "test:toast": "node test/toast-escape.cjs",
     "test:csp:built": "node test/csp/source-check.cjs html",
     "test:csp:browser": "node test/csp/browser.cjs && node test/csp/app-browser.cjs && node test/csp/auth-browser.cjs && node test/csp/vendor-browser.cjs",
-    "test:csp:external": "node test/csp/external-browser.cjs"
+    "test:csp:external": "node test/csp/external-browser.cjs",
+    "test:deploykeys": "node test/deploykey.cjs"
   },
   "author": "Mikulas Sychra @ THiNX Cloud",
   "repository": {

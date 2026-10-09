@@ -52,8 +52,8 @@ var Thinx = {
   deploykeyList: function() {
     return deploykeyList();
   },
-  createDeploykey: function() {
-    return createDeploykey();
+  createDeploykey: function(name) {
+    return createDeploykey(name);
   },
   revokeDeploykeys: function( filenames ) {
     return revokeDeploykeys( filenames );
@@ -352,11 +352,13 @@ function init( $rootScope, $scope ) {
   }
 
   function updateDeploykeys( data ) {
-    $rootScope.deploykeys = data.response;
+    if (typeof data === "string") data = JSON.parse(data);
+    if (!data || !data.success) return;
+    $rootScope.deploykeys = Array.isArray(data.response) ? data.response : [];
     safeApply( $scope );
 
     // save user-spcific goal achievement
-    if ( $rootScope.profile.info.goals.length > 0 ) {
+    if ( $rootScope.profile && $rootScope.profile.info && Array.isArray($rootScope.profile.info.goals) ) {
       if ( !$rootScope.profile.info.goals.includes( "deploykey" ) && $rootScope.deploykeys.length > 0 ) {
         $rootScope.profile.info.goals.push( "deploykey" );
         $scope.$emit( "saveProfileChanges", [ "goals" ] );
@@ -1041,10 +1043,12 @@ function deploykeyList() {
   } );
 }
 
-function createDeploykey() {
+function createDeploykey(name) {
   return $.ajax( {
     url: urlBase + "/user/rsakey/create",
-    type: "GET"
+    type: "GET",
+    data: { name: name },
+    dataType: "json"
   } );
 }
 

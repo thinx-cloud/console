@@ -72,7 +72,8 @@ export default {
     ...mapGetters({ getByUtid: 'transformers/getByUtid' }),
     ...mapActions({ fetchItems: 'transformers/fetchItems', updateItem: 'transformers/updateItem' }),
     async loadTransformer() {
-      await this.fetchItems();
+      try { await this.fetchItems(); }
+      catch (e) { this.error = 'Could not load transformers.'; return; }
       const utid = this.$route.params.utid;
       const transformer = this.getByUtid()(utid);
       if (!transformer) {
@@ -89,19 +90,22 @@ export default {
       this.hasChanges = false;
     },
     async save() {
+      if (this.saving) return;
       this.saving = true;
+      try {
       const result = await this.updateItem({
         utid: this.$route.params.utid,
         alias: this.form.alias,
         body: this.form.body,
       });
-      this.saving = false;
       if (result.success) {
         this.hasChanges = false;
         this.$router.push('/app/transformers');
       } else {
         this.error = result.message || 'Failed to save transformer.';
       }
+      } catch (e) { this.error = 'Could not save transformer.'; }
+      finally { this.saving = false; }
     },
     cancel() {
       this.$router.push('/app/transformers');

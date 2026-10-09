@@ -72,7 +72,9 @@ export default class Api {
       let keys = Object.keys(result).filter( key => key !== 'success' && key !== 'paging' );
       const out = {
         'success': result.success,
-        'response': result[keys[0]]
+        'response': Object.prototype.hasOwnProperty.call(result, 'response')
+          ? result.response
+          : (keys.length === 1 ? result[keys[0]] : keys.reduce((doc, key) => { doc[key] = result[key]; return doc; }, {}))
       };
       // Paged log endpoints (phase 26, D-19) send `paging` next to `response`.
       if (result.paging && typeof result.paging === 'object') {

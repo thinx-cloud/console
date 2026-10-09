@@ -47,9 +47,9 @@ export default {
       saveItems(state, data) { 
         let flatItems = [];
         for (let id of Object.keys(data.items)) {
-          flatItems.push({id: id, ...data.items[id]});
+          flatItems.push({ ...data.items[id], id: data.items[id].filename || id });
         }
-        state.items = flatItems;
+        state.items = flatItems.sort((a, b) => new Date(b.date) - new Date(a.date));
       },
     },
     actions: {
@@ -60,8 +60,8 @@ export default {
         }
         return state.items;
       },
-      async createItem({ dispatch }) {
-        const result = await this.$api.$put('/rsakey', JSON.stringify({}));
+      async createItem({ dispatch }, name) {
+        const result = await this.$api.$put('/rsakey', JSON.stringify({ name }));
         if (result.success) await dispatch('fetchItems');
         return result;
       },

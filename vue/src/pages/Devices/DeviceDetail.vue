@@ -11,9 +11,16 @@
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
     <b-alert v-if="message" variant="success" show dismissible @dismissed="message = null">{{ message }}</b-alert>
 
+    <b-card title="Actions" class="mb-3" data-cy="card-actions">
+      <b-button variant="primary" @click="buildDevice" class="mr-2 mb-2"><i class="fa fa-cogs mr-1" aria-hidden="true" /> Build Firmware</b-button>
+      <b-button variant="danger" @click="revokeDevice" class="mr-2 mb-2"><i class="fa fa-trash mr-1" aria-hidden="true" /> Revoke Device</b-button>
+      <b-button variant="warning" data-cy="action-transfer" @click="$bvModal.show('transfer-modal')" class="mr-2 mb-2"><i class="fa fa-exchange mr-1" aria-hidden="true" /> Transfer Device</b-button>
+      <b-button variant="secondary" data-cy="action-environment" :disabled="envLoading" @click="editEnvironment" class="mr-2 mb-2"><i class="fa fa-sliders mr-1" aria-hidden="true" /> Environment</b-button>
+    </b-card>
+
     <b-row>
       <!-- Left: metadata -->
-      <b-col md="6">
+      <b-col cols="12">
         <b-card title="Device Info" class="mb-3" data-cy="card-device-info">
           <table class="table table-sm table-borderless mb-0">
             <tr><td class="text-muted" style="width:140px">UDID</td><td><code>{{ device.udid }}</code></td></tr>
@@ -37,7 +44,7 @@
       </b-col>
 
       <!-- Right: editable fields + actions -->
-      <b-col md="6">
+      <b-col cols="12">
         <b-card title="Edit Device" class="mb-3">
           <b-form-group label="Alias">
             <b-input-group>
@@ -57,14 +64,9 @@
           </b-form-group>
         </b-card>
 
-        <b-card title="Actions" class="mb-3" data-cy="card-actions">
-          <b-button variant="secondary" @click="buildDevice" class="mr-2 mb-2">Build Firmware</b-button>
-          <b-button variant="danger" @click="revokeDevice" class="mr-2 mb-2">Revoke Device</b-button>
-          <b-button variant="warning" data-cy="action-transfer" @click="$bvModal.show('transfer-modal')" class="mr-2 mb-2">Transfer Device</b-button>
-        </b-card>
-
         <b-card v-if="device.source" title="Linked Repository" class="mb-3">
-          <p class="text-monospace">{{ device.source }}</p>
+          <p class="mb-1">{{ linkedRepository ? linkedRepository.alias : 'Repository unavailable' }}</p>
+          <p v-if="linkedRepository" class="text-monospace text-break">{{ linkedRepository.url }}</p>
         </b-card>
 
         <b-card title="Environment Variables" class="mb-3" data-cy="card-enviros">
@@ -105,6 +107,8 @@
             <b-form-select multiple v-model="editForm.transformers" :options="transformerOptions" :select-size="5" />
           </b-form-group>
           <b-button variant="primary" size="sm" @click="saveTransformers">Save Transformers</b-button>
+          <b-button variant="success" size="sm" class="ml-2" @click="$bvModal.show('device-transformer-modal')">Create &amp; Assign</b-button>
+          <b-button variant="link" size="sm" to="/app/transformers">Manage Transformers</b-button>
         </b-card>
 
         <b-card title="Build History" class="mb-3" data-cy="card-build-history">
@@ -118,7 +122,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(build, i) in buildHistory" :key="i">
+                <tr v-for="(build, i) in buildHistory" :key="i" tabindex="0" role="button" :aria-label="'Open build log ' + build.build_id" @click="openBuildLog(build)" @keydown.enter.prevent="openBuildLog(build)" @keydown.space.prevent="openBuildLog(build)">
                   <td>{{ build.date | fromNow }}</td>
                   <td><code>{{ build.build_id }}</code></td>
                   <td>
@@ -144,6 +148,16 @@
       </b-col>
     </b-row>
 
+    <b-modal id="device-transformer-modal" title="Create & Assign Transformer" @ok="createTransformer" :ok-disabled="transformerSaving" ok-title="Create & Assign">
+      <b-alert v-if="transformerError" variant="danger" show>{{ transformerError }}</b-alert>
+      <b-form-group label="Name" label-for="device-transformer-name">
+        <b-form-input id="device-transformer-name" v-model="transformerForm.alias" required />
+      </b-form-group>
+      <b-form-group label="JavaScript" label-for="device-transformer-body">
+        <b-form-textarea id="device-transformer-body" v-model="transformerForm.body" rows="8" class="text-monospace" />
+      </b-form-group>
+    </b-modal>
+    <BuildLogDialog ref="buildLogDialog" />
     <b-modal id="transfer-modal" title="Transfer Device" @ok="transferDevice" ok-title="Transfer" ok-variant="warning">
       <p>Transfer this device to another owner.</p>
       <b-form-group label="Target owner email" label-for="transfer-to">
@@ -164,12 +178,14 @@
 </template>
 
 <script>
+import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import { mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
 import { parseEnvironmentJSON } from '@/utils/envJson';
 
 export default {
   name: "DeviceDetail",
+  components: { BuildLogDialog },
   filters: {
     fromNow(val) {
       if (!val) return '—';
@@ -183,6 +199,9 @@ export default {
       error: null,
       message: null,
       editForm: { alias: '', description: '', transformers: [] },
+      transformerForm: { alias: '', body: 'var transformer = function(status, device) { return status; };' },
+      transformerSaving: false,
+      transformerError: null,
       buildHistory: [],
       deviceLogs: [],
       transferForm: { to: '', mig_sources: false, mig_apikeys: false },
@@ -210,6 +229,9 @@ export default {
       const result = parseEnvironmentJSON(this.envDraft);
       return result.ok ? null : result.error;
     },
+    linkedRepository() {
+      return (this.getRepositories() || []).find(repo => repo.id === this.device.source) || null;
+    },
     transformerOptions() {
       return (this.getTransformers() || []).map(t => ({ value: t.utid, text: t.alias || t.utid }));
     },
@@ -218,7 +240,8 @@ export default {
     this.loadDevice();
   },
   methods: {
-    ...mapGetters({ getByUdid: 'devices/getByUdid', getBuildItems: 'buildlog/getItems', getTransformers: 'transformers/getItems' }),
+    openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
+    ...mapGetters({ getByUdid: 'devices/getByUdid', getBuildItems: 'buildlog/getItems', getTransformers: 'transformers/getItems', getRepositories: 'repositories/getItems' }),
     ...mapActions({
       fetchItems: 'devices/fetchItems',
       revokeDevices: 'devices/revokeDevices',
@@ -226,13 +249,16 @@ export default {
       updateDevice: 'devices/updateDevice',
       fetchBuildLog: 'buildlog/fetchBuildLog',
       fetchTransformers: 'transformers/fetchItems',
+      createTransformerItem: 'transformers/createItem',
+      fetchRepositories: 'repositories/fetchItems',
       transferDevices: 'devices/transferDevices',
       fetchDeviceDetail: 'devices/fetchDeviceDetail',
     }),
     async loadDevice() {
       this.loading = true;
       const udid = this.$route.params.udid;
-      await Promise.all([this.fetchItems(), this.fetchBuildLog(), this.fetchTransformers()]);
+      const results = await Promise.allSettled([this.fetchItems(), this.fetchBuildLog(), this.fetchTransformers(), this.fetchRepositories()]);
+      if (results.some(result => result.status === 'rejected')) this.error = 'Some device details could not be loaded. Refresh to retry.';
       this.device = this.getByUdid()(udid) || null;
       if (this.device) {
         this.editForm.alias = this.device.alias;
@@ -330,6 +356,36 @@ export default {
         await this.loadDevice();
       } else {
         this.error = result.message || 'Failed to save the environment.';
+      }
+    },
+    async createTransformer(event) {
+      event.preventDefault();
+      if (this.transformerSaving) return;
+      this.transformerError = null;
+      const alias = this.transformerForm.alias.trim();
+      if (!alias) { this.transformerError = 'Enter a transformer name.'; return; }
+      if ((this.getTransformers() || []).some(t => t.alias === alias)) {
+        this.transformerError = 'A transformer with this name already exists.';
+        return;
+      }
+      this.transformerSaving = true;
+      try {
+        const created = await this.createTransformerItem({ alias, body: this.transformerForm.body });
+        if (!created || !created.success) throw new Error('Could not create transformer.');
+        const selected = [...this.editForm.transformers, created.utid];
+        const saved = await this.updateDevice({ udid: this.device.udid, changes: { transformers: selected } });
+        if (!saved || !saved.success) {
+          this.transformerError = 'Transformer created, but assignment failed. Select it from the list and save to retry.';
+          return;
+        }
+        this.$bvModal.hide('device-transformer-modal');
+        this.transformerForm.alias = '';
+        this.message = 'Transformer created and assigned.';
+        await this.loadDevice();
+      } catch (e) {
+        this.transformerError = e.message || 'Could not create transformer.';
+      } finally {
+        this.transformerSaving = false;
       }
     },
     async saveTransformers() {

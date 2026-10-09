@@ -28,18 +28,22 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
 
     console.log( "--creating deploy key--" );
 
-    Thinx.createDeploykey()
+    if ($scope.creatingDeploykey || !$scope.deploykeyName || !$scope.deploykeyName.trim()) return;
+    $scope.creatingDeploykey = true;
+    Thinx.createDeploykey($scope.deploykeyName.trim())
     .done( function( response ) {
 
-      response = JSON.parse( response );
+      if (typeof response === "string") response = JSON.parse(response);
 
       if ( typeof( response ) !== "undefined" ) {
         if ( response.success ) {
           console.log( response );
           toastr.success( "Key created.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
 
-          $scope.deploykeyCreated = response.status.name;
-          $scope.deploykeyValue = response.status.pubkey;
+          var key = response.response || response.status;
+          $scope.deploykeyCreated = key.date || key.name;
+          $scope.deploykeyValue = key.pubkey;
+          $scope.$applyAsync();
 
           Thinx.deploykeyList()
           .done( function( data ) {
@@ -62,7 +66,11 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
       $( ".msg-warning" ).show();
       $scope.$emit( "xhrFailed", error );
       toastr.error( "Error.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
-    } );
+    } )
+    .always(function() {
+      $scope.creatingDeploykey = false;
+      $scope.$applyAsync();
+    });
 
   };
 
@@ -116,6 +124,8 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
   };
 
   $scope.resetModal = function() {
+    $scope.deploykeyName = "";
+    $scope.creatingDeploykey = false;
     $scope.deploykeyCreated = null;
     $scope.deploykeyValue = null;
     $scope.selectedItems = [];

@@ -93,7 +93,7 @@ const router = new Router({
 
         {
           path: 'rsakeys',
-          name: 'RSA Keys',
+          name: 'Deploy Keys',
           component: RsakeyManager, // DeploykeyManager,
         },
 
