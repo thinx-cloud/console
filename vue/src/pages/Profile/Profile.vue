@@ -39,9 +39,9 @@
       <b-tab title="Notifications">
         <b-form @submit.prevent="saveNotifications" style="max-width:400px">
           <b-form-group label="Notification preferences">
-            <b-form-checkbox v-model="notifForm.all" class="mb-2">All notifications</b-form-checkbox>
-            <b-form-checkbox v-model="notifForm.important" class="mb-2">Important notifications only</b-form-checkbox>
-            <b-form-checkbox v-model="notifForm.info">Informational notifications</b-form-checkbox>
+            <b-form-checkbox v-model="notifForm.all" @change="notificationChanged('all', $event)" class="mb-2">All notifications</b-form-checkbox>
+            <b-form-checkbox v-model="notifForm.important" @change="notificationChanged('important', $event)" class="mb-2">Important notifications only</b-form-checkbox>
+            <b-form-checkbox v-model="notifForm.info" @change="notificationChanged('info', $event)">Informational notifications</b-form-checkbox>
           </b-form-group>
           <b-button type="submit" variant="primary" data-cy="save-notifications" :disabled="saving">
             {{ saving ? 'Saving...' : 'Save Notifications' }}
@@ -256,6 +256,10 @@ export default {
         this.notifForm.all = !!notif.all;
         this.notifForm.important = !!notif.important;
         this.notifForm.info = !!notif.info;
+        if (this.notifForm.all) {
+          this.notifForm.important = false;
+          this.notifForm.info = false;
+        }
       }
       this.loading = false;
     },
@@ -286,6 +290,15 @@ export default {
         this.message = 'Profile updated.';
       } else {
         this.error = result.message || 'Failed to update profile.';
+      }
+    },
+    notificationChanged(kind, selected) {
+      if (!selected) return;
+      if (kind === 'all') {
+        this.notifForm.important = false;
+        this.notifForm.info = false;
+      } else {
+        this.notifForm.all = false;
       }
     },
     async saveNotifications() {

@@ -38,7 +38,7 @@
     </table>
 
     <!-- Create Modal -->
-    <b-modal id="create-transformer-modal" title="Add Transformer" @ok="create" ok-title="Create">
+    <b-modal id="create-transformer-modal" title="Add Transformer" :ok-disabled="creating" @ok="create" ok-title="Create">
       <b-alert :show="!!error" variant="danger" class="mb-3">{{ error }}</b-alert>
       <b-form-group label="Alias" label-for="transformer-alias">
         <b-form-input id="transformer-alias" v-model="form.alias" placeholder="e.g. Battery Parser" required />
@@ -58,6 +58,7 @@ export default {
       loading: true,
       error: null,
       form: { alias: '' },
+      creating: false,
     };
   },
   created() {
@@ -78,28 +79,34 @@ export default {
         this.error = 'A transformer with this alias already exists.';
         return;
       }
+      if (this.creating) return;
+      this.creating = true;
+      try {
       const result = await this.createItem(this.form.alias.trim());
       if (result.success) {
         this.form.alias = '';
         this.$bvModal.hide('create-transformer-modal');
-        this.loadData();
+        await this.loadData();
       } else {
         this.error = result.message || 'Failed to create transformer.';
       }
+      } catch (e) { this.error = 'Could not create transformer.'; }
+      finally { this.creating = false; }
     },
     async deleteTransformer(utid) {
       const confirmed = await this.$bvModal.msgBoxConfirm('Delete this transformer?', { title: 'Confirm Delete', okVariant: 'danger', okTitle: 'Delete' });
       if (!confirmed) return;
+      try {
       const result = await this.deleteItem(utid);
       if (!result.success) this.error = result.message || 'Failed to delete transformer.';
-      else this.loadData();
+      else await this.loadData();
+      } catch (e) { this.error = 'Could not delete transformer.'; }
     },
-    loadData() {
+    async loadData() {
       this.loading = true;
-      this.fetchItems().then(() => {
-        this.items = this.getItems();
-        this.loading = false;
-      });
+      try { await this.fetchItems(); this.items = this.getItems(); }
+      catch (e) { this.error = 'Could not load transformers.'; }
+      finally { this.loading = false; }
     },
   },
 };

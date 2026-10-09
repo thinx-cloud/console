@@ -12,6 +12,8 @@
         v-for="build in recentBuilds"
         :key="build.id || `${build.date}-${build.name || build.udid}`"
         class="listGroupItem"
+        button
+        @click="openBuildLog(build)"
       >
         <span class="notificationIcon thumb-sm">
           <span :class="statusIconClass(build)">
@@ -26,6 +28,7 @@
         </p>
       </b-list-group-item>
     </b-list-group>
+    <BuildLogDialog ref="buildLogDialog" />
     <footer class="text-sm footer px-4 py-2">
       <router-link to="/app/history/builds" class="fs-mini">See all builds</router-link>
       <b-button
@@ -41,11 +44,13 @@
 </template>
 
 <script>
+import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import Vue from 'vue';
 import { mapActions, mapGetters } from 'vuex';
 
 export default {
   name: 'Notification',
+  components: { BuildLogDialog },
   data() {
     return {
       isLoad: false,
@@ -65,6 +70,7 @@ export default {
     this.loadNotifications();
   },
   methods: {
+    openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
     ...mapGetters({ getBuildLog: 'buildlog/getItems' }),
     ...mapActions({ fetchBuildLog: 'buildlog/fetchBuildLog' }),
     async loadNotifications() {

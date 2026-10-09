@@ -104,7 +104,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, i) in filteredBuilds" :key="i" data-cy="build-row">
+            <tr v-for="(item, i) in filteredBuilds" :key="i" data-cy="build-row" tabindex="0" role="button" :aria-label="'Open build log ' + item.build_id" @click="openBuildLog(item)" @keydown.enter.prevent="openBuildLog(item)" @keydown.space.prevent="openBuildLog(item)">
               <td style="white-space:nowrap">{{ item.date | formatDate }}</td>
               <td>{{ item.name }}</td>
               <td>
@@ -123,9 +123,9 @@
                   variant="link"
                   class="p-0"
                   data-cy="build-expand"
-                  @click="toggleExpand(item)"
+                  @click.stop="toggleExpand(item)"
                 >{{ isExpanded(item) ? 'Collapse' : 'Expand' }}</b-button>
-                <span v-if="!hasLog(item)" class="text-muted">—</span>
+                <b-button size="sm" variant="link" @click.stop="openBuildLog(item)">Open build log</b-button>
               </td>
             </tr>
           </tbody>
@@ -165,15 +165,18 @@
       </b-tab>
 
     </b-tabs>
+    <BuildLogDialog ref="buildLogDialog" />
   </div>
 </template>
 
 <script>
+import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import { mapGetters, mapActions } from "vuex";
 import { normPaging } from "@/store/logPaging";
 
 export default {
   name: "History",
+  components: { BuildLogDialog },
   filters: {
     formatDate(val) {
       if (!val) return '—';
@@ -282,6 +285,7 @@ export default {
     auditFlagFilter() { this.syncFiltersToQuery(); },
   },
   methods: {
+    openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
     ...mapGetters({
       getAuditItems: "auditlog/getItems",
       getBuildItems: "buildlog/getItems",

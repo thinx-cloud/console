@@ -1,16 +1,6 @@
 <template>
   <b-navbar toggleable="md" class="app-header d-print-none">
     <b-navbar-nav class="navbar-nav-mobile ml-auto">
-      <b-nav-text class="mr-3">
-        <b-alert
-          class="header-alert animate__animated animate__bounceIn animate__delay-2s"
-          dismissible
-          v-model="showNavbarAlert"
-        >
-          <i class="fa fa-info-circle mr-1"></i> Check out Light Blue Settings on the
-          right!
-        </b-alert>
-      </b-nav-text>
       <b-nav-form class="d-sm-down-none mr-3">
         <b-input-group class="input-group-transparent search-group">
           <b-input-group-text slot="prepend"
@@ -55,24 +45,12 @@
         <template slot="button-content">
           <i class="fi flaticon-settings-10 px-2" />
         </template>
-        <b-dropdown-item to="/app/profile"><i class="la la-user" /> My Account</b-dropdown-item>
-        <b-dropdown-divider />
-        <b-dropdown-item>
-          Inbox &nbsp;&nbsp;<b-badge
-            variant="danger"
-            pill
-            class="animate__animated animate__bounceIn"
-            >9</b-badge
-          >
-        </b-dropdown-item>
+        <b-dropdown-item to="/app/profile"><i class="la la-user" /> My Profile</b-dropdown-item>
         <b-dropdown-divider />
         <b-dropdown-item-button @click="logout">
           <i class="la la-sign-out" /> Log Out
         </b-dropdown-item-button>
       </b-nav-item-dropdown>
-      <b-nav-item class="d-md-down-none" @click="logout">
-        <i class="fi flaticon-power-1 px-2" />
-      </b-nav-item>
       <b-nav-item class="d-md-none" @click="switchSidebarMethod">
         <i class="la la-navicon px-2" />
       </b-nav-item>
@@ -90,7 +68,6 @@ export default {
   components: { Notifications },
   data() {
     return {
-      showNavbarAlert: true,
       profile: {},
     };
   },
