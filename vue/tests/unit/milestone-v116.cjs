@@ -218,6 +218,13 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   let keyRequest;
   await keys.actions.createItem.call({$api:{$put:async(url,body)=>{keyRequest=JSON.parse(body);return {success:true};}}},{dispatch:async()=>{}},'Firmware');
   assert.deepEqual(keyRequest,{name:'Firmware'});
+  // 35 WR-05: a failed deploy-key list request is an error, not an empty list.
+  await assert.rejects(()=>keys.actions.fetchItems.call({$api:{$get:async()=>({success:false})}},{state:{items:[]},commit:()=>{throw new Error('must not commit');}}),/Could not load deploy keys/);
+  const created=await keys.actions.createItem.call({$api:{$put:async()=>({success:true,response:{pubkey:'k'}})}},{dispatch:async()=>{throw new Error('refresh failed');}},'X');
+  assert.equal(created.success,true,'a failed refresh after create still reports the created key');
+  const failedPage=Object.assign(keyPage.data(),{fetchItems:async()=>{throw new Error('offline');},getItems:()=>[]});
+  await keyPage.methods.loadData.call(failedPage);
+  assert.equal(failedPage.loadFailed,true); assert.equal(failedPage.error,'Could not load deploy keys.'); assert.equal(failedPage.loading,false);
   const keyState={}; keys.mutations.saveItems(keyState,{items:[{name:'old',date:1},{name:'new',date:2}]});
   assert.equal(keyState.items[0].name,'new');
   let requested;

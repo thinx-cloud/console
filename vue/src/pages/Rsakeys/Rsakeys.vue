@@ -23,7 +23,7 @@
               <b-button size="sm" variant="outline-secondary" class="ml-2" @click="copyToClipboard(item.pubkey)">Copy key</b-button>
             </td>
           </tr>
-          <tr v-if="!items.length"><td colspan="4" class="text-muted">No deploy keys yet.</td></tr>
+          <tr v-if="!items.length"><td colspan="4" class="text-muted">{{ loadFailed ? 'Deploy keys could not be loaded. Reload the page to retry.' : 'No deploy keys yet.' }}</td></tr>
         </tbody>
       </table>
     </div>
@@ -40,7 +40,7 @@
 import { mapGetters, mapActions } from 'vuex';
 export default {
   name: 'Rsakeys',
-  data() { return { selectedIds: [], items: [], loading: true, creating: false, error: null, keyName: '', createdPubkey: '', shownName: '' }; },
+  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createdPubkey: '', shownName: '' }; },
   created() { this.loadData(); },
   methods: {
     ...mapGetters({ getItems: 'rsakeys/getItems' }),
@@ -76,8 +76,8 @@ export default {
     },
     async loadData() {
       this.loading = true;
-      try { await this.fetchItems(); this.items = this.getItems(); }
-      catch (e) { this.error = 'Could not load deploy keys.'; }
+      try { await this.fetchItems(); this.items = this.getItems(); this.loadFailed = false; }
+      catch (e) { this.loadFailed = true; this.error = 'Could not load deploy keys.'; }
       finally { this.loading = false; }
     },
     formatDate(value) { return value ? new Date(value).toLocaleString() : '—'; },

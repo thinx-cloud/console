@@ -54,20 +54,24 @@ export default {
     },
     actions: {
       async fetchItems({ state, commit }) {
+        // api.js turns 401/5xx/non-JSON into { success: false } without throwing.
+        // Throw here (like transformers/fetchItems) so the page reports the
+        // failure instead of showing an empty "No deploy keys yet." (35 WR-05).
         const result = await this.$api.$get('/rsakey');
-        if (result.success) {
-          commit('saveItems', { items: result.response });
-        }
+        if (!result || !result.success) throw new Error('Could not load deploy keys.');
+        commit('saveItems', { items: result.response || [] });
         return state.items;
       },
       async createItem({ dispatch }, name) {
         const result = await this.$api.$put('/rsakey', JSON.stringify({ name }));
-        if (result.success) await dispatch('fetchItems');
+        // A failed refresh must not turn a created key into a reported failure;
+        // the page reloads the list itself and reports a load error there.
+        if (result.success) await dispatch('fetchItems').catch(() => {});
         return result;
       },
       async deleteItems({ dispatch }, filenames) {
         const result = await this.$api.$delete('/rsakey', JSON.stringify({ filenames }));
-        if (result.success) await dispatch('fetchItems');
+        if (result.success) await dispatch('fetchItems').catch(() => {});
         return result;
       },
     },
