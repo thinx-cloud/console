@@ -122,31 +122,25 @@
                   <th>Date</th>
                   <th>Build ID</th>
                   <th>Status</th>
+                  <th>Log</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(build, i) in buildHistory" :key="i" tabindex="0" role="button" :aria-label="'Open build log ' + build.build_id" @click="openBuildLog(build)" @keydown.enter.prevent="openBuildLog(build)" @keydown.space.prevent="openBuildLog(build)">
+                <!-- Rows are a summary only; the full log loads only from the row's Open build log button (G-36-3). -->
+                <tr v-for="(build, i) in buildHistory" :key="i">
                   <td>{{ build.date | fromNow }}</td>
                   <td><code>{{ build.build_id }}</code></td>
                   <td>
                     <b-badge :variant="build.status === 'OK' ? 'success' : 'danger'">{{ build.status || '—' }}</b-badge>
+                  </td>
+                  <td>
+                    <b-button size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'Open build log ' + build.build_id" @click="openBuildLog(build)">Open build log</b-button>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
           <p v-else class="text-muted mb-0">No build history.</p>
-        </b-card>
-
-        <b-card v-if="device.last_build_id" title="Device Logs (last build)" class="mb-3" data-cy="card-device-logs">
-          <div v-if="deviceLogs.length">
-            <pre
-              v-for="(entry, i) in deviceLogs"
-              :key="i"
-              style="max-height:300px;overflow-y:auto;font-size:12px;background:#1e1e1e;color:#ddd;padding:1rem;border-radius:4px"
-            >{{ Array.isArray(entry.log) ? entry.log.join('\n') : (entry.log || '') }}</pre>
-          </div>
-          <p v-else class="text-muted mb-0">No log entries for last build.</p>
         </b-card>
       </b-col>
     </b-row>
@@ -206,7 +200,6 @@ export default {
       transformerSaving: false,
       transformerError: null,
       buildHistory: [],
-      deviceLogs: [],
       transferForm: { to: '', mig_sources: false, mig_apikeys: false },
       // Environment editor. envDraft is the textarea's raw text; it only reaches
       // the device once parseEnvironmentJSON accepts it.
@@ -281,7 +274,6 @@ export default {
         this.editForm.transformers = [...(this.device.transformers || [])];
         const allBuilds = this.getBuildItems() || [];
         this.buildHistory = allBuilds.filter(b => b.udid === udid);
-        this.deviceLogs = allBuilds.filter(b => b.build_id === this.device.last_build_id);
       }
       this.loading = false;
     },
