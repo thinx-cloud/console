@@ -376,7 +376,7 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   assert.ok('stacked' in attrsOf(group), 'transformer checkboxes are stacked');
   assert.equal(attrsOf(group)['data-cy'], 'transformer-checkboxes', 'checkbox group has data-cy transformer-checkboxes');
   assert.deepEqual(attrsOf(group).options, [{ value: 't1', text: 'Alpha' }, { value: 't2', text: 'passthrough' }, { value: 't3', text: 't3' }], 'one checkbox per transformer, value utid, label alias or utid');
-  assert.deepEqual(attrsOf(group).options, tPage.vm.transformerOptions, 'checkbox options are transformerOptions');
+  assert.deepEqual(attrsOf(group).options, tPage.vm.assignmentOptions, 'checkbox options are assignmentOptions');
   const model = group.data && group.data.model;
   assert.ok(model, 'checkbox group is bound with v-model');
   assert.equal(model.expression, 'editForm.transformers', 'checkbox group is bound to editForm.transformers');
@@ -411,5 +411,17 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   assert.equal(empty.length, 1, 'empty profile shows one empty-state line');
   assert.equal(ePage.textOf(empty[0]), 'No transformers yet. Use Create & Assign to add one.', 'empty-state line points to Create & Assign');
   checkCardButtons(ePage, eCard);
+  // 37 WR-01: an assigned utid with no transformer behind it is shown as a (missing) checkbox and can be unticked.
+  const oPage = await renderDeviceDetail([], { udid: 'udid-t', alias: 'tango-01', transformers: ['t2', 'gone'], environment: {} }, tItems);
+  const oCard = oPage.nodes.find(n => attrsOf(n)['data-cy'] === 'card-transformers');
+  const oGroup = oPage.under(oCard, n => n.tag === 'b-form-checkbox-group')[0];
+  assert.deepEqual(attrsOf(oGroup).options.slice(-1), [{ value: 'gone', text: '(missing) gone' }], 'orphaned assignment gets a (missing) checkbox');
+  assert.deepEqual(oGroup.data.model.value, ['t2', 'gone'], 'orphaned assignment is shown as checked');
+  oGroup.data.model.callback(['t2']);
+  assert.ok(oPage.vm.assignmentOptions.some(o => o.value === 'gone'), 'an unticked orphan stays visible until saved');
+  const gPage = await renderDeviceDetail([], { udid: 'udid-t', alias: 'tango-01', transformers: ['gone'], environment: {} }, []);
+  const gCard = gPage.nodes.find(n => attrsOf(n)['data-cy'] === 'card-transformers');
+  assert.equal(gPage.under(gCard, n => attrsOf(n)['data-cy'] === 'transformers-empty').length, 0, 'no empty-state line while an orphan is still assigned');
+  assert.equal(gPage.under(gCard, n => n.tag === 'b-form-checkbox-group').length, 1, 'orphan-only device still renders the checkbox group');
   console.log('v1.16 regression checks passed: logs, API envelopes, notifications, transformers, deploy keys, linked repository links, device build history without inline logs, transformer assignment checkboxes, and all changed Vue templates.');
 })().catch(err=>{console.error(err); process.exitCode=1;});

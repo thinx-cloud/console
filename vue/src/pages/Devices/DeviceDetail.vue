@@ -108,9 +108,9 @@
         <b-card title="Transformer Assignment" class="mb-3" data-cy="card-transformers">
           <b-form-group label="Assigned transformers">
             <b-form-checkbox-group
-              v-if="transformerOptions.length"
+              v-if="assignmentOptions.length"
               v-model="editForm.transformers"
-              :options="transformerOptions"
+              :options="assignmentOptions"
               stacked
               data-cy="transformer-checkboxes"
             />
@@ -251,6 +251,14 @@ export default {
     },
     transformerOptions() {
       return (this.getTransformers() || []).map(t => ({ value: t.utid, text: t.alias || t.utid }));
+    },
+    // Assigned utids with no transformer behind them (deleted, or the list failed to load) still get a
+    // checkbox, so they can be seen and unticked instead of being re-saved invisibly (37 WR-01).
+    assignmentOptions() {
+      const known = new Set(this.transformerOptions.map(o => o.value));
+      const assigned = [...((this.device && this.device.transformers) || []), ...(this.editForm.transformers || [])];
+      const missing = [...new Set(assigned)].filter(utid => utid && !known.has(utid));
+      return [...this.transformerOptions, ...missing.map(utid => ({ value: utid, text: '(missing) ' + utid }))];
     },
   },
   created() {
@@ -412,7 +420,7 @@ export default {
         const pending = [...new Set([...(this.editForm.transformers || []), created.utid])];
         const saved = await this.updateDevice({ udid: this.device.udid, changes: { transformers: selected } });
         if (!saved || !saved.success) {
-          this.transformerError = 'Transformer created, but assignment failed. Select it from the list and save to retry.';
+          this.transformerError = 'Transformer created, but assignment failed. Tick it in the list and save to retry.';
           return;
         }
         this.$bvModal.hide('device-transformer-modal');
