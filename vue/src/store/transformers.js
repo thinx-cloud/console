@@ -52,7 +52,19 @@ export default {
         return Object.assign({}, result, { utid });
       },
       async updateItem({ state, dispatch }, { utid, alias, body }) {
+        // Refuse writes that would blank a transformer: an empty alias, or a
+        // body that is not a string (an editor that never loaded).
+        if (typeof alias !== 'string' || !alias.trim()) {
+          return { success: false, message: 'Transformer alias is required.' };
+        }
+        if (typeof body !== 'string') {
+          return { success: false, message: 'Transformer body is missing.' };
+        }
         await dispatch('fetchItems');
+        if (!state.items.some(t => t.utid === utid)) {
+          // Deleted elsewhere since the editor loaded: report it, do not write.
+          return { success: false, message: 'Transformer not found.' };
+        }
         const transformers = state.items.map(t =>
           t.utid === utid
             ? { utid, alias, body: btoa(unescape(encodeURIComponent(body))) }

@@ -134,6 +134,50 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   await transformers.actions.createItem({state,dispatch:async(action,value)=>{if(action==='saveTransformers') {payload=value; return {success:true};}}},{alias:'New',body:'// český'});
   assert.equal(payload[0].body,'keep');
   assert.equal(decodeURIComponent(escape(atob(payload[1].body))),'// český');
+  // 35 CR-01: the store refuses writes that would blank a transformer.
+  const writes=[];
+  const updState={items:[{utid:'t1',alias:'Live',body:'b64'}]};
+  const updCtx={state:updState,dispatch:async(action,value)=>{if(action==='saveTransformers'){writes.push(value);return {success:true};}}};
+  for (const alias of ['', '   ', undefined, null]) {
+    const refused=await transformers.actions.updateItem(updCtx,{utid:'t1',alias,body:'x'});
+    assert.equal(refused.success,false,'updateItem refuses alias '+JSON.stringify(alias));
+  }
+  assert.equal((await transformers.actions.updateItem(updCtx,{utid:'t1',alias:'Live',body:undefined})).success,false,'updateItem refuses a missing body');
+  const gone=await transformers.actions.updateItem(updCtx,{utid:'deleted',alias:'Gone',body:'x'});
+  assert.equal(gone.success,false,'updateItem reports a transformer deleted since load'); assert.equal(gone.message,'Transformer not found.');
+  assert.equal(writes.length,0,'refused updates never write info.transformers');
+  assert.equal((await transformers.actions.updateItem(updCtx,{utid:'t1',alias:'Renamed',body:'// ok'})).success,true);
+  assert.equal(writes.length,1); assert.equal(writes[0][0].alias,'Renamed');
+  // 35 CR-01: the editor refuses to save after a failed load, and Save is disabled.
+  const editorDef=load('pages/Transformers/TransformerEditor.vue');
+  let editorWrites=0;
+  const editor=Object.assign(editorDef.data(),{$route:{params:{utid:'t1'}},$router:{push(){}},
+    fetchItems:async()=>{throw new Error('offline');},getByUtid:()=>()=>({utid:'t1',alias:'Live',body:btoa('x')}),
+    updateItem:async()=>{editorWrites++;return {success:true};}});
+  await editorDef.methods.loadTransformer.call(editor);
+  assert.equal(editor.loaded,false,'failed load leaves the editor unloaded'); assert.equal(editor.error,'Could not load transformers.');
+  editor.error=null; await editorDef.methods.save.call(editor);
+  assert.equal(editorWrites,0,'save after a failed load does not write'); assert.ok(editor.error,'save after a failed load reports why');
+  const editorSfc=compiler.parseComponent(fs.readFileSync(path.join(root,'pages/Transformers/TransformerEditor.vue'),'utf8'));
+  const editorRender=compiler.compileToFunctions(editorSfc.template.content);
+  const saveDisabled=state=>{
+    renderError=null;
+    const vm=new Vue({render:editorRender.render,staticRenderFns:editorRender.staticRenderFns,data:()=>Object.assign(editorDef.data(),state),
+      components:{codemirror:{render:h=>h('div')}},methods:{save(){},cancel(){}}});
+    const vnode=vm._render(); assert.equal(renderError,null,'TransformerEditor renders');
+    let found;
+    (function walk(n){ if(!n) return; if(n.tag==='b-button'&&(n.data.on||{}).click&&String((n.children||[]).map(c=>c.text).join('')).includes('Save')) found=n; (n.children||[]).forEach(walk); })(vnode);
+    assert.ok(found,'Save button rendered'); return !!found.data.attrs.disabled;
+  };
+  assert.equal(saveDisabled({loaded:false,form:{alias:'',body:''}}),true,'Save disabled before a successful load');
+  assert.equal(saveDisabled({loaded:true,form:{alias:'  ',body:'x'}}),true,'Save disabled with an empty alias');
+  assert.equal(saveDisabled({loaded:true,form:{alias:'Live',body:'x'}}),false,'Save enabled once loaded with an alias');
+  editor.fetchItems=async()=>{}; await editorDef.methods.loadTransformer.call(editor);
+  assert.equal(editor.loaded,true); assert.equal(editor.form.alias,'Live');
+  editor.form.alias=' '; await editorDef.methods.save.call(editor);
+  assert.equal(editorWrites,0,'save with an empty alias does not write');
+  editor.form.alias='Live'; await editorDef.methods.save.call(editor);
+  assert.equal(editorWrites,1,'save after a successful load writes once');
   let keyRequest;
   await keys.actions.createItem.call({$api:{$put:async(url,body)=>{keyRequest=JSON.parse(body);return {success:true};}}},{dispatch:async()=>{}},'Firmware');
   assert.deepEqual(keyRequest,{name:'Firmware'});

@@ -22,7 +22,7 @@
       class="mb-3"
     />
 
-    <b-button variant="primary" @click="save" :disabled="saving">
+    <b-button variant="primary" @click="save" :disabled="saving || !loaded || !form.alias.trim()">
       {{ saving ? 'Saving...' : 'Save' }}
     </b-button>
     <b-button variant="secondary" class="ml-2" @click="cancel">Cancel</b-button>
@@ -42,6 +42,9 @@ export default {
   data() {
     return {
       form: { alias: '', body: '' },
+      // True only after the transformer was fetched and copied into the form.
+      // Save stays disabled otherwise, so a failed load cannot blank it.
+      loaded: false,
       hasChanges: false,
       saving: false,
       error: null,
@@ -72,6 +75,7 @@ export default {
     ...mapGetters({ getByUtid: 'transformers/getByUtid' }),
     ...mapActions({ fetchItems: 'transformers/fetchItems', updateItem: 'transformers/updateItem' }),
     async loadTransformer() {
+      this.loaded = false;
       try { await this.fetchItems(); }
       catch (e) { this.error = 'Could not load transformers.'; return; }
       const utid = this.$route.params.utid;
@@ -80,7 +84,7 @@ export default {
         this.error = 'Transformer not found.';
         return;
       }
-      this.form.alias = transformer.alias;
+      this.form.alias = transformer.alias || '';
       // body is stored base64-encoded
       try {
         this.form.body = transformer.body ? decodeURIComponent(escape(atob(transformer.body))) : '';
@@ -88,9 +92,18 @@ export default {
         this.form.body = transformer.body || '';
       }
       this.hasChanges = false;
+      this.loaded = true;
     },
     async save() {
       if (this.saving) return;
+      if (!this.loaded) {
+        this.error = 'The transformer did not load. Reload the page before saving.';
+        return;
+      }
+      if (!this.form.alias || !this.form.alias.trim()) {
+        this.error = 'Transformer alias is required.';
+        return;
+      }
       this.saving = true;
       try {
       const result = await this.updateItem({
