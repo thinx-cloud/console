@@ -2,6 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('node:assert/strict');
 const compiler = require('vue-template-compiler');
+const Vue = require('vue/dist/vue.runtime.common.js');
+Vue.config.productionTip = false; Vue.config.devtools = false; Vue.config.ignoredElements = [/^b-/];
+let renderError = null;
+Vue.config.errorHandler = err => { renderError = err; };
 const root = path.resolve(__dirname, '../../src');
 function load(file, extra = {}) {
   const full = path.join(root, file);
@@ -60,6 +64,43 @@ const dialog = load('components/BuildLogDialog/BuildLogDialog.vue',{buildLogText
 const keyPage = load('pages/Rsakeys/Rsakeys.vue');
 load('components/Header/Header.vue'); load('components/Notifications/Notifications.vue');
 load('pages/History/History.vue'); load('pages/Transformers/Transformers.vue'); load('pages/Transformers/TransformerEditor.vue');
+// G-35-4: render the real Linked Repository card with the component's own computed properties.
+function renderLinkedRepository(repos, source) {
+  const sfc = compiler.parseComponent(fs.readFileSync(path.join(root, 'pages/Devices/DeviceDetail.vue'), 'utf8'));
+  const card = (sfc.template.content.match(/<b-card\b[^>]*title="Linked Repository"[^>]*>[\s\S]*?<\/b-card>/) || [])[0];
+  assert.ok(card, 'DeviceDetail.vue has a Linked Repository card');
+  const compiled = compiler.compileToFunctions(card);
+  const computed = {};
+  for (const name of ['linkedRepository', 'linkedRepositoryHref']) if (typeof device.computed[name] === 'function') computed[name] = device.computed[name];
+  renderError = null;
+  const vm = new Vue({ render: compiled.render, staticRenderFns: compiled.staticRenderFns, data: () => ({ device: { source } }), computed, methods: { getRepositories: () => repos } });
+  const vnode = vm._render();
+  assert.equal(renderError, null, 'Linked Repository card renders without error');
+  const anchors = [], hrefs = [], text = [];
+  (function walk(node) {
+    if (!node) return;
+    const attrs = node.data && node.data.attrs;
+    if (node.tag === 'a') anchors.push(attrs || {});
+    if (attrs && Object.prototype.hasOwnProperty.call(attrs, 'href')) hrefs.push(node);
+    if (!node.tag && node.text) text.push(node.text);
+    (node.children || []).forEach(walk);
+  })(vnode);
+  return { anchors, hrefs, text: text.join(' ').replace(/\s+/g, ' ').trim() };
+}
+const httpsCard = renderLinkedRepository([{ id: 'r1', alias: 'Firmware repo', url: 'https://github.com/org/repo.git' }], 'r1');
+assert.equal(httpsCard.anchors.length, 1, 'https repository URL renders exactly one link');
+assert.equal(httpsCard.anchors[0].href, 'https://github.com/org/repo.git', 'https repository link points at the parsed URL');
+assert.equal(httpsCard.anchors[0].target, '_blank', 'https repository link opens a new tab');
+assert.equal(httpsCard.anchors[0].rel, 'noopener noreferrer', 'https repository link drops opener and referrer');
+assert.ok(httpsCard.text.includes('Firmware repo') && httpsCard.text.includes('https://github.com/org/repo.git'), 'https card shows alias and URL');
+const scriptCard = renderLinkedRepository([{ id: 'r1', alias: 'Bad repo', url: 'javascript:alert(document.domain)' }], 'r1');
+assert.equal(scriptCard.anchors.length, 0, 'javascript: repository URL renders no link');
+assert.equal(scriptCard.hrefs.length, 0, 'javascript: repository URL renders no href');
+assert.ok(scriptCard.text.includes('javascript:alert(document.domain)'), 'javascript: repository URL stays visible as text');
+const sshCard = renderLinkedRepository([{ id: 'r1', alias: 'SSH repo', url: 'git@github.com:org/repo.git' }], 'r1');
+assert.equal(sshCard.anchors.length, 0, 'git@ SSH remote renders no link');
+assert.equal(sshCard.hrefs.length, 0, 'git@ SSH remote renders no href');
+assert.ok(sshCard.text.includes('git@github.com:org/repo.git'), 'git@ SSH remote stays visible as text');
 (async () => {
   let posted;
   await transformers.actions.saveTransformers.call({$api:{$post:async (url,body)=>{posted={url,body:JSON.parse(body)};return {success:true};}}},{dispatch:async()=>{}},[{utid:'t1',body:'encoded'}]);
@@ -97,5 +138,5 @@ load('pages/History/History.vue'); load('pages/Transformers/Transformers.vue'); 
   await keyPage.methods.create.call(page); assert.equal(page.createdPubkey,'public-key'); assert.equal(page.creating,false);
   page.keyName='retry'; page.createItem=async()=>{throw new Error('offline');}; await keyPage.methods.create.call(page);
   assert.equal(page.creating,false); assert.ok(page.error);
-  console.log('v1.16 regression checks passed: logs, API envelopes, notifications, transformers, deploy keys, and all changed Vue templates.');
+  console.log('v1.16 regression checks passed: logs, API envelopes, notifications, transformers, deploy keys, linked repository links, and all changed Vue templates.');
 })().catch(err=>{console.error(err); process.exitCode=1;});
