@@ -63,7 +63,29 @@ const device = load('pages/Devices/DeviceDetail.vue');
 const dialog = load('components/BuildLogDialog/BuildLogDialog.vue',{buildLogText:text});
 const keyPage = load('pages/Rsakeys/Rsakeys.vue');
 load('components/Header/Header.vue'); load('components/Notifications/Notifications.vue');
-load('pages/History/History.vue'); load('pages/Transformers/Transformers.vue'); load('pages/Transformers/TransformerEditor.vue');
+const history = load('pages/History/History.vue'); load('pages/Transformers/Transformers.vue');
+// 35 WR-01: build rows stay table rows; row click ignores inner controls and text selection.
+{
+  const historySource = fs.readFileSync(path.join(root, 'pages/History/History.vue'), 'utf8');
+  const buildRow = (historySource.match(/<tr\b[^>]*data-cy="build-row"[^>]*>/) || [])[0];
+  assert.ok(buildRow, 'History has a build row');
+  for (const attr of ['role=', 'tabindex=', '@keydown']) assert.ok(!buildRow.includes(attr), 'build row has no ' + attr);
+  const opened = [];
+  const ctx = { openBuildLog: b => opened.push(b) };
+  const target = hit => ({ closest: () => hit });
+  const prevWindow = global.window;
+  let selected = '';
+  global.window = { getSelection: () => selected };
+  history.methods.onBuildRowClick.call(ctx, 'b1', { target: target({ tagName: 'BUTTON' }) });
+  assert.equal(opened.length, 0, 'click on an inner button does not open the dialog');
+  selected = 'selected log text';
+  history.methods.onBuildRowClick.call(ctx, 'b1', { target: target(null) });
+  assert.equal(opened.length, 0, 'click that ends a text selection does not open the dialog');
+  selected = '';
+  history.methods.onBuildRowClick.call(ctx, 'b1', { target: target(null) });
+  assert.deepEqual(opened, ['b1'], 'click on a plain cell opens the build log');
+  global.window = prevWindow;
+} load('pages/Transformers/TransformerEditor.vue');
 // G-35-4: render the real Linked Repository card with the component's own computed properties.
 function renderLinkedRepository(repos, source) {
   const sfc = compiler.parseComponent(fs.readFileSync(path.join(root, 'pages/Devices/DeviceDetail.vue'), 'utf8'));

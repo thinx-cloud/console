@@ -104,7 +104,9 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, i) in filteredBuilds" :key="i" data-cy="build-row" tabindex="0" role="button" :aria-label="'Open build log ' + item.build_id" @click="openBuildLog(item)" @keydown.enter.prevent="openBuildLog(item)" @keydown.space.prevent="openBuildLog(item)">
+            <!-- Row click is a mouse shortcut only. Keyboard and screen-reader users get the row's
+                 "Open build log" button, so the row keeps its table semantics (35 WR-01). -->
+            <tr v-for="(item, i) in filteredBuilds" :key="i" data-cy="build-row" class="build-row" @click="onBuildRowClick(item, $event)">
               <td style="white-space:nowrap">{{ item.date | formatDate }}</td>
               <td>{{ item.name }}</td>
               <td>
@@ -125,7 +127,7 @@
                   data-cy="build-expand"
                   @click.stop="toggleExpand(item)"
                 >{{ isExpanded(item) ? 'Collapse' : 'Expand' }}</b-button>
-                <b-button size="sm" variant="link" @click.stop="openBuildLog(item)">Open build log</b-button>
+                <b-button size="sm" variant="link" data-cy="build-open-log" :aria-label="'Open build log ' + (item.build_id || item.name || '')" @click.stop="openBuildLog(item)">Open build log</b-button>
               </td>
             </tr>
           </tbody>
@@ -286,6 +288,15 @@ export default {
   },
   methods: {
     openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
+    onBuildRowClick(build, event) {
+      // Ignore clicks that land on a control inside the row, and the click that ends a
+      // drag-selection of log text, so Expand and text selection keep working.
+      const target = event && event.target;
+      if (target && typeof target.closest === 'function' && target.closest('button, a, input, select, textarea, [role="button"]')) return;
+      const selection = typeof window !== 'undefined' && typeof window.getSelection === 'function' ? String(window.getSelection()) : '';
+      if (selection) return;
+      this.openBuildLog(build);
+    },
     ...mapGetters({
       getAuditItems: "auditlog/getItems",
       getBuildItems: "buildlog/getItems",
@@ -447,6 +458,9 @@ export default {
 </script>
 
 <style scoped>
+.build-row {
+  cursor: pointer;
+}
 .log-paging {
   display: flex;
   flex-wrap: wrap;
