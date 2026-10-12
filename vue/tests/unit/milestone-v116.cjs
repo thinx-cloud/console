@@ -109,6 +109,37 @@ function renderLinkedRepository(repos, source) {
   })(vnode);
   return { anchors, hrefs, text: text.join(' ').replace(/\s+/g, ' ').trim() };
 }
+// G-36-3: render the whole real DeviceDetail page after the real loadDevice().
+async function renderDeviceDetail(builds, dev) {
+  const sfc = compiler.parseComponent(fs.readFileSync(path.join(root, 'pages/Devices/DeviceDetail.vue'), 'utf8'));
+  const compiled = compiler.compileToFunctions(sfc.template.content);
+  const opened = [];
+  const noop = async () => {};
+  const overrides = { openBuildLog: b => opened.push(b), fetchItems: noop, fetchBuildLog: noop, fetchTransformers: noop, fetchRepositories: noop,
+    getByUdid: () => udid => (udid === dev.udid ? dev : null), getBuildItems: () => builds, getTransformers: () => [], getRepositories: () => [] };
+  const vm = new Vue({ render: compiled.render, staticRenderFns: compiled.staticRenderFns, data: device.data, computed: device.computed,
+    filters: { fromNow: v => (v ? String(v) : '—') }, components: { BuildLogDialog: { render: h => h('div') } },
+    methods: Object.assign({}, device.methods, overrides) });
+  vm.$route = { params: { udid: dev.udid } };
+  await vm.loadDevice();
+  renderError = null;
+  const warnings = [], prevWarn = Vue.config.warnHandler;
+  Vue.config.warnHandler = msg => warnings.push(msg);
+  const vnode = vm._render();
+  Vue.config.warnHandler = prevWarn;
+  assert.equal(renderError, null, 'DeviceDetail page renders without error');
+  assert.deepEqual(warnings, [], 'DeviceDetail page renders without Vue warnings');
+  const nodes = [];
+  (function walk(node) { if (!node) return; nodes.push(node); (node.children || []).forEach(walk); })(vnode);
+  const cy = node => (node.data && node.data.attrs && node.data.attrs['data-cy']) || null;
+  const under = (top, keep) => { const out = []; (function walk(n) { if (!n) return; if (keep(n)) out.push(n); (n.children || []).forEach(walk); })(top); return out; };
+  const card = nodes.find(n => cy(n) === 'card-build-history') || null;
+  const tbody = card ? under(card, n => n.tag === 'tbody')[0] : null;
+  const rows = tbody ? (tbody.children || []).filter(n => n.tag === 'tr') : [];
+  const buttons = card ? under(card, n => cy(n) === 'build-open-log') : [];
+  const textOf = top => under(top, n => !n.tag && n.text).map(n => n.text).join(' ').replace(/\s+/g, ' ').trim();
+  return { vm, opened, nodes, card, rows, buttons, text: textOf(vnode), textOf };
+}
 const httpsCard = renderLinkedRepository([{ id: 'r1', alias: 'Firmware repo', url: 'https://github.com/org/repo.git' }], 'r1');
 assert.equal(httpsCard.anchors.length, 1, 'https repository URL renders exactly one link');
 assert.equal(httpsCard.anchors[0].href, 'https://github.com/org/repo.git', 'https repository link points at the parsed URL');
@@ -274,5 +305,45 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   await keyPage.methods.create.call(page); assert.equal(page.createdPubkey,'public-key'); assert.equal(page.creating,false);
   page.keyName='retry'; page.createItem=async()=>{throw new Error('offline');}; await keyPage.methods.create.call(page);
   assert.equal(page.creating,false); assert.ok(page.error);
-  console.log('v1.16 regression checks passed: logs, API envelopes, notifications, transformers, deploy keys, linked repository links, and all changed Vue templates.');
+  // G-36-3: device Build History is summary-only; the full log opens only from the row's button.
+  const zDev = { udid: 'udid-z', alias: 'zephyr-01', last_build_id: 'build-1', environment: {} };
+  const zLogs = ['compiling module 1 of 12', 'linking firmware', 'error: missing header', 'other device output'];
+  const zBuilds = [
+    { build_id: 'build-1', udid: 'udid-z', status: 'OK', date: NOW, log: zLogs.slice(0, 2) },
+    { build_id: 'build-2', udid: 'udid-z', status: 'FAILED', date: NOW - 60000, log: [zLogs[2]] },
+    { build_id: 'other', udid: 'udid-o', status: 'OK', date: NOW, log: [zLogs[3]] },
+  ];
+  const devPage = await renderDeviceDetail(zBuilds, zDev);
+  const attrsOf = n => (n.data && n.data.attrs) || {};
+  assert.ok(!devPage.nodes.some(n => attrsOf(n)['data-cy'] === 'card-device-logs' || String(attrsOf(n).title || '').startsWith('Device Logs')), 'device page has no inline last-build log card');
+  assert.ok(!devPage.nodes.some(n => n.tag === 'pre'), 'device page renders no pre block');
+  for (const line of zLogs) assert.ok(!devPage.text.includes(line), 'device page shows no build log text: ' + line);
+  assert.ok(devPage.card, 'device page has a Build History card');
+  assert.equal(devPage.rows.length, 2, 'Build History lists only this device\'s builds');
+  const rowText = devPage.rows.map(devPage.textOf);
+  assert.ok(rowText[0].includes('build-1') && rowText[0].includes('OK'), 'first row shows build-1 and OK');
+  assert.ok(rowText[1].includes('build-2') && rowText[1].includes('FAILED'), 'second row shows build-2 and FAILED');
+  for (const row of devPage.rows) {
+    assert.ok(!('role' in attrsOf(row)), 'Build History row has no role');
+    assert.ok(!('tabindex' in attrsOf(row)), 'Build History row has no tabindex');
+    const on = (row.data && row.data.on) || {};
+    for (const ev of ['click', 'keydown', 'keyup']) assert.ok(!(ev in on), 'Build History row has no ' + ev + ' listener');
+  }
+  assert.deepEqual(devPage.opened, [], 'page load opens no build log');
+  assert.equal(devPage.buttons.length, 2, 'each Build History row has one Open build log button');
+  devPage.buttons.forEach((btn, i) => {
+    assert.equal(btn.tag, 'b-button', 'Open build log control is a b-button');
+    assert.equal(attrsOf(btn)['aria-label'], 'Open build log build-' + (i + 1), 'Open build log button names its build');
+    assert.equal(devPage.textOf(btn), 'Open build log', 'Open build log button text');
+    assert.equal(typeof ((btn.data && btn.data.on) || {}).click, 'function', 'Open build log button has a click handler');
+  });
+  devPage.buttons[1].data.on.click({ stopPropagation() {}, preventDefault() {} });
+  assert.equal(devPage.opened.length, 1, 'second Open build log button opens exactly one log');
+  assert.equal(devPage.opened[0], devPage.vm.buildHistory[1], 'second Open build log button opens its own row\'s build');
+  assert.equal(devPage.opened[0].build_id, 'build-2');
+  const dialogOpened = [];
+  device.methods.openBuildLog.call({ $refs: { buildLogDialog: { open: b => dialogOpened.push(b) } } }, devPage.vm.buildHistory[1]);
+  assert.equal(dialogOpened.length, 1, 'openBuildLog hands the build to BuildLogDialog.open');
+  assert.equal(dialogOpened[0], devPage.vm.buildHistory[1], 'BuildLogDialog.open receives the same build object');
+  console.log('v1.16 regression checks passed: logs, API envelopes, notifications, transformers, deploy keys, linked repository links, device build history without inline logs, and all changed Vue templates.');
 })().catch(err=>{console.error(err); process.exitCode=1;});
