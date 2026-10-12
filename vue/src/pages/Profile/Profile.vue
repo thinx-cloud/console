@@ -265,22 +265,21 @@ export default {
     },
     async saveProfile() {
       this.saving = true;
-      // Merge form fields into existing info — the backend writes the full info
-      // blob, so sending only form fields would wipe email, notifications,
-      // security, tags, transformers, goals, avatar. Same data-loss pattern as
-      // saveNotifications fixed in 06-02; missed there for saveProfile.
-      const existingInfo = (this.profile && this.profile.info) ? Object.assign({}, this.profile.info) : {};
-      const info = Object.assign(existingInfo, {
+      // Send only the keys this form owns. users/edit merges `info` key by key
+      // (design/design_users.json), so absent keys are kept. Copying the whole
+      // info snapshot taken at page load would revert keys written elsewhere
+      // since then, e.g. info.transformers from the Transformers page (35 WR-04).
+      const info = {
         first_name: this.form.first_name,
         last_name: this.form.last_name,
         mobile_phone: this.form.mobile_phone,
         timezone_abbr: this.form.timezone_abbr,
-      });
-      // Strip the legacy bare `timezone` key if present — it was the buggy field
-      // name Vue used briefly; legacy + device.js consumers only read
-      // timezone_abbr, so clearing it on save avoids two fields drifting out of
-      // sync in the stored info blob.
-      if (Object.prototype.hasOwnProperty.call(info, 'timezone')) delete info.timezone;
+      };
+      // Clear the legacy bare `timezone` key (the buggy field name Vue used
+      // briefly). A merge cannot delete a key, so null it explicitly; legacy +
+      // device.js consumers only read timezone_abbr.
+      const loadedInfo = (this.profile && this.profile.info) || {};
+      if (Object.prototype.hasOwnProperty.call(loadedInfo, 'timezone') && loadedInfo.timezone !== null) info.timezone = null;
       const result = await this.updateProfile(info);
       this.saving = false;
       if (result.success) {
@@ -303,15 +302,15 @@ export default {
     },
     async saveNotifications() {
       this.saving = true;
-      const existingInfo = (this.profile && this.profile.info) ? Object.assign({}, this.profile.info) : {};
-      const info = Object.assign(existingInfo, {
+      // Only the notifications key: users/edit merges `info` per key, and a full
+      // info snapshot would revert keys changed elsewhere since load (35 WR-04).
+      const result = await this.updateProfile({
         notifications: {
           all: this.notifForm.all,
           important: this.notifForm.important,
           info: this.notifForm.info,
         },
       });
-      const result = await this.updateProfile(info);
       this.saving = false;
       if (result && result.success) this.message = 'Notification preferences saved.';
       else this.error = (result && result.message) || 'Failed to save notifications.';

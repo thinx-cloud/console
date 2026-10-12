@@ -1210,6 +1210,10 @@ function getProfile() {
   } );
 }
 
+// users/edit merges `info` per key. transformers is deliberately absent: this
+// sends a session-old $rootScope snapshot (also on every info-note dismissal),
+// which would revert transformers written by the Vue console since login.
+// Transformer edits go through submitProfileChanges( [ "transformers" ] ) (35 WR-04).
 function submitProfile( profile ) {
   var info = {
     first_name: profile.info.first_name,
@@ -1222,7 +1226,6 @@ function submitProfile( profile ) {
     username: profile.info.username,
     owner: profile.info.owner,
     tags: profile.info.tags,
-    transformers: profile.info.transformers,
     timezone_abbr: profile.timezone_abbr,
     timezone_offset: profile.timezone_offset
   };

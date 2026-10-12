@@ -156,6 +156,21 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   await transformers.actions.createItem({state,dispatch:async(action,value)=>{if(action==='saveTransformers') {payload=value; return {success:true};}}},{alias:'New',body:'// český'});
   assert.equal(payload[0].body,'keep');
   assert.equal(decodeURIComponent(escape(atob(payload[1].body))),'// český');
+  // 35 WR-04: Profile saves send only their own info keys, never a full snapshot.
+  const profileWrites=[];
+  const profileVm=Object.assign(profile.data(),{
+    profile:{info:{first_name:'Old',email:'a@b.c',transformers:[{utid:'stale'}],timezone:'CET',notifications:{all:true}}},
+    updateProfile:async info=>{profileWrites.push(info);return {success:true};},getProfile:()=>({info:{}})});
+  Object.assign(profileVm.form,{first_name:'New',last_name:'L',mobile_phone:'1',timezone_abbr:'Europe/Prague'});
+  await profile.methods.saveProfile.call(profileVm);
+  assert.deepEqual(profileWrites[0],{first_name:'New',last_name:'L',mobile_phone:'1',timezone_abbr:'Europe/Prague',timezone:null},'saveProfile sends only form keys');
+  Object.assign(profileVm.notifForm,{all:false,important:true,info:false});
+  await profile.methods.saveNotifications.call(profileVm);
+  assert.deepEqual(profileWrites[1],{notifications:{all:false,important:true,info:false}},'saveNotifications sends only notifications');
+  const legacyApi=fs.readFileSync(path.join(root,'../../src/app/js/thinx-api.js'),'utf8');
+  const legacySubmit=(legacyApi.match(/function submitProfile\( profile \) \{[\s\S]*?\n\}/)||[])[0];
+  assert.ok(legacySubmit,'legacy submitProfile found');
+  assert.ok(!/transformers/.test(legacySubmit),'legacy submitProfile never sends the session-old transformers');
   // 35 CR-01: the store refuses writes that would blank a transformer.
   const writes=[];
   const updState={items:[{utid:'t1',alias:'Live',body:'b64'}]};
