@@ -15,7 +15,7 @@
       <b-button variant="primary" @click="buildDevice" class="mr-2 mb-2"><i class="fa fa-cogs mr-1" aria-hidden="true" /> Build Firmware</b-button>
       <b-button variant="danger" @click="revokeDevice" class="mr-2 mb-2"><i class="fa fa-trash mr-1" aria-hidden="true" /> Revoke Device</b-button>
       <b-button variant="warning" data-cy="action-transfer" @click="$bvModal.show('transfer-modal')" class="mr-2 mb-2"><i class="fa fa-exchange mr-1" aria-hidden="true" /> Transfer Device</b-button>
-      <b-button variant="secondary" data-cy="action-environment" :disabled="envLoading" @click="editEnvironment" class="mr-2 mb-2"><i class="fa fa-sliders mr-1" aria-hidden="true" /> Environment</b-button>
+      <b-button variant="secondary" data-cy="action-environment" :disabled="envLoading" @click="openEnvironmentEditor" class="mr-2 mb-2"><i class="fa fa-sliders mr-1" aria-hidden="true" /> Environment</b-button>
     </b-card>
 
     <b-row>
@@ -314,7 +314,23 @@ export default {
         this.error = result.message || 'Failed to revoke device.';
       }
     },
+    // Actions-card entry point: an open draft is never reloaded (that would drop
+    // unsaved edits); either way the editor is scrolled into view and focused.
+    async openEnvironmentEditor() {
+      if (!this.envEditing) await this.editEnvironment();
+      if (this.envEditing) this.focusEnvironmentDraft();
+    },
+    focusEnvironmentDraft() {
+      this.$nextTick(() => {
+        const el = this.$el && typeof this.$el.querySelector === 'function' ? this.$el.querySelector('[data-cy=env-draft]') : null;
+        if (!el) return;
+        if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center' });
+        if (typeof el.focus === 'function') el.focus();
+      });
+    },
     async editEnvironment() {
+      // Re-fetching would overwrite envDraft with the stored JSON.
+      if (this.envEditing || this.envLoading) return;
       this.envLoading = true;
       this.envLoadError = null;
       this.error = null;

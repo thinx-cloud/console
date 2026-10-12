@@ -228,6 +228,17 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   dev.device={udid:'d'}; dev.editForm={transformers:[]}; dev.transformerForm.alias='Another';
   await device.methods.createTransformer.call(dev,{preventDefault(){}});
   assert.deepEqual(update.changes.transformers,['new'],'device with no stored transformers gets only the new one');
+  // 35 WR-03: the Actions-card Environment button never reloads an open draft.
+  let detailFetches=0, focused=0;
+  const envVm=Object.assign(device.data(),{device:{udid:'d'},envEditing:true,envDraft:'{"draft":1}',
+    fetchDeviceDetail:async()=>{detailFetches++;return {udid:'d',environment:{stored:1}};},
+    $nextTick:fn=>fn(),$el:{querySelector:()=>({scrollIntoView(){},focus(){focused++;}})}});
+  envVm.editEnvironment=device.methods.editEnvironment; envVm.focusEnvironmentDraft=device.methods.focusEnvironmentDraft;
+  await device.methods.openEnvironmentEditor.call(envVm);
+  assert.equal(envVm.envDraft,'{"draft":1}','open draft is kept'); assert.equal(detailFetches,0,'open draft is not re-fetched'); assert.equal(focused,1,'open editor is focused');
+  await device.methods.editEnvironment.call(envVm); assert.equal(detailFetches,0,'editEnvironment refuses while editing');
+  envVm.envEditing=false; await device.methods.openEnvironmentEditor.call(envVm);
+  assert.equal(detailFetches,1); assert.equal(envVm.envEditing,true); assert.equal(envVm.envDraft,JSON.stringify({stored:1},null,2)); assert.equal(focused,2,'newly opened editor is focused');
   const page=Object.assign(keyPage.data(),{keyName:'Firmware',createItem:async name=>{assert.equal(name,'Firmware');return {success:true,response:{name,pubkey:'public-key'}};},showKey:keyPage.methods.showKey,loadData:async()=>{},$bvModal:{show:()=>{}}});
   await keyPage.methods.create.call(page); assert.equal(page.createdPubkey,'public-key'); assert.equal(page.creating,false);
   page.keyName='retry'; page.createItem=async()=>{throw new Error('offline');}; await keyPage.methods.create.call(page);
