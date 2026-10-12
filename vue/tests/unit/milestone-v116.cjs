@@ -225,6 +225,15 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   const failedPage=Object.assign(keyPage.data(),{fetchItems:async()=>{throw new Error('offline');},getItems:()=>[]});
   await keyPage.methods.loadData.call(failedPage);
   assert.equal(failedPage.loadFailed,true); assert.equal(failedPage.error,'Could not load deploy keys.'); assert.equal(failedPage.loading,false);
+  // 35 WR-06: deleting deploy keys asks first, and Cancel deletes nothing.
+  const deleted=[]; let confirmText='';
+  const delPage=Object.assign(keyPage.data(),{items:[{id:'f1',filename:'f1',name:'A'},{id:'f2',filename:'f2',name:'B'}],selectedIds:['f1','f2'],
+    deleteItems:async f=>{deleted.push(f);return {success:true};},loadData:async()=>{},
+    $bvModal:{msgBoxConfirm:async text=>{confirmText=text;return false;}}});
+  await keyPage.methods.deleteSelected.call(delPage);
+  assert.equal(deleted.length,0,'cancelled confirmation deletes nothing'); assert.ok(/2 deploy keys/.test(confirmText),'confirmation names the count');
+  delPage.$bvModal.msgBoxConfirm=async()=>true; await keyPage.methods.deleteSelected.call(delPage);
+  assert.deepEqual(deleted,[['f1','f2']],'confirmed delete sends the selected filenames'); assert.deepEqual(delPage.selectedIds,[]);
   const keyState={}; keys.mutations.saveItems(keyState,{items:[{name:'old',date:1},{name:'new',date:2}]});
   assert.equal(keyState.items[0].name,'new');
   let requested;

@@ -67,6 +67,15 @@ export default {
     async deleteSelected() {
       const filenames = this.selectedIds.map(id => this.items.find(item => item.id === id)).filter(Boolean).map(item => item.filename);
       if (!filenames.length) return;
+      // Deletion removes the key pair on disk and cannot be undone (35 WR-06).
+      const count = filenames.length === 1 ? 'this deploy key' : filenames.length + ' deploy keys';
+      let confirmed = false;
+      try {
+        confirmed = await this.$bvModal.msgBoxConfirm(
+          'Delete ' + count + '? This cannot be undone. Repositories that use ' + (filenames.length === 1 ? 'it' : 'them') + ' stop building until a new key is generated and added to the Git host.',
+          { title: 'Confirm Delete', okVariant: 'danger', okTitle: 'Delete', cancelTitle: 'Cancel', autoFocusButton: 'cancel' });
+      } catch (e) { confirmed = false; }
+      if (!confirmed) return;
       try {
         const result = await this.deleteItems(filenames);
         if (!result || !result.success) { this.error = 'Failed to delete deploy keys.'; return; }
