@@ -66,7 +66,10 @@
 
         <b-card v-if="device.source" title="Linked Repository" class="mb-3">
           <p class="mb-1">{{ linkedRepository ? linkedRepository.alias : 'Repository unavailable' }}</p>
-          <p v-if="linkedRepository" class="text-monospace text-break">{{ linkedRepository.url }}</p>
+          <p v-if="linkedRepository" class="text-monospace text-break">
+            <a v-if="linkedRepositoryHref" :href="linkedRepositoryHref" target="_blank" rel="noopener noreferrer" data-cy="linked-repository-url">{{ linkedRepository.url }}</a>
+            <span v-else data-cy="linked-repository-url">{{ linkedRepository.url }}</span>
+          </p>
         </b-card>
 
         <b-card title="Environment Variables" class="mb-3" data-cy="card-enviros">
@@ -231,6 +234,18 @@ export default {
     },
     linkedRepository() {
       return (this.getRepositories() || []).find(repo => repo.id === this.device.source) || null;
+    },
+    // Repository URLs are user-entered: only http(s) is ever bound to an href; SSH remotes,
+    // javascript:, data: and anything unparseable stay plain text (G-35-4).
+    linkedRepositoryHref() {
+      const url = this.linkedRepository && this.linkedRepository.url;
+      if (typeof url !== 'string') return null;
+      try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null;
+      } catch (e) {
+        return null;
+      }
     },
     transformerOptions() {
       return (this.getTransformers() || []).map(t => ({ value: t.utid, text: t.alias || t.utid }));
