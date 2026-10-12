@@ -60,10 +60,32 @@ describe('Device Detail feature', function() {
       cy.get('[data-cy=card-build-history]').should('contain', 'build-1');
     });
 
-    it('Should display device logs section (DEVI-11)', function() {
-      // The card is v-if'd on last_build_id, which udid-z sets to build-1.
-      cy.get('[data-cy=card-device-logs]').should('be.visible');
-      cy.get('[data-cy=card-device-logs] pre').should('contain', 'compiling module');
+    it('Should list builds without inline build logs (G-36-3)', function() {
+      // udid-z sets last_build_id to build-1; the page still renders no log text for it.
+      cy.get('[data-cy=card-build-history] tbody tr').should('have.length', 1);
+      cy.get('[data-cy=card-device-logs]').should('not.exist');
+      cy.get('[data-cy=card-build-history] pre').should('not.exist');
+      cy.contains('Device Logs').should('not.exist');
+      // Separate chains: a have.attr assertion changes the subject to the attribute value.
+      cy.get('[data-cy=card-build-history] tbody tr').first().should('not.have.attr', 'role');
+      cy.get('[data-cy=card-build-history] tbody tr').first().should('not.have.attr', 'tabindex');
+      cy.get('[data-cy=card-build-history] [data-cy=build-open-log]')
+        .should('have.attr', 'aria-label', 'Open build log build-1');
+      cy.get('[data-cy=card-build-history] [data-cy=build-open-log]').should('contain', 'Open build log');
+    });
+
+    it('Should open the full build log only from the Open build log button (G-36-3)', function() {
+      // Registered after stubThinxApi, so it outranks the catch-all.
+      cy.intercept(
+        { method: 'GET', pathname: '/api/v2/logs/build/build-1' },
+        { statusCode: 200, body: { success: true, response: { contents: 'FULL LOG build-1' } } }
+      ).as('getBuildDetail');
+      cy.get('[data-cy=card-build-history] tbody tr').first().find('td').first().click();
+      cy.get('[data-cy=card-build-history] [data-cy=build-open-log]').click();
+      cy.wait('@getBuildDetail');
+      cy.get('[data-cy=full-build-log]').should('contain', 'FULL LOG build-1');
+      // A request from the row click above would make this 2.
+      cy.get('@getBuildDetail.all').should('have.length', 1);
     });
 
     it('Should display Transfer button in Actions card (DEVI-11)', function() {
