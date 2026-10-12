@@ -18,11 +18,15 @@
 // checks the build year / commit id contract (D-09..D-12, UI-D08, UI-D11, UI-D12):
 // ordered one-line text, a 7-hex commit id or nothing, a year after 2018 or no range,
 // and the vue.config.js values that feed them, each in a clean child process.
+// It also checks that Login, PasswordReset and Layout carry the AppFooter tag and no
+// footer markup of their own, and that the compiled footer colours reach WCAG AA
+// (4.5:1) on the lightest page gradient stop #333867 (UI-D09, UI-D10).
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const sass = require('sass');
 
 const VUE_ROOT = path.join(__dirname, '..', '..');
 const SRC = path.join(VUE_ROOT, 'src');
@@ -204,10 +208,11 @@ FOOTERS.forEach((relPath) => {
 });
 
 // Documented fallback: an unset build var yields the serving origin, never undefined.
+// Rendered through AppFooter variant layout, which every authenticated page shows.
 const savedConsole = process.env.VUE_APP_CONSOLE_HOSTNAME;
 delete process.env.VUE_APP_CONSOLE_HOSTNAME;
-const fallback = renderFooter('src/components/Layout/Layout.vue');
-check('Layout footer falls back to the serving origin when VUE_APP_CONSOLE_HOSTNAME is unset -> ' +
+const fallback = renderFooter(APP_FOOTER, 'layout');
+check('AppFooter variant layout falls back to the serving origin when VUE_APP_CONSOLE_HOSTNAME is unset -> ' +
   describe(fallback, 'THiNX Console'),
   !fallback.error && fallback.anchors['THiNX Console'] === 'https://served-origin.invalid');
 process.env.VUE_APP_CONSOLE_HOSTNAME = savedConsole;
@@ -323,10 +328,183 @@ try {
 
 // --- Page wiring ---------------------------------------------------------------------
 
-const loginTemplate = compiler.parseComponent(
-  fs.readFileSync(path.join(VUE_ROOT, 'src/pages/Login/Login.vue'), 'utf8')).template.content;
-check('Login.vue footer is <AppFooter variant="auth" />',
-  (loginTemplate.match(/<AppFooter variant="auth" \/>/g) || []).length === 1 && loginTemplate.indexOf('<footer') === -1);
+const WIRING = [
+  ['src/pages/Login/Login.vue', 'auth'],
+  ['src/pages/PasswordReset/PasswordReset.vue', 'auth'],
+  ['src/components/Layout/Layout.vue', 'layout'],
+];
+
+WIRING.forEach(([relPath, variant]) => {
+  const template = compiler.parseComponent(fs.readFileSync(path.join(VUE_ROOT, relPath), 'utf8')).template.content;
+  const tag = '<AppFooter variant="' + variant + '" />';
+  check(path.basename(relPath) + ' has exactly one ' + tag, template.split(tag).length - 1 === 1);
+  check(path.basename(relPath) + ' template has no own <footer> and no &copy;',
+    template.indexOf('<footer') === -1 && template.indexOf('&copy;') === -1);
+});
+
+// --- Footer colours (UI-D09, UI-D10) ---------------------------------------------------
+
+const STYLES = path.join(SRC, 'styles');
+const SASS_OPTIONS = { loadPaths: [STYLES], style: 'compressed', quietDeps: true, logger: sass.Logger.silent };
+const PROBE = '.footer-probe{--probe-text-color:#{$text-color};--probe-gray-400:#{$gray-400};'
+  + '--probe-white:#{$white};--probe-gradient-start:#{$body-bg-gradient-start};}';
+
+let themeCss = '';
+let layoutCss = '';
+try {
+  themeCss = sass.compileString('@import "theme";\n' + PROBE + '\n', SASS_OPTIONS).css;
+} catch (err) {
+  check('sass compiles src/styles/theme.scss', false);
+}
+try {
+  layoutCss = sass.compile(path.join(SRC, 'components', 'Layout', 'Layout.scss'), SASS_OPTIONS).css;
+} catch (err) {
+  check('sass compiles src/components/Layout/Layout.scss', false);
+}
+
+// Flat list of { media, selectors, body } for every style rule; media is the
+// enclosing @media prelude or ''. Braces inside strings are skipped.
+function cssRules(css) {
+  const rules = [];
+  (function parse(text, media) {
+    let i = 0;
+    while (i < text.length) {
+      const open = text.indexOf('{', i);
+      if (open === -1) break;
+      const prelude = text.slice(i, open).replace(/^[;\s]+/, '').trim();
+      let depth = 0;
+      let end = open;
+      for (; end < text.length; end++) {
+        const ch = text[end];
+        if (ch === '"' || ch === "'") { const q = ch; end++; while (end < text.length && text[end] !== q) { if (text[end] === '\\') end++; end++; } continue; }
+        if (ch === '{') depth++;
+        else if (ch === '}') { depth--; if (depth === 0) break; }
+      }
+      const body = text.slice(open + 1, end);
+      if (/^@media/.test(prelude)) parse(body, prelude);
+      else if (prelude[0] !== '@') rules.push({ media, selectors: prelude.split(',').map((x) => x.trim()), body });
+      i = end + 1;
+    }
+  }(css, ''));
+  return rules;
+}
+
+function decls(css, selector, mediaTest) {
+  return cssRules(css)
+    .filter((r) => r.selectors.indexOf(selector) !== -1 && (mediaTest ? mediaTest(r.media) : r.media === ''))
+    .map((r) => r.body);
+}
+
+function lastValue(bodies, prop) {
+  let value;
+  bodies.forEach((body) => body.split(';').forEach((d) => {
+    const at = d.indexOf(':');
+    if (at !== -1 && d.slice(0, at).trim() === prop) value = d.slice(at + 1).trim();
+  }));
+  return value;
+}
+
+function probeValue(name) {
+  return lastValue(decls(themeCss, '.footer-probe'), '--probe-' + name);
+}
+
+function channel(token) {
+  token = token.trim();
+  if (/%$/.test(token)) return parseFloat(token) * 2.55;
+  return parseFloat(token);
+}
+
+function alphaOf(token) {
+  if (token === undefined) return 1;
+  token = token.trim();
+  if (/%$/.test(token)) return parseFloat(token) / 100;
+  return parseFloat(token);
+}
+
+// Returns {r,g,b,a} (channels 0..255, alpha 0..1) or null.
+function parseColour(raw) {
+  const value = String(raw).trim().toLowerCase();
+  if (value === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
+  if (value === 'white') return { r: 255, g: 255, b: 255, a: 1 };
+  let m = value.match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/);
+  if (m) {
+    let hex = m[1];
+    if (hex.length === 3) hex = hex.split('').map((h) => h + h).join('');
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16),
+      a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1,
+    };
+  }
+  m = value.match(/^rgba?\(([^)]*)\)$/);
+  if (!m) return null;
+  const parts = m[1].split(',').map((x) => x.trim());
+  if (parts.length < 3 || parts.length > 4) return null;
+  const c = { r: channel(parts[0]), g: channel(parts[1]), b: channel(parts[2]), a: alphaOf(parts[3]) };
+  if ([c.r, c.g, c.b, c.a].some((n) => !Number.isFinite(n))) return null;
+  return c;
+}
+
+// Source-over compositing onto an opaque backdrop.
+function over(top, bottom) {
+  return {
+    r: top.r * top.a + bottom.r * (1 - top.a),
+    g: top.g * top.a + bottom.g * (1 - top.a),
+    b: top.b * top.a + bottom.b * (1 - top.a),
+    a: 1,
+  };
+}
+
+function luminance(c) {
+  const lin = (v) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+}
+
+function contrast(a, b) {
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+function sameColour(a, b) {
+  return !!a && !!b && Math.abs(a.r - b.r) <= 0.5 && Math.abs(a.g - b.g) <= 0.5
+    && Math.abs(a.b - b.b) <= 0.5 && Math.abs(a.a - b.a) <= 0.005;
+}
+
+const TEXT = parseColour(probeValue('text-color'));
+const GRAY_400 = parseColour(probeValue('gray-400'));
+const WHITE = parseColour(probeValue('white'));
+const PAGE = parseColour('#333867');
+check('page gradient lightest stop is #333867', sameColour(parseColour(probeValue('gradient-start')), PAGE));
+
+[['.auth-footer', themeCss], ['.contentFooter', layoutCss]].forEach(([sel, css]) => {
+  const text = parseColour(lastValue(decls(css, sel), 'color'));
+  const link = parseColour(lastValue(decls(css, sel + ' a'), 'color'));
+  const underline = lastValue(decls(css, sel + ' a'), 'text-decoration');
+  const hover = parseColour(lastValue(decls(css, sel + ' a:hover'), 'color'));
+  const focus = parseColour(lastValue(decls(css, sel + ' a:focus'), 'color'));
+  check(sel + ' text colour is the compiled $text-color', sameColour(text, TEXT));
+  check(sel + ' a is #c1ccd3 and underlined', sameColour(link, GRAY_400) && sameColour(link, parseColour('#c1ccd3'))
+    && underline === 'underline');
+  check(sel + ' a:hover and a:focus are white', sameColour(hover, WHITE) && sameColour(focus, WHITE));
+  const textRatio = text ? contrast(over(text, PAGE), PAGE) : 0;
+  const linkRatio = link ? contrast(over(link, PAGE), PAGE) : 0;
+  check(sel + ' text on #333867 reaches 4.5:1 (' + textRatio.toFixed(2) + ')', textRatio >= 4.5);
+  check(sel + ' links on #333867 reach 4.5:1 (' + linkRatio.toFixed(2) + ')', linkRatio >= 4.5);
+});
+
+const authPage = decls(themeCss, '.auth-page');
+check('.auth-page has min-height 100vh and no height 100vh',
+  lastValue(authPage, 'min-height') === '100vh' && lastValue(authPage, 'height') === undefined);
+const fixedNew = decls(themeCss, '.auth-footer', (m) => /\(\s*min-height:\s*800px\s*\)/.test(m));
+const fixedOld = decls(themeCss, '.auth-footer', (m) => /\(\s*min-height:\s*600px\s*\)/.test(m));
+check('fixed .auth-footer sits under @media (min-height: 800px), not 600px',
+  lastValue(fixedNew, 'position') === 'fixed' && fixedOld.length === 0
+  && lastValue(decls(themeCss, '.auth-footer'), 'position') === undefined);
 
 // Defect class: every $hostnames reader must declare the mixin that populates it.
 const SKIP = new Set([path.join(SRC, 'main.js'), path.join(SRC, 'mixins', 'hostnames.js')]);
