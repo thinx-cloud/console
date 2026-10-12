@@ -1,9 +1,10 @@
 <template>
   <div class="auth-page">
     <b-container>
+      <img class="auth-logo" src="/assets/thinx/img/logo_white_200.png" alt="THiNX" width="200" height="100">
       <Widget
         class="widget-auth mx-auto"
-        title="THiNX Login"
+        title="Welcome to THiNX Management Console."
       >
         <p class="widget-auth-info">Use your username to sign in.</p>
         <form class="mt" @submit.prevent="login">
@@ -58,13 +59,9 @@
           </b-form-group>
           <router-link class="d-block text-center mb-2" to="/password-reset">Forgot password?</router-link>
           <div class="bg-widget auth-widget-footer">
-            <b-button type="submit" variant="danger" class="auth-btn" size="sm">
+            <b-button type="submit" variant="success" class="auth-btn" size="sm">
               Login
             </b-button>
-            <p class="widget-auth-info mt-4">Don't have an account? Sign up now!</p>
-            <router-link class="d-block text-center mb-4" to="login"
-              >Create an Account</router-link
-            >
             <div class="social-buttons">
               <b-button
                 size="sm"
@@ -83,6 +80,10 @@
                 <i class="fa fa-github"></i> Login with GitHub
               </b-button>
             </div>
+            <p class="widget-auth-info mt-4">Don't have an account? Sign up now!</p>
+            <router-link class="d-block text-center mb-4" to="login"
+              >Create an Account</router-link
+            >
           </div>
         </form>
       </Widget>

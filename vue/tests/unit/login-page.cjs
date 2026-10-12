@@ -228,6 +228,12 @@ check('.social-buttons stacks below 460px (max-width: 459.98px)', () => {
   const narrow = (m) => /\(\s*max-width:\s*459\.98px\s*\)/.test(m);
   assert.equal(value(decls(endsWith('.social-buttons'), narrow), 'flex-direction'), 'column');
   assert.equal(value(decls(endsWith('.social-button'), narrow), 'flex'), '0 0 auto');
+  // Same specificity as the row rules, so the stacked rules must come later to win.
+  const rules = cssRules(css);
+  const lastIndex = (pred) => rules.reduce((at, r, i) => (pred(r) ? i : at), -1);
+  const base = lastIndex((r) => r.media === '' && r.selectors.some(endsWith('.social-button')) && /(^|;)flex:/.test(r.body));
+  const stacked = lastIndex((r) => narrow(r.media) && r.selectors.some(endsWith('.social-button')));
+  assert.ok(base !== -1 && stacked > base, 'stacked .social-button rule does not follow the row rule');
 });
 
 // ---------------------------------------------------------------- contrast

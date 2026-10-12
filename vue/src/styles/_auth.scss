@@ -5,6 +5,22 @@
   min-height: 100vh;
 }
 
+// THiNX logo centred above the auth panel (D-13, UI-D02). The width/height
+// attributes on the img reserve its box; it scales down on very narrow screens.
+.auth-logo {
+  display: block;
+  margin: 0 auto 24px;
+  max-width: 100%;
+  height: auto;
+}
+
+// Dark overlay on the auth panel (Login and PasswordReset only). 0.7 is the
+// first alpha at which the subtitle, links and body text all reach 4.5:1 on the
+// lightest gradient stop without recolouring the links (D-14, UI-D03).
+.auth-page .widget-auth {
+  background: rgba(0, 0, 0, 0.7);
+}
+
 .widget-auth {
   max-width: 385px;
 
@@ -48,21 +64,27 @@
     overflow: hidden;
   }
 
+  // Side by side directly under Login; stacked full width below 460px, the
+  // narrowest viewport at which both labels fit on one line (D-17, UI-D06/06a).
   .social-buttons {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: $spacer;
-    margin-bottom: $spacer;
+    flex-direction: row;
+    gap: 8px;
+    margin: 16px 0 0;
 
-    // Brand-aligned OAuth buttons, shaped to match the red "Login" CTA above:
+    // Brand-aligned OAuth buttons, shaped to match the green "Login" CTA above:
     // they keep the default Bootstrap button rounding (size="sm") instead of the
     // old edge-to-edge square bars, use legacy-style FontAwesome brand glyphs,
     // and carry brand colours instead of the clashing green/blue variants.
     .social-button {
       display: flex;
+      flex: 1 1 0;
+      min-width: 0;
       align-items: center;
       justify-content: center;
+      white-space: nowrap;
+      padding-left: 8px;
+      padding-right: 8px;
       transition: background-color .2s ease-in-out, border-color .2s ease-in-out, color .2s ease-in-out;
 
       .fa {
@@ -97,6 +119,15 @@
         background-color: #f8f9fa;
         border-color: #c6cacd;
         color: #3c4043;
+      }
+    }
+
+    // Last in the block so it wins over the row rules above (same specificity).
+    @media (max-width: 459.98px) {
+      flex-direction: column;
+
+      .social-button {
+        flex: 0 0 auto;
       }
     }
   }
