@@ -107,11 +107,18 @@
 
         <b-card title="Transformer Assignment" class="mb-3" data-cy="card-transformers">
           <b-form-group label="Assigned transformers">
-            <b-form-select multiple v-model="editForm.transformers" :options="transformerOptions" :select-size="5" />
+            <b-form-checkbox-group
+              v-if="transformerOptions.length"
+              v-model="editForm.transformers"
+              :options="transformerOptions"
+              stacked
+              data-cy="transformer-checkboxes"
+            />
+            <p v-else class="text-muted small mb-0" data-cy="transformers-empty">No transformers yet. Use Create &amp; Assign to add one.</p>
           </b-form-group>
           <b-button variant="primary" size="sm" @click="saveTransformers">Save Transformers</b-button>
           <b-button variant="success" size="sm" class="ml-2" @click="$bvModal.show('device-transformer-modal')">Create &amp; Assign</b-button>
-          <b-button variant="link" size="sm" to="/app/transformers">Manage Transformers</b-button>
+          <b-button variant="warning" size="sm" class="ml-2" to="/app/transformers" data-cy="manage-transformers">Manage Transformers</b-button>
         </b-card>
 
         <b-card title="Build History" class="mb-3" data-cy="card-build-history">
@@ -398,8 +405,8 @@ export default {
       try {
         const created = await this.createTransformerItem({ alias, body: this.transformerForm.body });
         if (!created || !created.success) throw new Error('Could not create transformer.');
-        // Assign from the device's stored transformers, not from the multi-select:
-        // an unsaved selection change must not be written as a side effect.
+        // Assign from the device's stored transformers, not from the checkboxes:
+        // an unsaved checkbox change must not be written as a side effect.
         const stored = Array.isArray(this.device.transformers) ? this.device.transformers : [];
         const selected = [...new Set([...stored, created.utid])];
         const pending = [...new Set([...(this.editForm.transformers || []), created.utid])];
@@ -412,8 +419,8 @@ export default {
         this.transformerForm.alias = '';
         this.message = 'Transformer created and assigned.';
         await this.loadDevice();
-        // loadDevice resets the select to the stored list; keep the user's unsaved
-        // selection (plus the new transformer) so it can still be saved or discarded.
+        // loadDevice resets the checkboxes to the stored list; restore the user's unsaved
+        // checkbox state (plus the new transformer) so it can still be saved or discarded.
         if (this.device) this.editForm.transformers = pending;
       } catch (e) {
         this.transformerError = e.message || 'Could not create transformer.';
