@@ -116,13 +116,13 @@ function renderLinkedRepository(repos, source) {
   return { anchors, hrefs, text: text.join(' ').replace(/\s+/g, ' ').trim() };
 }
 // G-36-3: render the whole real DeviceDetail page after the real loadDevice().
-async function renderDeviceDetail(builds, dev) {
+async function renderDeviceDetail(builds, dev, transformerItems = []) {
   const sfc = compiler.parseComponent(fs.readFileSync(path.join(root, 'pages/Devices/DeviceDetail.vue'), 'utf8'));
   const compiled = compiler.compileToFunctions(sfc.template.content);
   const opened = [];
   const noop = async () => {};
   const overrides = { openBuildLog: b => opened.push(b), fetchItems: noop, fetchBuildLog: noop, fetchTransformers: noop, fetchRepositories: noop,
-    getByUdid: () => udid => (udid === dev.udid ? dev : null), getBuildItems: () => builds, getTransformers: () => [], getRepositories: () => [] };
+    getByUdid: () => udid => (udid === dev.udid ? dev : null), getBuildItems: () => builds, getTransformers: () => transformerItems, getRepositories: () => [] };
   const vm = new Vue({ render: compiled.render, staticRenderFns: compiled.staticRenderFns, data: device.data, computed: device.computed,
     filters: { fromNow: v => (v ? String(v) : '—') }, components: { BuildLogDialog: { render: h => h('div') } },
     methods: Object.assign({}, device.methods, overrides) });
@@ -288,7 +288,7 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   resolveOld({success:true,response:{contents:'old'}}); await old;
   assert.equal(modal.text,'new');
   let update;
-  // 35 WR-02: assignment comes from the stored device list, not the unsaved select.
+  // 35 WR-02: assignment comes from the stored device list, not the unsaved checkbox state.
   const dev=Object.assign(device.data(),{device:{udid:'d',transformers:['existing']},editForm:{transformers:['unsaved']},transformerForm:{alias:'New',body:'return status;'},getTransformers:()=>[],createTransformerItem:async()=>({success:true,utid:'new'}),updateDevice:async x=>{update=x;return {success:true};},loadDevice:async()=>{},$bvModal:{hide:()=>{}}});
   await device.methods.createTransformer.call(dev,{preventDefault(){}});
   assert.deepEqual(update.changes.transformers,['existing','new'],'unsaved selection is not written'); assert.equal(dev.transformerSaving,false);
@@ -362,5 +362,54 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   device.methods.openBuildLog.call({ $refs: { buildLogDialog: { open: b => dialogOpened.push(b) } } }, devPage.vm.buildHistory[1]);
   assert.equal(dialogOpened.length, 1, 'openBuildLog hands the build to BuildLogDialog.open');
   assert.equal(dialogOpened[0], devPage.vm.buildHistory[1], 'BuildLogDialog.open receives the same build object');
-  console.log('v1.16 regression checks passed: logs, API envelopes, notifications, transformers, deploy keys, linked repository links, device build history without inline logs, and all changed Vue templates.');
+  // G-37-5: transformer assignment is one checkbox per transformer; Manage Transformers is a filled orange button (operator 2026-10-12).
+  const tDev = { udid: 'udid-t', alias: 'tango-01', transformers: ['t2'], environment: {} };
+  const tItems = [{ utid: 't1', alias: 'Alpha' }, { utid: 't2', alias: 'passthrough' }, { utid: 't3' }];
+  const tPage = await renderDeviceDetail([], tDev, tItems);
+  const tCard = tPage.nodes.find(n => attrsOf(n)['data-cy'] === 'card-transformers');
+  assert.ok(tCard, 'device page has a Transformer Assignment card');
+  const groups = tPage.under(tCard, n => n.tag === 'b-form-checkbox-group');
+  assert.equal(groups.length, 1, 'Transformer Assignment card renders exactly one checkbox group');
+  assert.equal(tPage.under(tCard, n => n.tag === 'b-form-select' || n.tag === 'select').length, 0, 'Transformer Assignment card has no select');
+  assert.equal(tPage.under(tCard, n => 'multiple' in attrsOf(n)).length, 0, 'Transformer Assignment card has no multiple attribute');
+  const group = groups[0];
+  assert.ok('stacked' in attrsOf(group), 'transformer checkboxes are stacked');
+  assert.equal(attrsOf(group)['data-cy'], 'transformer-checkboxes', 'checkbox group has data-cy transformer-checkboxes');
+  assert.deepEqual(attrsOf(group).options, [{ value: 't1', text: 'Alpha' }, { value: 't2', text: 'passthrough' }, { value: 't3', text: 't3' }], 'one checkbox per transformer, value utid, label alias or utid');
+  assert.deepEqual(attrsOf(group).options, tPage.vm.transformerOptions, 'checkbox options are transformerOptions');
+  const model = group.data && group.data.model;
+  assert.ok(model, 'checkbox group is bound with v-model');
+  assert.equal(model.expression, 'editForm.transformers', 'checkbox group is bound to editForm.transformers');
+  assert.equal(model.value, tPage.vm.editForm.transformers, 'checkbox group value is the editForm.transformers array');
+  assert.deepEqual(model.value, ['t2'], 'only the assigned transformer is checked');
+  model.callback(['t1', 't3']);
+  assert.deepEqual(tPage.vm.editForm.transformers, ['t1', 't3'], 'ticking checkboxes updates editForm.transformers');
+  let tSaved = null;
+  await device.methods.saveTransformers.call({ device: { udid: 'udid-t' }, editForm: tPage.vm.editForm,
+    updateDevice: async x => { tSaved = x; return { success: true }; }, loadDevice: async () => {} });
+  assert.deepEqual(tSaved, { udid: 'udid-t', changes: { transformers: ['t1', 't3'] } }, 'Save Transformers sends the checkbox state');
+  const cardButton = (page, card, label) => page.under(card, n => n.tag === 'b-button' && page.textOf(n) === label)[0];
+  const checkCardButtons = (page, card) => {
+    for (const label of ['Save Transformers', 'Create & Assign']) {
+      const btn = cardButton(page, card, label);
+      assert.ok(btn, label + ' button renders');
+      assert.equal(typeof ((btn.data && btn.data.on) || {}).click, 'function', label + ' button has a click handler');
+    }
+    const manage = cardButton(page, card, 'Manage Transformers');
+    assert.ok(manage, 'Manage Transformers button renders');
+    assert.equal(attrsOf(manage).variant, 'warning', 'Manage Transformers is a filled orange (warning) button, not a link');
+    assert.equal(attrsOf(manage).to, '/app/transformers', 'Manage Transformers routes to /app/transformers');
+    assert.equal(attrsOf(manage)['data-cy'], 'manage-transformers', 'Manage Transformers has data-cy manage-transformers');
+    assert.ok(/\bml-2\b/.test((manage.data && manage.data.staticClass) || ''), 'Manage Transformers keeps its left margin');
+  };
+  checkCardButtons(tPage, tCard);
+  const ePage = await renderDeviceDetail([], { udid: 'udid-t', alias: 'tango-01', environment: {} }, []);
+  const eCard = ePage.nodes.find(n => attrsOf(n)['data-cy'] === 'card-transformers');
+  assert.ok(eCard, 'empty profile still renders the Transformer Assignment card');
+  assert.equal(ePage.under(eCard, n => n.tag === 'b-form-checkbox-group').length, 0, 'no checkbox group without transformers');
+  const empty = ePage.under(eCard, n => attrsOf(n)['data-cy'] === 'transformers-empty');
+  assert.equal(empty.length, 1, 'empty profile shows one empty-state line');
+  assert.equal(ePage.textOf(empty[0]), 'No transformers yet. Use Create & Assign to add one.', 'empty-state line points to Create & Assign');
+  checkCardButtons(ePage, eCard);
+  console.log('v1.16 regression checks passed: logs, API envelopes, notifications, transformers, deploy keys, linked repository links, device build history without inline logs, transformer assignment checkboxes, and all changed Vue templates.');
 })().catch(err=>{console.error(err); process.exitCode=1;});
