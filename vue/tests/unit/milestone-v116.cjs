@@ -101,6 +101,29 @@ const sshCard = renderLinkedRepository([{ id: 'r1', alias: 'SSH repo', url: 'git
 assert.equal(sshCard.anchors.length, 0, 'git@ SSH remote renders no link');
 assert.equal(sshCard.hrefs.length, 0, 'git@ SSH remote renders no href');
 assert.ok(sshCard.text.includes('git@github.com:org/repo.git'), 'git@ SSH remote stays visible as text');
+const hrefFor = url => device.computed.linkedRepositoryHref.call({ linkedRepository: { url } });
+for (const [input, expected] of [
+  ['http://example.com/repo.git', 'http://example.com/repo.git'],
+  ['HTTPS://GitHub.com/org/repo.git', 'https://github.com/org/repo.git'],
+  ['  https://github.com/org/repo.git  ', 'https://github.com/org/repo.git'],
+  ['JavaScript:alert(1)', null],
+  [' javascript:alert(1)', null],
+  ['data:text/html,<script>alert(1)</script>', null],
+  ['ssh://git@github.com/org/repo.git', null],
+  ['file:///etc/passwd', null],
+  ['git@github.com:org/repo.git', null],
+  ['github.com/org/repo', null],
+  ['', null],
+  [undefined, null],
+  [null, null],
+]) assert.equal(hrefFor(input), expected, 'linkedRepositoryHref(' + JSON.stringify(input) + ')');
+assert.equal(device.computed.linkedRepositoryHref.call({ linkedRepository: null }), null, 'linkedRepositoryHref with no linked repository');
+const missingCard = renderLinkedRepository([{ id: 'other', alias: 'Other', url: 'https://github.com/org/other.git' }], 'r1');
+assert.ok(missingCard.text.includes('Repository unavailable'), 'unmatched source shows Repository unavailable');
+assert.equal(missingCard.anchors.length + missingCard.hrefs.length, 0, 'unmatched source renders no link and no href');
+const sshUrlCard = renderLinkedRepository([{ id: 'r1', alias: 'SSH URL repo', url: 'ssh://git@github.com/org/repo.git' }], 'r1');
+assert.equal(sshUrlCard.anchors.length, 0, 'ssh:// repository URL renders no link');
+assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh:// repository URL stays visible as text');
 (async () => {
   let posted;
   await transformers.actions.saveTransformers.call({$api:{$post:async (url,body)=>{posted={url,body:JSON.parse(body)};return {success:true};}}},{dispatch:async()=>{}},[{utid:'t1',body:'encoded'}]);
