@@ -49,8 +49,29 @@ describe('Device Detail feature', function() {
 
     it('Should display transformer assignment section (DEVI-11)', function() {
       cy.get('[data-cy=card-transformers]').should('be.visible');
-      cy.get('[data-cy=card-transformers] select').should('exist');
-      cy.get('[data-cy=card-transformers] select option').should('contain', 'passthrough');
+      cy.get('[data-cy=card-transformers] select').should('not.exist');
+      cy.get('[data-cy=card-transformers] [data-cy=transformer-checkboxes] input[type=checkbox]')
+        .should('have.length', 1).and('be.checked').and('have.value', 'utid-1');
+      cy.get('[data-cy=card-transformers] [data-cy=transformer-checkboxes]')
+        .contains('.custom-control-label', 'passthrough').should('be.visible');
+      cy.get('[data-cy=card-transformers] [data-cy=manage-transformers]')
+        .should('have.class', 'btn-warning').and('not.have.class', 'btn-link').and('contain', 'Manage Transformers');
+      // Separate chains: have.attr and have.css assertions change the subject.
+      cy.get('[data-cy=card-transformers] [data-cy=manage-transformers]')
+        .should('have.attr', 'href').and('include', '/app/transformers');
+      // Operator 2026-10-12: an orange background, not a transparent link (.btn-warning = #e49400).
+      cy.get('[data-cy=card-transformers] [data-cy=manage-transformers]')
+        .should('have.css', 'background-color', 'rgb(228, 148, 0)');
+    });
+
+    it('Should save the transformer assignment from the checkboxes (G-37-5)', function() {
+      cy.get('[data-cy=transformer-checkboxes] input[type=checkbox]').should('be.checked');
+      cy.get('[data-cy=transformer-checkboxes]').contains('.custom-control-label', 'passthrough').click();
+      cy.get('[data-cy=transformer-checkboxes] input[type=checkbox]').should('not.be.checked');
+      cy.get('[data-cy=card-transformers]').contains('button', 'Save Transformers').click();
+      // loadDevice re-reads the unchanged devices fixture after the save, so only the request is checked.
+      cy.wait('@updateDevice').its('request.body')
+        .should('deep.equal', { changes: { udid: 'udid-z', transformers: [] } });
     });
 
     it('Should display build history section (DEVI-11)', function() {
