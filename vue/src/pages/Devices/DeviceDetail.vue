@@ -387,7 +387,11 @@ export default {
       try {
         const created = await this.createTransformerItem({ alias, body: this.transformerForm.body });
         if (!created || !created.success) throw new Error('Could not create transformer.');
-        const selected = [...this.editForm.transformers, created.utid];
+        // Assign from the device's stored transformers, not from the multi-select:
+        // an unsaved selection change must not be written as a side effect.
+        const stored = Array.isArray(this.device.transformers) ? this.device.transformers : [];
+        const selected = [...new Set([...stored, created.utid])];
+        const pending = [...new Set([...(this.editForm.transformers || []), created.utid])];
         const saved = await this.updateDevice({ udid: this.device.udid, changes: { transformers: selected } });
         if (!saved || !saved.success) {
           this.transformerError = 'Transformer created, but assignment failed. Select it from the list and save to retry.';
@@ -397,6 +401,9 @@ export default {
         this.transformerForm.alias = '';
         this.message = 'Transformer created and assigned.';
         await this.loadDevice();
+        // loadDevice resets the select to the stored list; keep the user's unsaved
+        // selection (plus the new transformer) so it can still be saved or discarded.
+        if (this.device) this.editForm.transformers = pending;
       } catch (e) {
         this.transformerError = e.message || 'Could not create transformer.';
       } finally {

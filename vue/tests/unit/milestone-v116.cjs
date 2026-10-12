@@ -220,9 +220,14 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   resolveOld({success:true,response:{contents:'old'}}); await old;
   assert.equal(modal.text,'new');
   let update;
-  const dev=Object.assign(device.data(),{device:{udid:'d'},editForm:{transformers:['existing']},transformerForm:{alias:'New',body:'return status;'},getTransformers:()=>[],createTransformerItem:async()=>({success:true,utid:'new'}),updateDevice:async x=>{update=x;return {success:true};},loadDevice:async()=>{},$bvModal:{hide:()=>{}}});
+  // 35 WR-02: assignment comes from the stored device list, not the unsaved select.
+  const dev=Object.assign(device.data(),{device:{udid:'d',transformers:['existing']},editForm:{transformers:['unsaved']},transformerForm:{alias:'New',body:'return status;'},getTransformers:()=>[],createTransformerItem:async()=>({success:true,utid:'new'}),updateDevice:async x=>{update=x;return {success:true};},loadDevice:async()=>{},$bvModal:{hide:()=>{}}});
   await device.methods.createTransformer.call(dev,{preventDefault(){}});
-  assert.deepEqual(update.changes.transformers,['existing','new']); assert.equal(dev.transformerSaving,false);
+  assert.deepEqual(update.changes.transformers,['existing','new'],'unsaved selection is not written'); assert.equal(dev.transformerSaving,false);
+  assert.deepEqual(dev.editForm.transformers,['unsaved','new'],'unsaved selection stays pending after reload');
+  dev.device={udid:'d'}; dev.editForm={transformers:[]}; dev.transformerForm.alias='Another';
+  await device.methods.createTransformer.call(dev,{preventDefault(){}});
+  assert.deepEqual(update.changes.transformers,['new'],'device with no stored transformers gets only the new one');
   const page=Object.assign(keyPage.data(),{keyName:'Firmware',createItem:async name=>{assert.equal(name,'Firmware');return {success:true,response:{name,pubkey:'public-key'}};},showKey:keyPage.methods.showKey,loadData:async()=>{},$bvModal:{show:()=>{}}});
   await keyPage.methods.create.call(page); assert.equal(page.createdPubkey,'public-key'); assert.equal(page.creating,false);
   page.keyName='retry'; page.createItem=async()=>{throw new Error('offline');}; await keyPage.methods.create.call(page);
