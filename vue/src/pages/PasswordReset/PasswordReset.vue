@@ -92,22 +92,20 @@
         </form>
       </Widget>
     </b-container>
-    <footer class="auth-footer">
-      &copy; 2018 - 2026 <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by
-      <a :href="this.$hostnames.LANDING" target="_blank">THiNX Cloud</a>
-    </footer>
+    <AppFooter variant="auth" />
   </div>
 </template>
 
 <script>
 import Widget from "@/components/Widget/Widget";
+import AppFooter from "@/components/AppFooter/AppFooter";
 import { mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
 import { ensureCsrfToken, isCsrfRejectedPayload, reportCsrfRejection, CSRF_REJECTED_MESSAGE } from "@/utils/cookies";
 
 export default {
   name: "PasswordReset",
-  components: { Widget },
+  components: { Widget, AppFooter },
   mixins: [hostnameMixin],
   data() {
     return {

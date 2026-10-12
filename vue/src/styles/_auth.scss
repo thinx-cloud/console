@@ -1,6 +1,8 @@
 .auth-page {
   padding-top: 10vh;
-  height: 100vh;
+  // min-height, not height: the logo makes the Login page taller than short
+  // viewports, and the footer then flows after the panel (UI-D10).
+  min-height: 100vh;
 }
 
 .widget-auth {
@@ -103,10 +105,23 @@
 .auth-footer {
   margin-bottom: 25px;
   font-size: 13px;
-  color: #636c72;
+  color: $text-color;
   text-align: center;
 
-  @media (min-height: 600px) {
+  // AA on the page gradient (UI-D09): #c1ccd3 reaches 6.75:1 on its lightest stop.
+  a {
+    color: $gray-400;
+    text-decoration: underline;
+
+    &:hover,
+    &:focus {
+      color: $white;
+    }
+  }
+
+  // Fixed only where it cannot cover "Create an Account" (UI-D10); below 800px
+  // viewport height it flows after the panel.
+  @media (min-height: 800px) {
     position: fixed;
     bottom: 0;
     left: 0;
