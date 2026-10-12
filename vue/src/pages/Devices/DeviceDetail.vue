@@ -131,10 +131,11 @@
                   <td>{{ build.date | fromNow }}</td>
                   <td><code>{{ build.build_id }}</code></td>
                   <td>
-                    <b-badge :variant="build.status === 'OK' ? 'success' : 'danger'">{{ build.status || '—' }}</b-badge>
+                    <b-badge :variant="buildStatusVariant(build.status)">{{ build.status || '—' }}</b-badge>
                   </td>
                   <td>
-                    <b-button size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'Open build log ' + build.build_id" @click="openBuildLog(build)">Open build log</b-button>
+                    <b-button v-if="build.build_id" size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'Open build log ' + build.build_id" @click="openBuildLog(build)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
+                    <span v-else class="text-muted">—</span>
                   </td>
                 </tr>
               </tbody>
@@ -179,6 +180,7 @@ import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import { mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
 import { parseEnvironmentJSON } from '@/utils/envJson';
+import { buildStatusVariant } from '@/utils/buildLog';
 
 export default {
   name: "DeviceDetail",
@@ -248,6 +250,7 @@ export default {
     this.loadDevice();
   },
   methods: {
+    buildStatusVariant,
     openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
     ...mapGetters({ getByUdid: 'devices/getByUdid', getBuildItems: 'buildlog/getItems', getTransformers: 'transformers/getItems', getRepositories: 'repositories/getItems' }),
     ...mapActions({

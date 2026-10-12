@@ -47,6 +47,7 @@
 import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import Vue from 'vue';
 import { mapActions, mapGetters } from 'vuex';
+import { buildStatusVariant } from '@/utils/buildLog';
 
 export default {
   name: 'Notification',
@@ -101,15 +102,14 @@ export default {
       return (build.status || '').toUpperCase() === 'OK';
     },
     statusGlyph(build) {
-      return this.isSuccess(build) ? 'fa fa-check text-white' : 'fa fa-times text-white';
+      const glyph = { success: 'fa-check', warning: 'fa-clock-o', info: 'fa-circle-o-notch' }[buildStatusVariant(build.status)];
+      return 'fa ' + (glyph || 'fa-times') + ' text-white';
     },
     statusIconClass(build) {
-      return this.isSuccess(build)
-        ? 'circle circle-lg bg-success'
-        : 'circle circle-lg bg-danger';
+      return 'circle circle-lg bg-' + buildStatusVariant(build.status);
     },
     statusTextClass(build) {
-      return this.isSuccess(build) ? 'text-success' : 'text-danger';
+      return 'text-' + buildStatusVariant(build.status);
     },
   },
 };

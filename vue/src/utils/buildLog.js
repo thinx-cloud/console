@@ -22,3 +22,12 @@ export function buildLogText(detail) {
   }
   return lines(detail.log).join('\n');
 }
+
+// One colour per normalized build status, shared by every build list (TIMEOUT is not a failure colour).
+export function buildStatusVariant(status) {
+  const normalized = String(status || '').toUpperCase();
+  if (normalized === 'OK') return 'success';
+  if (normalized === 'TIMEOUT') return 'warning';
+  if (normalized === 'RUNNING') return 'info';
+  return 'danger';
+}

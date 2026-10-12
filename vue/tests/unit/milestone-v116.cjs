@@ -20,7 +20,7 @@ function load(file, extra = {}) {
     .replace(/export default /g, 'module.exports.default = ')
     .replace(/export function (\w+)/g, 'function $1');
   const mod = { exports: {} };
-  const deps = { mapGetters: () => ({}), mapActions: () => ({}), mapState: () => ({}), List: {}, BuildLogDialog: {}, Notifications: {}, codemirror: {}, moment: () => ({}), PAGE_SIZE: 100, normPaging: x => x, pagedPath: x => x, parseEnvironmentJSON: () => ({ok:true}), ...extra };
+  const deps = { mapGetters: () => ({}), mapActions: () => ({}), mapState: () => ({}), List: {}, BuildLogDialog: {}, Notifications: {}, codemirror: {}, moment: () => ({}), PAGE_SIZE: 100, normPaging: x => x, pagedPath: x => x, parseEnvironmentJSON: () => ({ok:true}), buildStatusVariant: status => logModule.exports.buildStatusVariant(status), ...extra };
   new Function('module', ...Object.keys(deps), code + '\n' + (file === 'store/buildlog.js' ? 'module.exports.normalizeStatus = normalizeStatus; module.exports.normalizeBuildItems = normalizeBuildItems;' : ''))(mod, ...Object.values(deps));
   return mod.exports.default || mod.exports;
 }
@@ -39,7 +39,13 @@ assert.equal(flat.build_id, 'build-1');
 assert.equal(flat.udid, 'device-1');
 assert.deepEqual(normalize.normalizeBuildItems([{_id:'nested', log:[{build_id:'b2',udid:'d2',log:[{message:'output'}]}]}])[0].log, ['output']);
 const logModule = {exports:{}};
-new Function('module', fs.readFileSync(path.join(root,'utils/buildLog.js'),'utf8').replace('export function','module.exports.buildLogText = function'))(logModule);
+new Function('module', fs.readFileSync(path.join(root,'utils/buildLog.js'),'utf8').replace(/export function (\w+)/g,'module.exports.$1 = function $1'))(logModule);
+const statusVariant = logModule.exports.buildStatusVariant;
+assert.equal(statusVariant('OK'), 'success', 'OK builds are green');
+assert.equal(statusVariant('TIMEOUT'), 'warning', 'TIMEOUT has its own colour, not FAILED red');
+assert.equal(statusVariant('running'), 'info', 'RUNNING has its own colour');
+assert.equal(statusVariant('FAILED'), 'danger', 'FAILED stays red');
+assert.equal(statusVariant(undefined), 'danger', 'a missing status is not shown as success');
 const text = logModule.exports.buildLogText;
 assert.equal(text({contents:Buffer.from('Český log').toJSON(),log:[{message:'short'}]}),'Český log');
 assert.equal(text({log:[{log:[{contents:'full'}, {message:'line'}]}]}),'full\nline');
@@ -138,7 +144,7 @@ async function renderDeviceDetail(builds, dev) {
   const rows = tbody ? (tbody.children || []).filter(n => n.tag === 'tr') : [];
   const buttons = card ? under(card, n => cy(n) === 'build-open-log') : [];
   const textOf = top => under(top, n => !n.tag && n.text).map(n => n.text).join(' ').replace(/\s+/g, ' ').trim();
-  return { vm, opened, nodes, card, rows, buttons, text: textOf(vnode), textOf };
+  return { vm, opened, nodes, card, rows, buttons, text: textOf(vnode), textOf, under };
 }
 const httpsCard = renderLinkedRepository([{ id: 'r1', alias: 'Firmware repo', url: 'https://github.com/org/repo.git' }], 'r1');
 assert.equal(httpsCard.anchors.length, 1, 'https repository URL renders exactly one link');
@@ -334,12 +340,23 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   devPage.buttons.forEach((btn, i) => {
     assert.equal(btn.tag, 'b-button', 'Open build log control is a b-button');
     assert.equal(attrsOf(btn)['aria-label'], 'Open build log build-' + (i + 1), 'Open build log button names its build');
-    assert.equal(devPage.textOf(btn), 'Open build log', 'Open build log button text');
+    assert.equal(devPage.textOf(btn), 'View', 'Open build log button reads View');
+    assert.ok(devPage.under(btn, n => n.tag === 'i' && /\bla-eye\b/.test((n.data && n.data.staticClass) || '')).length === 1, 'View button has an eye icon');
+    assert.ok(/^Open build log /.test((btn.data && btn.data.attrs && btn.data.attrs['aria-label']) || ''), 'View button keeps a descriptive aria-label');
     assert.equal(typeof ((btn.data && btn.data.on) || {}).click, 'function', 'Open build log button has a click handler');
   });
   devPage.buttons[1].data.on.click({ stopPropagation() {}, preventDefault() {} });
   assert.equal(devPage.opened.length, 1, 'second Open build log button opens exactly one log');
   assert.equal(devPage.opened[0], devPage.vm.buildHistory[1], 'second Open build log button opens its own row\'s build');
+  const idlessPage = await renderDeviceDetail([
+    { build_id: 'build-1', udid: 'udid-z', status: 'TIMEOUT', date: NOW, log: [] },
+    { build_id: '', udid: 'udid-z', status: 'FAILED', date: NOW - 60000, log: [] },
+  ], zDev);
+  assert.equal(idlessPage.rows.length, 2, 'both builds are listed');
+  assert.equal(idlessPage.buttons.length, 1, 'a build without build_id gets no View button');
+  assert.ok(idlessPage.textOf(idlessPage.rows[1]).includes('—'), 'a build without build_id shows a dash instead');
+  const badges = idlessPage.under(idlessPage.card, n => n.tag === 'b-badge');
+  assert.equal(badges[0].data.attrs.variant, 'warning', 'TIMEOUT badge is not FAILED red on the device page');
   assert.equal(devPage.opened[0].build_id, 'build-2');
   const dialogOpened = [];
   device.methods.openBuildLog.call({ $refs: { buildLogDialog: { open: b => dialogOpened.push(b) } } }, devPage.vm.buildHistory[1]);

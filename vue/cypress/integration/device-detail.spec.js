@@ -71,7 +71,7 @@ describe('Device Detail feature', function() {
       cy.get('[data-cy=card-build-history] tbody tr').first().should('not.have.attr', 'tabindex');
       cy.get('[data-cy=card-build-history] [data-cy=build-open-log]')
         .should('have.attr', 'aria-label', 'Open build log build-1');
-      cy.get('[data-cy=card-build-history] [data-cy=build-open-log]').should('contain', 'Open build log');
+      cy.get('[data-cy=card-build-history] [data-cy=build-open-log]').should('contain', 'View');
     });
 
     it('Should open the full build log only from the Open build log button (G-36-3)', function() {

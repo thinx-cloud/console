@@ -106,6 +106,7 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
+import { buildStatusVariant } from '@/utils/buildLog';
 import CheckinsTimeline from './components/CheckinsTimeline/CheckinsTimeline.vue';
 import hostnameMixin from '@/mixins/hostnames';
 
@@ -223,10 +224,7 @@ export default {
       return item.name || this.shortUdid(item.udid);
     },
     badgeVariant(status) {
-      const normalized = (status || '').toUpperCase();
-      if (normalized === 'OK') return 'success';
-      if (normalized === 'RUNNING') return 'warning';
-      return 'danger';
+      return buildStatusVariant(status);
     },
     async loadData() {
       this.loading = true;

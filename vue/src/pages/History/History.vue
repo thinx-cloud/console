@@ -105,12 +105,12 @@
           </thead>
           <tbody>
             <!-- Row click is a mouse shortcut only. Keyboard and screen-reader users get the row's
-                 "Open build log" button, so the row keeps its table semantics (35 WR-01). -->
+                 "View" (Open build log) button, so the row keeps its table semantics (35 WR-01). -->
             <tr v-for="(item, i) in filteredBuilds" :key="i" data-cy="build-row" class="build-row" @click="onBuildRowClick(item, $event)">
               <td style="white-space:nowrap">{{ item.date | formatDate }}</td>
               <td>{{ item.name }}</td>
               <td>
-                <b-badge :variant="item.status === 'OK' ? 'success' : 'danger'">{{ item.status || '—' }}</b-badge>
+                <b-badge :variant="buildStatusVariant(item.status)">{{ item.status || '—' }}</b-badge>
               </td>
               <td style="max-width:600px">
                 <pre
@@ -127,7 +127,7 @@
                   data-cy="build-expand"
                   @click.stop="toggleExpand(item)"
                 >{{ isExpanded(item) ? 'Collapse' : 'Expand' }}</b-button>
-                <b-button size="sm" variant="link" data-cy="build-open-log" :aria-label="'Open build log ' + (item.build_id || item.name || '')" @click.stop="openBuildLog(item)">Open build log</b-button>
+                <b-button v-if="item.build_id" size="sm" variant="link" data-cy="build-open-log" :aria-label="'Open build log ' + (item.build_id || item.name || '')" @click.stop="openBuildLog(item)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
               </td>
             </tr>
           </tbody>
@@ -175,6 +175,7 @@
 import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import { mapGetters, mapActions } from "vuex";
 import { normPaging } from "@/store/logPaging";
+import { buildStatusVariant } from "@/utils/buildLog";
 
 export default {
   name: "History",
@@ -287,6 +288,7 @@ export default {
     auditFlagFilter() { this.syncFiltersToQuery(); },
   },
   methods: {
+    buildStatusVariant,
     openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
     onBuildRowClick(build, event) {
       // Ignore clicks that land on a control inside the row, and the click that ends a
@@ -362,7 +364,7 @@ export default {
     },
     logStyle(item) {
       // Inline styles always applied; max-height/overflow added only when collapsed.
-      const base = 'white-space:pre-wrap;word-break:break-word;font-size:11px;background:#f8f9fa;padding:6px;border-radius:3px;margin:0;';
+      const base = 'white-space:pre-wrap;word-break:break-word;font-size:11px;background:rgba(0,0,0,0.25);color:inherit;padding:6px;border-radius:3px;margin:0;';
       if (this.isExpanded(item)) return base;
       return base + 'max-height:120px;overflow:hidden;';
     },
