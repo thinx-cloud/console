@@ -110,10 +110,11 @@ describe('Profile feature', function() {
       cy.hash().should('eq', '#/login');
     });
 
-    it('Should be reachable via header My Account dropdown link (PROF-06)', function() {
+    it('Should be reachable via header My Profile dropdown link (PROF-06)', function() {
       cy.visitApp('/#/app/dashboard', { session: true });
       cy.get('[data-cy=settings-dropdown] .dropdown-toggle').click();
-      cy.get('[data-cy=settings-dropdown]').contains('.dropdown-item', 'My Account').click();
+      // Select by data-cy so a label change cannot break the spec (35 WR-07).
+      cy.get('[data-cy=settings-dropdown] [data-cy=header-profile]').should('contain', 'My Profile').click();
       cy.hash().should('eq', '#/app/profile');
     });
 

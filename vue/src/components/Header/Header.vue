@@ -45,7 +45,7 @@
         <template slot="button-content">
           <i class="fi flaticon-settings-10 px-2" />
         </template>
-        <b-dropdown-item to="/app/profile"><i class="la la-user" /> My Profile</b-dropdown-item>
+        <b-dropdown-item to="/app/profile" data-cy="header-profile"><i class="la la-user" /> My Profile</b-dropdown-item>
         <b-dropdown-divider />
         <b-dropdown-item-button @click="logout">
           <i class="la la-sign-out" /> Log Out

@@ -100,6 +100,10 @@ jobs:
             export ENV NODE_OPTIONS=--openssl-legacy-provider
             cd vue
             yarn
+            # Node unit suites, no browser (35 WR-07). LC_ALL=C pins
+            # toLocaleString, which log-paging-store.cjs compares against.
+            LC_ALL=C yarn test:unit
+            LC_ALL=C node ../src/test/deploykey.cjs
             yarn build:perf
             yarn test
 
