@@ -2,16 +2,21 @@
   <div>
     <b-breadcrumb><b-breadcrumb-item active>Settings</b-breadcrumb-item></b-breadcrumb>
     <h1 class="page-title">Settings - <span class="fw-semi-bold">Deploy Keys</span></h1>
-    <b-form inline class="mb-3" @submit.prevent="create">
-      <label for="deploy-key-name" class="mr-2">Key name</label>
-      <b-form-input id="deploy-key-name" v-model="keyName" maxlength="120" required placeholder="e.g. Firmware Repository" class="mr-2 mb-2" :disabled="creating" />
-      <b-button type="submit" variant="success" :disabled="creating || !keyName.trim()" class="mb-2">{{ creating ? 'Generating…' : 'Generate Deploy Key' }}</b-button>
-      <b-button variant="danger" @click="deleteSelected" :disabled="!selectedIds.length" class="ml-2 mb-2">Delete ({{ selectedIds.length }})</b-button>
+    <b-form inline class="key-create-form" @submit.prevent="create">
+      <label for="deploy-key-name">Key name</label>
+      <b-form-input id="deploy-key-name" v-model="keyName" maxlength="120" required placeholder="e.g. Firmware Repository" :disabled="creating" />
+      <b-button type="submit" variant="success" :disabled="creating || !keyName.trim()">{{ creating ? 'Generating…' : 'Generate Deploy Key' }}</b-button>
     </b-form>
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
+    <b-alert v-if="loadFailed" variant="danger" show data-cy="keys-load-error">Could not load deploy keys. Refresh to retry.</b-alert>
     <p>Deploy keys grant access to private Git repositories. Add the public key to your repository's deploy keys.</p>
+    <div v-if="!loading && !loadFailed && items.length" class="key-toolbar" role="toolbar" aria-label="Selected deploy keys">
+      <b-button size="sm" variant="danger" data-cy="key-bulk-delete" :disabled="!selectedIds.length || bulkDeleting" @click="deleteSelected">
+        <i class="fa fa-trash" aria-hidden="true"></i><span class="key-toolbar__text">{{ bulkLabel }}</span>
+      </b-button>
+    </div>
     <div v-if="loading" role="status">Loading…</div>
-    <div v-else class="table-responsive">
+    <div v-else-if="!loadFailed" class="table-responsive">
       <table class="table deploy-keys-table">
         <caption class="sr-only">Deploy keys</caption>
         <thead><tr><th><span class="sr-only">Select</span></th><th>Name</th><th>Generated</th><th>Public key</th><th>Actions</th></tr></thead>
@@ -32,7 +37,7 @@
           </tr>
         </tbody>
         <tbody v-if="!items.length">
-          <tr><td colspan="5" class="text-muted">{{ loadFailed ? 'Deploy keys could not be loaded. Reload the page to retry.' : 'No deploy keys yet.' }}</td></tr>
+          <tr><td colspan="5">No deploy keys yet. Generate one with the form above.</td></tr>
         </tbody>
       </table>
     </div>
@@ -52,7 +57,13 @@ import IconButton from '@/components/IconButton/IconButton';
 export default {
   name: 'Rsakeys',
   components: { IconButton },
-  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createdPubkey: '', shownName: '', deletingIds: [], confirming: false, shownIds: [] }; },
+  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createdPubkey: '', shownName: '', deletingIds: [], confirming: false, shownIds: [], bulkDeleting: false }; },
+  computed: {
+    bulkLabel() {
+      if (this.bulkDeleting) return 'Deleting…';
+      return this.selectedIds.length ? 'Delete selected (' + this.selectedIds.length + ')' : 'Delete selected';
+    },
+  },
   created() { this.loadData(); },
   methods: {
     ...mapGetters({ getItems: 'rsakeys/getItems' }),
@@ -108,31 +119,59 @@ export default {
       } catch (e) { this.error = 'Could not delete the deploy key. Try again.'; }
       finally { this.deletingIds = this.deletingIds.filter(id => id !== item.id); }
     },
+    // Bulk delete (UI-K11, D-11): the same confirmation options and single-shot guard as a
+    // row; a key whose own delete is already in flight is not sent a second time.
     async deleteSelected() {
-      if (this.confirming) return;
-      const filenames = this.selectedIds.map(id => this.items.find(item => item.id === id)).filter(Boolean).map(item => item.filename);
-      if (!filenames.length) return;
+      if (this.confirming || this.bulkDeleting) return;
+      const selected = this.selectedIds.map(id => this.items.find(item => item.id === id)).filter(item => item && !this.isDeleting(item));
+      if (!selected.length) return;
       // Deletion removes the key pair on disk and cannot be undone (35 WR-06).
-      const count = filenames.length === 1 ? 'this deploy key' : filenames.length + ' deploy keys';
+      const one = selected.length === 1;
+      const count = one ? 'this deploy key' : selected.length + ' deploy keys';
+      this.confirming = true;
       let confirmed = false;
       try {
         confirmed = await this.$bvModal.msgBoxConfirm(
-          'Delete ' + count + '? This cannot be undone. Repositories that use ' + (filenames.length === 1 ? 'it' : 'them') + ' stop building until a new key is generated and added to the Git host.',
-          { title: 'Confirm Delete', okVariant: 'danger', okTitle: 'Delete', cancelTitle: 'Cancel', autoFocusButton: 'cancel' });
+          'Delete ' + count + '? This cannot be undone. Repositories that use ' + (one ? 'it' : 'them') + ' stop building until a new key is generated and added to the Git host.',
+          { title: 'Confirm Delete', okVariant: 'danger', okTitle: 'Delete', cancelTitle: one ? 'Keep key' : 'Keep keys', autoFocusButton: 'cancel', bodyClass: 'text-break' });
       } catch (e) { confirmed = false; }
-      if (!confirmed) return;
+      finally { this.confirming = false; }
+      if (!confirmed || this.bulkDeleting) return;
+      const ids = selected.map(item => item.id).filter(id => !this.deletingIds.includes(id));
+      if (!ids.length) return;
+      this.bulkDeleting = true;
+      this.deletingIds = this.deletingIds.concat(ids);
+      this.error = null;
       try {
-        const result = await this.deleteItems(filenames);
-        if (!result || !result.success) { this.error = 'Failed to delete deploy keys.'; return; }
+        const result = await this.deleteItems(selected.filter(item => ids.includes(item.id)).map(item => item.filename));
+        if (!result || !result.success) { this.error = 'Could not delete the deploy keys. Try again.'; return; }
         this.selectedIds = [];
         await this.loadData();
-      } catch (e) { this.error = 'Failed to delete deploy keys.'; }
+      } catch (e) { this.error = 'Could not delete the deploy keys. Try again.'; }
+      finally {
+        this.bulkDeleting = false;
+        this.deletingIds = this.deletingIds.filter(id => !ids.includes(id));
+      }
     },
+    // A failed load clears everything behind one non-dismissible alert (UI-K12); a
+    // successful one prunes the selection and the open keys to listed ids (UI-K13).
     async loadData() {
       this.loading = true;
-      try { await this.fetchItems(); this.items = this.getItems(); this.loadFailed = false; }
-      catch (e) { this.loadFailed = true; this.error = 'Could not load deploy keys.'; }
-      finally { this.loading = false; }
+      try {
+        await this.fetchItems();
+        const items = this.getItems();
+        const listed = items.map(item => item.id);
+        this.items = items;
+        this.loadFailed = false;
+        this.selectedIds = this.selectedIds.filter(id => listed.includes(id));
+        this.shownIds = this.shownIds.filter(id => listed.includes(id));
+      } catch (e) {
+        this.items = [];
+        this.selectedIds = [];
+        this.shownIds = [];
+        this.loadFailed = true;
+        this.error = null;
+      } finally { this.loading = false; }
     },
     formatDate(value) {
       if (!value) return '—';

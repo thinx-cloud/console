@@ -261,11 +261,11 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   assert.equal(created.success,true,'a failed refresh after create still reports the created key');
   const failedPage=Object.assign(keyPage.data(),{fetchItems:async()=>{throw new Error('offline');},getItems:()=>[]});
   await keyPage.methods.loadData.call(failedPage);
-  assert.equal(failedPage.loadFailed,true); assert.equal(failedPage.error,'Could not load deploy keys.'); assert.equal(failedPage.loading,false);
+  assert.equal(failedPage.loadFailed,true); assert.equal(failedPage.error,null,'the load alert is the only message (45 UI-K12)'); assert.deepEqual(failedPage.items,[]); assert.equal(failedPage.loading,false);
   // 35 WR-06: deleting deploy keys asks first, and Cancel deletes nothing.
   const deleted=[]; let confirmText='';
   const delPage=Object.assign(keyPage.data(),{items:[{id:'f1',filename:'f1',name:'A'},{id:'f2',filename:'f2',name:'B'}],selectedIds:['f1','f2'],
-    deleteItems:async f=>{deleted.push(f);return {success:true};},loadData:async()=>{},
+    deleteItems:async f=>{deleted.push(f);return {success:true};},loadData:async()=>{},isDeleting:keyPage.methods.isDeleting,
     $bvModal:{msgBoxConfirm:async text=>{confirmText=text;return false;}}});
   await keyPage.methods.deleteSelected.call(delPage);
   assert.equal(deleted.length,0,'cancelled confirmation deletes nothing'); assert.ok(/2 deploy keys/.test(confirmText),'confirmation names the count');

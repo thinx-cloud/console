@@ -1,4 +1,4 @@
-// Phase 45 Deploy Keys page (UI-SPEC UI-K02..UI-K06).
+// Phase 45 Deploy Keys page (UI-SPEC UI-K02..UI-K06, UI-K11, UI-K15).
 
 // Stripes per key group, so an open detail row never shifts the stripes below it (UI-K02).
 .deploy-keys-table > tbody.key-group:nth-of-type(odd) > tr {
@@ -42,4 +42,26 @@
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+// Generate form: label, input and button on one row, 8px apart, also when it wraps (UI-K15).
+.key-create-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+// Bulk toolbar: its own right-aligned row above the table (UI-K11).
+.key-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.key-toolbar__text {
+  margin-left: 4px;
 }
