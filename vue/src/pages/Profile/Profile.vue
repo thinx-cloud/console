@@ -110,12 +110,29 @@
                there is no "current value" to display — only the masked input, the
                link action, and transient feedback after a submit. -->
           <b-card title="GitHub Access Token" class="mb-3">
-            <p class="text-muted mb-2">
+            <p class="mb-2">
               Link a GitHub
               <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">personal access token</a>
-              so THiNX can push your deploy (RSA) key to GitHub and access your private repositories.
+              so THiNX can add your deploy (RSA) key to your GitHub account. THiNX then clones your private
+              repositories over SSH with that key, so it reaches every repository your GitHub account can read.
               The token is validated with GitHub, stored securely, and never shown again.
             </p>
+            <div class="mb-2" data-cy="github-token-scopes">
+              <p class="mb-1">The token needs permission to read and add your SSH keys, and nothing else:</p>
+              <ul class="mb-0">
+                <li>
+                  Classic token:
+                  <a href="https://github.com/settings/tokens/new?scopes=admin:public_key&amp;description=THiNX" target="_blank" rel="noopener noreferrer"><code>admin:public_key</code></a>
+                  (or both <code>read:public_key</code> and <code>write:public_key</code>).
+                </li>
+                <li>
+                  Fine-grained token:
+                  <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">account permission</a>
+                  <strong>Git SSH keys</strong>: Read and write.
+                </li>
+              </ul>
+              <p class="mt-1 mb-0">No <code>repo</code> scope is needed.</p>
+            </div>
             <b-form @submit.prevent="linkGitHub">
               <b-form-group
                 label="GitHub access token"
@@ -367,10 +384,12 @@ export default {
         };
       } else {
         // Failure responses carry a string code in result.response:
-        // 401 github_token_invalid, 400 missing_token, invalid_owner, plus the 500s.
+        // 401 github_token_invalid, 403 github_token_missing_scope, 400 missing_token,
+        // invalid_owner, plus the 500s.
         const code = result && result.response;
         const messages = {
-          github_token_invalid: 'GitHub rejected this token. Check it is valid and has the required scopes, then try again.',
+          github_token_invalid: 'GitHub rejected this token. Check that it is valid and not expired, then try again.',
+          github_token_missing_scope: 'This token cannot read your SSH keys. Give it admin:public_key (classic) or Git SSH keys: Read and write (fine-grained), then link it again.',
           missing_token: 'No token was provided.',
           invalid_owner: 'Your session is no longer valid. Please sign in again.',
           token_store_failed: 'The token could not be stored. Please try again.',
