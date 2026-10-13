@@ -842,6 +842,16 @@ const NAME_CASES = [
   ['a' + ch(0x2028) + 'b', 'line_separator'], ['a' + ch(0x2029) + 'b', 'line_separator'], [ch(0x2028), 'line_separator'],
   ['a' + ch(0x202e) + 'b', 'bidi'], ['a' + ch(0x202a) + 'b', 'bidi'], ['a' + ch(0x2066) + 'b', 'bidi'],
   ['a' + ch(0x2069) + 'b', 'bidi'], ['a' + ch(0x200e) + 'b', 'bidi'], ['a' + ch(0x200f) + 'b', 'bidi'],
+  // 45-REVIEW IN-01: ALM, zero-width / invisible characters, invisible-only names, lone surrogates.
+  ['a' + ch(0x061c) + 'b', 'bidi'],
+  ['a' + ch(0x200b) + 'b', 'invisible'], ['a' + ch(0x200c) + 'b', 'invisible'], ['a' + ch(0x200d) + 'b', 'invisible'],
+  ['a' + ch(0x2060) + 'b', 'invisible'], [ch(0xfeff) + 'ab', 'invisible'], [ch(0x200b) + ch(0x2060), 'invisible'],
+  [String.fromCodePoint(0x1f469) + ch(0x200d) + String.fromCodePoint(0x1f4bb), 'invisible'],
+  [ch(0x00ad), 'empty'], [ch(0x00ad) + ' ' + ch(0x3164), 'empty'], [ch(0xfe0f), 'empty'], [ch(0x034f) + ch(0x115f), 'empty'],
+  [String.fromCodePoint(0xe0001) + String.fromCodePoint(0xe0041), 'empty'], [String.fromCodePoint(0x1d173), 'empty'],
+  ['a' + ch(0x00ad) + 'b', null], ['x' + ch(0xfe0f), null],
+  ['ab' + ch(0xd800), 'control_chars'], [ch(0xdc00) + 'ab', 'control_chars'], ['a' + ch(0xdbff) + ch(0xdbff) + ch(0xdc00), 'control_chars'],
+  [ch(0xd83d) + ch(0xde80), null],
 ];
 
 // UI-SPEC Copywriting Contract, name validation row.
@@ -851,6 +861,7 @@ const SENTENCES = {
   control_chars: 'The name contains a control character, such as a tab or a line break.',
   line_separator: 'The name contains a hidden line or paragraph separator.',
   bidi: 'The name contains a hidden direction-override character.',
+  invisible: 'The name contains an invisible character, such as a zero-width space.',
 };
 const GENERIC_NAME = 'This name is not allowed. Choose a different name.';
 const RENAME_ERROR = 'Could not rename the deploy key. Try again.';
@@ -862,12 +873,15 @@ check('K1 validateKeyName mirrors the server cases; keyNameMessage gives the UI-
     const expected = reason === null ? { ok: true } : { ok: false, reason };
     assert.deepEqual(validateKeyName(name), expected, JSON.stringify(name === undefined ? 'undefined' : name));
   }
-  const BIDI = [0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069];
+  const BIDI = [0x061c, 0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069];
+  const INVISIBLE = [0x200b, 0x200c, 0x200d, 0x2060, 0xfeff];
   for (let c = 0; c <= 0xffff; c++) {
     let expected = { ok: true };
     if (c < 0x20 || c === 0x7f || (c >= 0x80 && c <= 0x9f)) expected = { ok: false, reason: 'control_chars' };
+    else if (c >= 0xd800 && c <= 0xdfff) expected = { ok: false, reason: 'control_chars' }; // lone surrogate
     else if (c === 0x2028 || c === 0x2029) expected = { ok: false, reason: 'line_separator' };
     else if (BIDI.includes(c)) expected = { ok: false, reason: 'bidi' };
+    else if (INVISIBLE.includes(c)) expected = { ok: false, reason: 'invisible' };
     assert.deepEqual(validateKeyName('a' + ch(c) + 'b'), expected, 'code unit 0x' + c.toString(16).padStart(4, '0'));
   }
   // The first offending unit decides; the scan runs before trimming.
@@ -1197,6 +1211,7 @@ check('G1 the Generate form names a bad name under the form and disables Generat
     ['a' + ch(0x2028) + 'b', SENTENCES.line_separator],
     ['a' + ch(0x09) + 'b', SENTENCES.control_chars],
     ['a' + ch(0x202e) + 'b', SENTENCES.bidi],
+    ['a' + ch(0x200b) + 'b', SENTENCES.invisible],
     ['x'.repeat(121), SENTENCES.too_long],
   ];
   bad.forEach(([keyName, sentence]) => {
