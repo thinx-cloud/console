@@ -1391,6 +1391,40 @@ checkAsync('G2 create: a bad client name sends nothing; a server reason keeps th
   assert.ok(!page().source.includes('Failed to generate deploy key'), 'the old generate error copy is gone');
 });
 
+// 45-UI-REVIEW fix 2: a name the server refused cannot be sent again unchanged; editing it
+// (the watchers clear the server reason) enables the button again.
+checkAsync('K12 Save name and Generate stay disabled while a server-refused name is unchanged (UI review fix 2)', async () => {
+  const items = keyItems();
+  const saveOf = (vnode) => byCy(nodesOf(vnode).find((n) => n.tag === 'b-modal' && attrsOf(n).id === 'rsakey-rename-modal'), 'rename-key-save')[0];
+  const refused = renderKeys({ items, renameTarget: items[0], renameName: 'Fine name', renameServerReason: 'bidi' });
+  assert.equal(attrsOf(saveOf(refused.vnode)).disabled, true, 'Save name is disabled on the server reason');
+  const failed = renderKeys({ items, renameTarget: items[0], renameName: 'Fine name', renameError: RENAME_ERROR });
+  assert.equal(attrsOf(saveOf(failed.vnode)).disabled, false, 'a request error can be retried');
+
+  const h = renameHarness();
+  h.vm.renameName = 'Server says no';
+  const p = h.vm.saveRename();
+  h.control.renameItem.resolve({ success: false, response: 'invalid_key_name', reason: 'bidi' });
+  await p;
+  await h.vm.saveRename();
+  assert.equal(h.calls.renameItem.length, 1, 'the refused name is not sent again');
+  h.vm.renameName = 'Server says no 2';
+  await tick();
+  assert.equal(attrsOf(saveOf(rerender(h.vm))).disabled, false, 'editing the name enables Save name');
+
+  const g = generateParts(renderKeys({ keyName: 'Firmware', createServerReason: 'bidi' }).vnode);
+  assert.equal(attrsOf(g.button).disabled, true, 'Generate is disabled on the server reason');
+  const c = createHarness('Firmware');
+  const q = c.vm.create();
+  c.control.createItem.resolve({ success: false, response: 'invalid_key_name', reason: 'bidi' });
+  await q;
+  await c.vm.create();
+  assert.equal(c.calls.createItem.length, 1, 'the refused name is not sent again');
+  c.vm.keyName = 'Firmware 2';
+  await tick();
+  assert.ok(!attrsOf(generateParts(rerender(c.vm)).button).disabled, 'editing the name enables Generate');
+});
+
 check('G3 compiled theme: key-name-feedback in #FF8A8A, hidden when empty; key-name-help in body colour', () => {
   const fb = expectDecls('.key-name-feedback', { margin: '4px 0 0', 'font-size': '.875rem', 'font-weight': '400' });
   assert.match(value(fb, 'color') || '', /^#ff8a8a$/i, '.key-name-feedback colour');

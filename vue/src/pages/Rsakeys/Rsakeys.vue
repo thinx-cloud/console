@@ -6,7 +6,7 @@
       <b-form inline class="key-create-form" @submit.prevent="create">
         <label for="deploy-key-name">Key name</label>
         <b-form-input id="deploy-key-name" v-model="keyName" maxlength="120" required placeholder="e.g. Firmware Repository" :disabled="creating" aria-describedby="deploy-key-name-feedback" :aria-invalid="String(!!(createServerReason || createClientReason))" />
-        <b-button type="submit" variant="success" :disabled="creating || !createNameValid">{{ creating ? 'Generating…' : 'Generate Deploy Key' }}</b-button>
+        <b-button type="submit" variant="success" :disabled="creating || !createNameValid || !!createServerReason">{{ creating ? 'Generating…' : 'Generate Deploy Key' }}</b-button>
       </b-form>
       <p id="deploy-key-name-feedback" class="key-name-feedback" aria-live="polite" data-cy="create-key-feedback">{{ createFeedback }}</p>
     </div>
@@ -61,7 +61,7 @@
       </b-form>
       <template #modal-footer>
         <b-button variant="default" :disabled="renaming" data-cy="rename-key-cancel" @click="$bvModal.hide('rsakey-rename-modal')">Keep current name</b-button>
-        <b-button variant="success" type="submit" form="rsakey-rename-form" :disabled="renaming || !!renameClientReason" data-cy="rename-key-save">{{ renaming ? 'Saving…' : 'Save name' }}</b-button>
+        <b-button variant="success" type="submit" form="rsakey-rename-form" :disabled="renaming || !!renameReason" data-cy="rename-key-save">{{ renaming ? 'Saving…' : 'Save name' }}</b-button>
       </template>
     </b-modal>
   </div>
@@ -126,7 +126,8 @@ export default {
     // The client check runs first; the server stays the authority, so its invalid_key_name
     // reason is shown under the form and the typed name is kept (KEY-04, D-07).
     async create() {
-      if (this.creating || !validateKeyName(this.keyName).ok) return;
+      // A name the server refused stays refused until it is edited (the watcher clears it).
+      if (this.creating || !validateKeyName(this.keyName).ok || this.createServerReason) return;
       this.creating = true;
       this.error = null;
       this.createServerReason = null;
@@ -251,7 +252,7 @@ export default {
     // so its invalid_key_name reason is always shown.
     async saveRename() {
       if (this.renaming || !this.renameTarget) return;
-      if (this.renameClientReason) return; // the feedback line names the problem
+      if (this.renameReason) return; // the feedback line names the problem, client or server
       const item = this.renameTarget;
       const name = this.renameName.trim();
       if (name === item.name) { this.$bvModal.hide('rsakey-rename-modal'); return; }
