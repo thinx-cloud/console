@@ -311,7 +311,7 @@ export default {
     openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
     ...mapGetters({ getByUdid: 'devices/getByUdid', getBuildItems: 'buildlog/getItems', getTransformers: 'transformers/getItems', getRepositories: 'repositories/getItems' }),
     ...mapActions({
-      fetchItems: 'devices/fetchItems',
+      loadDevices: 'devices/loadDevices',
       revokeDevices: 'devices/revokeDevices',
       buildFirmware: 'devices/buildFirmware',
       updateDevice: 'devices/updateDevice',
@@ -322,27 +322,40 @@ export default {
       transferDevices: 'devices/transferDevices',
       fetchDeviceDetail: 'devices/fetchDeviceDetail',
     }),
+    // A re-read never overwrites a draft the user changed that the triggering save did not write
+    // (CR-01): each save first applies what it wrote to a copy of the device, so only the other
+    // cards' unsaved alias, description or ticks differ from the device on screen and are kept.
+    // The list is read through the throwing loader: when it fails after a stored write, the device
+    // on screen (with the written values) stays instead of the stale store item (WR-05).
     async loadDevice() {
       this.loading = true;
       const udid = this.$route.params.udid;
-      const results = await Promise.allSettled([this.fetchItems(), this.fetchBuildLog(), this.fetchTransformers(), this.fetchRepositories()]);
+      const results = await Promise.allSettled([this.loadDevices(), this.fetchBuildLog(), this.fetchTransformers(), this.fetchRepositories()]);
       if (results.some(result => result.status === 'rejected')) this.error = 'Some device details could not be loaded. Refresh to retry.';
-      this.device = this.getByUdid()(udid) || null;
+      const before = this.device;
+      const keepAlias = !!before && this.editForm.alias !== before.alias;
+      const keepDescription = !!before && (this.editForm.description || '') !== (before.description || '');
+      const keepTransformers = !!before && this.transformersDirty;
+      if (results[0].status === 'rejected' && before) this.device = before;
+      else this.device = this.getByUdid()(udid) || null;
       if (this.device) {
-        this.editForm.alias = this.device.alias;
-        this.editForm.description = this.device.description || '';
-        this.editForm.transformers = [...(this.device.transformers || [])];
+        if (!keepAlias) this.editForm.alias = this.device.alias;
+        if (!keepDescription) this.editForm.description = this.device.description || '';
+        if (!keepTransformers) this.editForm.transformers = [...(this.device.transformers || [])];
         const allBuilds = this.getBuildItems() || [];
         this.buildHistory = allBuilds.filter(b => b.udid === udid);
       }
       this.loading = false;
     },
     async saveField(field) {
+      const value = this.editForm[field];
       const result = await this.updateDevice({
         udid: this.device.udid,
-        changes: { [field]: this.editForm[field] },
+        changes: { [field]: value },
       });
       if (result.success) {
+        // A copy: this.device is the store's own item and must not be mutated in place.
+        this.device = Object.assign({}, this.device, { [field]: value });
         this.message = 'Saved.';
         await this.loadDevice();
       } else {
@@ -467,6 +480,7 @@ export default {
         }
         this.$bvModal.hide('device-transformer-modal');
         this.transformerForm.alias = '';
+        this.device = Object.assign({}, this.device, { transformers: selected });
         this.message = 'Transformer created and assigned.';
         await this.loadDevice();
         // loadDevice resets the checkboxes to the stored list; restore the user's unsaved
@@ -490,11 +504,12 @@ export default {
       this.transformersMessage = null;
       this.transformersError = null;
       try {
+        const sent = [...(this.editForm.transformers || [])];
         let result = null;
         try {
           result = await this.updateDevice({
             udid: this.device.udid,
-            changes: { transformers: this.editForm.transformers },
+            changes: { transformers: sent },
           });
         } catch (e) {
           result = null;
@@ -504,6 +519,8 @@ export default {
           this.transformersError = 'Could not save the transformers. Try again.';
           return;
         }
+        // The stored list is what was sent, even if the re-read below fails (WR-05).
+        this.device = Object.assign({}, this.device, { transformers: [...sent] });
         // Set before the reload: the write is stored even if the reload reports a problem.
         this.transformersMessage = 'Transformers saved.';
         await this.loadDevice();
