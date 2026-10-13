@@ -2,12 +2,14 @@
   <div>
     <b-breadcrumb><b-breadcrumb-item active>Settings</b-breadcrumb-item></b-breadcrumb>
     <h1 class="page-title">Settings - <span class="fw-semi-bold">Deploy Keys</span></h1>
-    <b-form inline class="key-create-form" @submit.prevent="create">
-      <label for="deploy-key-name">Key name</label>
-      <b-form-input id="deploy-key-name" v-model="keyName" maxlength="120" required placeholder="e.g. Firmware Repository" :disabled="creating" aria-describedby="deploy-key-name-feedback" :aria-invalid="String(!!(createServerReason || createClientReason))" />
-      <b-button type="submit" variant="success" :disabled="creating || !createNameValid">{{ creating ? 'Generating…' : 'Generate Deploy Key' }}</b-button>
-    </b-form>
-    <p id="deploy-key-name-feedback" class="key-name-feedback" aria-live="polite" data-cy="create-key-feedback">{{ createFeedback }}</p>
+    <div class="key-create">
+      <b-form inline class="key-create-form" @submit.prevent="create">
+        <label for="deploy-key-name">Key name</label>
+        <b-form-input id="deploy-key-name" v-model="keyName" maxlength="120" required placeholder="e.g. Firmware Repository" :disabled="creating" aria-describedby="deploy-key-name-feedback" :aria-invalid="String(!!(createServerReason || createClientReason))" />
+        <b-button type="submit" variant="success" :disabled="creating || !createNameValid">{{ creating ? 'Generating…' : 'Generate Deploy Key' }}</b-button>
+      </b-form>
+      <p id="deploy-key-name-feedback" class="key-name-feedback" aria-live="polite" data-cy="create-key-feedback">{{ createFeedback }}</p>
+    </div>
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
     <b-alert v-if="loadFailed" variant="danger" show data-cy="keys-load-error">Could not load deploy keys. Refresh to retry.</b-alert>
     <p>Deploy keys grant access to private Git repositories. Add the public key to your repository's deploy keys.</p>

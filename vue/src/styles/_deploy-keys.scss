@@ -45,12 +45,17 @@
 }
 
 // Generate form: label, input and button on one row, 8px apart, also when it wraps (UI-K15).
+// The form and its feedback line share div.key-create, which carries the 16px below them,
+// so the line sits 4px under its field (Spacing xs) and never touches the next block.
+.key-create {
+  margin-bottom: 16px;
+}
+
 .key-create-form {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
 }
 
 // Bulk toolbar: its own right-aligned row above the table (UI-K11).

@@ -819,9 +819,12 @@ check('C6 an empty list shows one body-colour row and no toolbar; no text-muted 
 });
 
 check('C7 compiled theme: key-create-form and key-toolbar flex rows with 8px / 4px gaps', () => {
-  expectDecls('.key-create-form', {
-    display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center', gap: '8px', 'margin-bottom': '16px',
+  const form = expectDecls('.key-create-form', {
+    display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center', gap: '8px',
   });
+  // UI-REVIEW fix 1: the 16px sits below the form + feedback pair, not between them.
+  assert.equal(value(form, 'margin-bottom'), undefined, 'no margin between the form and its feedback line');
+  expectDecls('.key-create', { 'margin-bottom': '16px' });
   expectDecls('.key-toolbar', {
     display: 'flex', 'justify-content': 'flex-end', 'align-items': 'center', gap: '4px', 'margin-bottom': '8px',
   });
@@ -1271,14 +1274,19 @@ checkAsync('A5 deleting keys that are already gone reloads the list and says the
 const GENERATE_ERROR = 'Could not generate the deploy key. Try again.';
 
 // The Generate form, its input and submit button, and the feedback line right after it.
+// Both sit in div.key-create, which carries the 16px below them (UI-REVIEW fix 1), so the
+// line is 4px under its field and the next block starts 16px below the pair.
 function generateParts(vnode) {
   const top = rootChildren(vnode);
-  const at = top.findIndex((n) => n.tag === 'b-form' && classList(n).includes('key-create-form'));
-  assert.ok(at !== -1, 'the Generate form is a top-level child');
-  const form = top[at];
+  const wrappers = top.filter((n) => n.tag === 'div' && classList(n).includes('key-create'));
+  assert.equal(wrappers.length, 1, 'one div.key-create at the top level');
+  const inner = (wrappers[0].children || []).filter((n) => n.tag);
+  assert.equal(inner.length, 2, 'the wrapper holds the form and its feedback line only');
+  const form = inner[0];
+  assert.ok(form.tag === 'b-form' && classList(form).includes('key-create-form'), 'the Generate form comes first');
   const input = nodesOf(form).find((n) => n.tag === 'b-form-input' && attrsOf(n).id === 'deploy-key-name');
   const button = nodesOf(form).find((n) => n.tag === 'b-button');
-  return { form, input, button, next: top[at + 1] };
+  return { form, input, button, next: inner[1] };
 }
 
 check('G1 the Generate form names a bad name under the form and disables Generate; an empty name only disables it', () => {
