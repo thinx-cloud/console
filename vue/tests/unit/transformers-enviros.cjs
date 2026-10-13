@@ -1075,6 +1075,325 @@ check('C6 Transformers.vue holds no forbidden string; theme.scss imports setting
   assert.ok(fs.existsSync(path.join(SRC, 'styles', '_settings-pages.scss')), 'the partial exists');
 });
 
+// ---------------------------------------------------------------- E: environment edit (46-03 task 1)
+
+const ENVIROS = ['WIFI_SSID', 'WIFI', 'MQTT_HOST'];
+const enviroItems = (names = ENVIROS) => names.map((label, id) => ({ id, label }));
+const SECRET = 'pa55-Secret-Value';
+const EDIT_HELP = 'The current value is never shown. The new value replaces it when you save.';
+const editErrorFor = (key) => 'Could not save the new value. ' + key + ' keeps its current value. Try again.';
+
+// List: {} keeps the pre-46-03 page loadable, so its checks fail on their assertions.
+const enviroPage = lazy(() => loadSfc('pages/Enviros/Enviros.vue', { IconButton: iconButton().def, List: {} }));
+const envirosStore = lazy(() => loadStore('store/enviros.js'));
+
+function renderEnviros(state = {}) {
+  const r = renderPage(enviroPage().def, Object.assign({ items: enviroItems() }, state));
+  assert.equal(r.error, null, 'Enviros renders without error');
+  assert.deepEqual(r.warnings, [], 'Enviros renders without Vue warnings');
+  return r;
+}
+
+// An Enviros vm with the store actions, the dialogs and the toast replaced by recorders.
+function enviroHarness(state = {}) {
+  const { vm } = renderEnviros(state);
+  const calls = { show: [], hide: [], hideWhileSaving: [], createItem: [], deleteItems: [], confirm: [], toast: [], loadData: 0, getItems: 0, fetchItems: 0 };
+  const control = { storeItems: enviroItems(), createItem: null, deleteItems: null, confirm: null };
+  vm.$bvModal = {
+    show: (id) => { calls.show.push(id); },
+    hide: (id) => { calls.hide.push(id); calls.hideWhileSaving.push(vm.editSaving); },
+    msgBoxConfirm: (text, opts) => {
+      calls.confirm.push({ text, opts });
+      control.confirm = deferred();
+      return control.confirm.promise;
+    },
+  };
+  vm.$toasted = { show: (...args) => { calls.toast.push(args); } };
+  vm.createItem = (payload) => {
+    calls.createItem.push(payload);
+    control.createItem = deferred();
+    return control.createItem.promise;
+  };
+  vm.deleteItems = (names) => {
+    calls.deleteItems.push(names);
+    control.deleteItems = deferred();
+    return control.deleteItems.promise;
+  };
+  vm.getItems = () => { calls.getItems++; return control.storeItems; };
+  vm.fetchItems = async () => { calls.fetchItems++; };
+  vm.loadData = async () => { calls.loadData++; };
+  return { vm, calls, control };
+}
+
+// An Enviros vm whose own loadData runs against a controllable loadItems.
+function enviroLiveHarness(state = {}, opts = {}) {
+  const h = enviroHarness(state);
+  h.vm.loadData = enviroPage().def.methods.loadData.bind(h.vm);
+  h.calls.loadItems = 0;
+  h.control.loadItems = opts.loadItems || (async () => {});
+  h.vm.loadItems = () => { h.calls.loadItems++; return h.control.loadItems(); };
+  return h;
+}
+
+const enviroRowsOf = (vnode) => byCy(vnode, 'enviro-row');
+const enviroRowOf = (vnode, name) => enviroRowsOf(vnode).find((row) => row.key === name);
+const editModalOf = (vnode) => one(nodesOf(vnode).filter((n) => n.tag === 'b-modal' && attrsOf(n).id === 'enviro-edit-modal'), 'enviro-edit-modal');
+const editSaveOf = (vnode) => one(byCy(vnode, 'enviro-edit-save'), 'enviro-edit-save');
+const editKeepOf = (vnode) => one(byCy(vnode, 'enviro-edit-keep'), 'enviro-edit-keep');
+const editInputOf = (vnode) => one(byCy(vnode, 'enviro-edit-value'), 'enviro-edit-value');
+const hideEvent = () => { const e = { prevented: 0 }; e.preventDefault = () => { e.prevented++; }; return e; };
+
+// Open the edit dialog for `name` through its row's Edit value button.
+function openRowEdit(h, name) {
+  const row = enviroRowOf(rerender(h.vm), name);
+  assert.ok(row, 'row for ' + name);
+  click(one(buttonsOf(row, 'enviro-edit'), 'row Edit value'));
+}
+
+check('E1 a page-local table: captioned, Select/Key/Actions, rows keyed by name with the key and one Edit value IconButton', () => {
+  assert.ok(!/<List\b/.test(enviroPage().template), 'no generic List component in the template');
+  const { vnode } = renderEnviros();
+  const table = one(tablesOf(vnode), 'table');
+  assert.deepEqual(classList(table).filter((c) => /^table|enviros-table$/.test(c)).sort(), ['enviros-table', 'table', 'table-striped']);
+  const wrap = rootChildren(vnode).find((n) => classList(n).includes('table-responsive'));
+  assert.ok(wrap && nodesOf(wrap).includes(table), 'the table sits in .table-responsive');
+  const caption = one(byTag(table, 'caption'), 'caption');
+  assert.ok(classList(caption).includes('sr-only'), 'caption is sr-only');
+  assert.equal(textOf(caption), 'Environment variables');
+  const heads = byTag(table, 'th');
+  assert.equal(heads.length, 3, 'three header cells');
+  const sr = one(byClass(heads[0], 'sr-only'), 'sr-only Select');
+  assert.equal(textOf(sr), 'Select');
+  assert.deepEqual(heads.slice(1).map(textOf), ['Key', 'Actions']);
+  const rows = enviroRowsOf(vnode);
+  assert.deepEqual(rows.map((r) => r.tag), ['tr', 'tr', 'tr']);
+  assert.deepEqual(rows.map((r) => r.key), ENVIROS, 'rows are keyed by the variable name');
+  rows.forEach((row, i) => {
+    const key = one(byCy(row, 'enviro-key'), 'enviro-key');
+    assert.equal(key.tag, 'span');
+    assert.ok(classList(key).includes('enviro-key'), 'span.enviro-key');
+    assert.equal(attrsOf(key).title, ENVIROS[i], 'full key as title');
+    assert.equal(textOf(key), ENVIROS[i]);
+    const cells = cellsOf(row);
+    const last = cells[cells.length - 1];
+    assert.ok(classList(last).includes('actions-cell'), 'last cell is .actions-cell');
+    assert.equal(componentsOf(last, 'IconButton').length, 1, 'one IconButton in the actions cell');
+    const edit = one(buttonsOf(last, 'enviro-edit'), 'enviro-edit IconButton');
+    assert.deepEqual(
+      { icon: propsOf(edit).icon, label: propsOf(edit).label, variant: propsOf(edit).variant || 'default' },
+      { icon: 'fa fa-pencil', label: 'Edit value', variant: 'default' });
+    assert.ok(!propsOf(edit).disabled, 'idle Edit value is enabled');
+  });
+  const h = enviroHarness();
+  openRowEdit(h, 'WIFI');
+  assert.deepEqual(h.calls.show, ['enviro-edit-modal'], 'Edit value opens the edit dialog');
+  assert.equal(h.vm.editKey, 'WIFI');
+});
+
+check('E2 the edit dialog names the key, starts empty, and has the key text, value field, feedback and help lines', () => {
+  const h = enviroHarness({ editValue: 'an earlier value', editError: 'an earlier error' });
+  h.vm.openEdit(enviroItems()[1]);
+  assert.equal(h.vm.editKey, 'WIFI');
+  assert.equal(h.vm.editValue, '', 'the value starts empty');
+  assert.ok(!h.vm.editError, 'the error is cleared on open');
+  assert.deepEqual(h.calls.show, ['enviro-edit-modal']);
+  const vnode = rerender(h.vm);
+  const modal = editModalOf(vnode);
+  assert.equal(attrsOf(modal).title, 'Change value of WIFI');
+  assert.equal(attrsOf(modal)['title-class'], 'text-break');
+  const form = one(byTag(modal, 'b-form'), 'b-form');
+  assert.equal(attrsOf(form).id, 'enviro-edit-form');
+  assert.ok(classList(form).includes('dialog-stack'), 'b-form.dialog-stack');
+  const fields = (form.children || []).filter((n) => n.tag);
+  assert.equal(fields.length, 2, 'two blocks in the form');
+  fields.forEach((f) => assert.ok(f.tag === 'div' && classList(f).includes('dialog-field'), 'div.dialog-field'));
+  const keyLabel = one(nodesOf(fields[0]).filter((n) => attrsOf(n).id === 'enviro-edit-key-label'), 'key label');
+  assert.equal(keyLabel.tag, 'span');
+  assert.ok(classList(keyLabel).includes('dialog-label'));
+  assert.equal(textOf(keyLabel), 'Key');
+  const keyText = one(byCy(fields[0], 'enviro-edit-key'), 'enviro-edit-key');
+  assert.equal(keyText.tag, 'p');
+  assert.ok(classList(keyText).includes('enviro-edit-key'), 'p.enviro-edit-key');
+  assert.equal(attrsOf(keyText)['aria-labelledby'], 'enviro-edit-key-label');
+  assert.equal(textOf(keyText), 'WIFI');
+  const kids = (fields[1].children || []).filter((n) => n.tag);
+  assert.deepEqual(kids.map((n) => n.tag), ['label', 'b-form-input', 'p', 'p'], 'label, input, feedback, help');
+  assert.equal(attrsOf(kids[0]).for, 'enviro-edit-value');
+  assert.ok(classList(kids[0]).includes('dialog-label'));
+  assert.equal(textOf(kids[0]), 'New value');
+  const input = editInputOf(vnode);
+  assert.equal(input, kids[1], 'the value field follows its label');
+  const a = attrsOf(input);
+  assert.deepEqual(
+    { id: a.id, autocomplete: a.autocomplete, spellcheck: a.spellcheck, describedby: a['aria-describedby'], disabled: a.disabled },
+    { id: 'enviro-edit-value', autocomplete: 'off', spellcheck: 'false', describedby: 'enviro-edit-feedback enviro-edit-help', disabled: false });
+  assert.equal(input.data.ref, 'valueInput');
+  assert.equal(attrsOf(kids[2]).id, 'enviro-edit-feedback');
+  assert.ok(classList(kids[2]).includes('dialog-feedback'), 'p.dialog-feedback');
+  assert.equal(attrsOf(kids[2])['aria-live'], 'polite');
+  assert.equal(textOf(kids[2]), '', 'the feedback line is silent');
+  assert.equal(attrsOf(kids[3]).id, 'enviro-edit-help');
+  assert.ok(classList(kids[3]).includes('dialog-help'), 'p.dialog-help');
+  assert.equal(textOf(kids[3]), EDIT_HELP);
+  assert.equal(textOf(editKeepOf(vnode)), 'Keep current value');
+  assert.equal(attrsOf(editKeepOf(vnode)).variant, 'default');
+  const save = editSaveOf(vnode);
+  assert.equal(textOf(save), 'Save value');
+  assert.deepEqual({ variant: attrsOf(save).variant, type: attrsOf(save).type, form: attrsOf(save).form },
+    { variant: 'success', type: 'submit', form: 'enviro-edit-form' });
+  h.vm.editValue = 'typed';
+  h.vm.openEdit(enviroItems()[0]);
+  assert.equal(h.vm.editValue, '', 'a second open empties the value again');
+  assert.equal(attrsOf(editModalOf(rerender(h.vm))).title, 'Change value of WIFI_SSID');
+});
+
+checkAsync('E3 Save value is disabled for an empty trimmed value; two rapid saves send one trimmed createItem', async () => {
+  const h = enviroHarness();
+  h.vm.openEdit(enviroItems()[1]);
+  for (const blank of ['', '   ']) {
+    h.vm.editValue = blank;
+    assert.equal(attrsOf(editSaveOf(rerender(h.vm))).disabled, true, JSON.stringify(blank) + ' keeps Save value disabled');
+    await h.vm.saveEdit();
+  }
+  assert.deepEqual(h.calls.createItem, [], 'an empty value sends nothing');
+  h.vm.editValue = 'x';
+  assert.equal(attrsOf(editSaveOf(rerender(h.vm))).disabled, false, 'x enables Save value');
+  h.vm.editValue = '  ' + SECRET + '  ';
+  const first = h.vm.saveEdit();
+  const second = h.vm.saveEdit();
+  await tick();
+  assert.deepEqual(h.calls.createItem, [{ key: 'WIFI', value: SECRET }], 'one createItem with the key and the trimmed value');
+  h.control.createItem.resolve({ success: true, response: 'WIFI' });
+  await first; await second;
+});
+
+checkAsync('E4 while the request runs the field and both buttons are disabled, Save reads Saving and the dialog cannot close', async () => {
+  const h = enviroHarness();
+  h.vm.openEdit(enviroItems()[1]);
+  h.vm.editValue = SECRET;
+  const run = h.vm.saveEdit();
+  await tick();
+  assert.equal(h.vm.editSaving, true);
+  const vnode = rerender(h.vm);
+  assert.equal(attrsOf(editInputOf(vnode)).disabled, true, 'field disabled');
+  assert.equal(attrsOf(editKeepOf(vnode)).disabled, true, 'Keep current value disabled');
+  assert.equal(attrsOf(editSaveOf(vnode)).disabled, true, 'Save value disabled');
+  assert.equal(textOf(editSaveOf(vnode)), 'Saving' + ELLIPSIS);
+  const e = hideEvent();
+  h.vm.onEditHide(e);
+  assert.equal(e.prevented, 1, 'hide is prevented while saving');
+  h.control.createItem.resolve({ success: true, response: 'WIFI' });
+  await run;
+  const after = hideEvent();
+  h.vm.onEditHide(after);
+  assert.equal(after.prevented, 0, 'hide is allowed once the request ended');
+});
+
+checkAsync('E5 success hides once, toasts the constant, takes the store list without a fetch and never shows the value', async () => {
+  const h = enviroHarness({ items: enviroItems(['WIFI', 'WIFI_SSID']) });
+  h.control.storeItems = enviroItems();
+  h.vm.openEdit({ id: 0, label: 'WIFI' });
+  h.vm.editValue = SECRET;
+  const run = h.vm.saveEdit();
+  await tick();
+  h.control.createItem.resolve({ success: true, response: 'WIFI' });
+  await run;
+  assert.deepEqual(h.calls.hide, ['enviro-edit-modal'], 'hidden once');
+  assert.deepEqual(h.calls.hideWhileSaving, [false], 'editSaving is cleared before hide');
+  assert.deepEqual(h.calls.toast, [['Value saved', { type: 'success', duration: 2000 }]], 'one constant toast');
+  assert.deepEqual(h.vm.items.map((i) => i.label), ENVIROS, 'the store list is shown');
+  assert.equal(h.calls.loadData, 0, 'no second page fetch');
+  assert.equal(h.calls.fetchItems, 0, 'no fetchItems from the page');
+  assert.ok(!textOf(rerender(h.vm)).includes(SECRET), 'the page text never holds the value');
+  h.vm.onEditHidden();
+  assert.equal(h.vm.editValue, '', 'the value is gone once the dialog has closed');
+  assert.ok(!JSON.stringify(h.calls.toast).includes(SECRET), 'the toast never holds the value');
+});
+
+checkAsync('E6 a failed save keeps the dialog and the typed value, names the key in the error and reloads once', async () => {
+  for (const outcome of ['answer', 'throw']) {
+    const h = enviroHarness();
+    h.vm.openEdit(enviroItems()[1]);
+    h.vm.editValue = SECRET;
+    const run = h.vm.saveEdit();
+    await tick();
+    if (outcome === 'answer') h.control.createItem.resolve({ success: false });
+    else h.control.createItem.reject(new Error('offline'));
+    await run;
+    assert.deepEqual(h.calls.hide, [], outcome + ': the dialog stays open');
+    assert.equal(h.vm.editSaving, false, outcome + ': editSaving cleared');
+    assert.equal(h.vm.editValue, SECRET, outcome + ': the typed value is kept');
+    assert.equal(h.vm.editError, editErrorFor('WIFI'), outcome + ': the edit error copy');
+    assert.equal(h.calls.loadData, 1, outcome + ': the list reloads once');
+    assert.deepEqual(h.calls.toast, [], outcome + ': no toast');
+    const vnode = rerender(h.vm);
+    assert.equal(textOf(one(byCy(vnode, 'enviro-edit-feedback'), 'enviro-edit-feedback')), editErrorFor('WIFI'));
+    assert.ok(!textOf(vnode).includes(SECRET), outcome + ': the error never holds the value');
+  }
+});
+
+check('E7 once the dialog has closed the value and the error are emptied', () => {
+  const h = enviroHarness({ editKey: 'WIFI', editValue: SECRET, editError: editErrorFor('WIFI') });
+  h.vm.onEditHidden();
+  assert.equal(h.vm.editValue, '');
+  assert.ok(!h.vm.editError, 'the error is cleared');
+});
+
+checkAsync('E8 enviros/loadItems reads GET /env once and throws on failure; fetchItems never throws; createItem is one PUT', async () => {
+  const store = envirosStore();
+  assert.equal(typeof store.actions.loadItems, 'function', 'the enviros store has loadItems');
+  const run = (answer) => {
+    const calls = { get: [], put: [], commit: [], dispatch: [] };
+    const state = { items: [] };
+    const self = { $api: {
+      $get: async (url) => { calls.get.push(url); if (answer instanceof Error) throw answer; return answer; },
+      $put: async (url, body) => { calls.put.push({ url, body }); return { success: true, response: 'WIFI' }; },
+    } };
+    const ctx = {
+      state,
+      commit: (name, payload) => { calls.commit.push(name); store.mutations[name](state, payload); },
+      dispatch: async (name) => { calls.dispatch.push(name); },
+    };
+    return { calls, state, ctx, self };
+  };
+  const ok = run({ success: true, response: ['WIFI', 'MQTT_HOST'] });
+  await store.actions.loadItems.call(ok.self, ok.ctx);
+  assert.deepEqual(ok.calls.get, ['/env'], 'one GET /env');
+  assert.deepEqual(ok.calls.commit, ['saveSimpleArray']);
+  assert.deepEqual(ok.state.items, [{ id: 0, label: 'WIFI' }, { id: 1, label: 'MQTT_HOST' }]);
+  for (const [what, answer] of [['success:false', { success: false }], ['a rejected request', new Error('offline')], ['a non-array answer', { success: true, response: 'x' }]]) {
+    const bad = run(answer);
+    await assert.rejects(() => store.actions.loadItems.call(bad.self, bad.ctx), what + ' rejects');
+    assert.deepEqual(bad.calls.commit, [], what + ': nothing committed');
+  }
+  const legacy = run({ success: false });
+  await store.actions.fetchItems.call(legacy.self, legacy.ctx);
+  assert.deepEqual(legacy.calls.commit, [], 'fetchItems keeps its non-throwing behaviour');
+  const put = run({ success: true, response: [] });
+  const answer = await store.actions.createItem.call(put.self, put.ctx, { key: 'WIFI', value: 'v' });
+  assert.deepEqual(put.calls.put, [{ url: '/env', body: '{"key":"WIFI","value":"v"}' }], 'one PUT /env with key and value');
+  assert.deepEqual(answer, { success: true, response: 'WIFI' });
+});
+
+checkAsync('E9 loadData uses loadItems: the first load shows only Loading, success takes the store list and clears loading', async () => {
+  const first = renderEnviros({ items: [], loading: true }).vnode;
+  const status = byTag(first, 'div').filter((n) => attrsOf(n).role === 'status');
+  assert.equal(status.length, 1, 'one role=status');
+  assert.equal(textOf(status[0]), 'Loading' + ELLIPSIS);
+  assert.equal(tablesOf(first).length, 0, 'no table while loading');
+  const h = enviroLiveHarness({ items: [], loading: true });
+  h.control.storeItems = enviroItems(['A', 'B']);
+  await h.vm.loadData();
+  assert.equal(h.calls.loadItems, 1, 'one loadItems');
+  assert.equal(h.calls.fetchItems, 0, 'the page does not use fetchItems');
+  assert.deepEqual(h.vm.items.map((i) => i.label), ['A', 'B']);
+  assert.equal(h.vm.loading, false);
+  const down = enviroLiveHarness({ items: enviroItems(), loading: true }, { loadItems: async () => { throw new Error('offline'); } });
+  await down.vm.loadData();
+  assert.equal(down.vm.loading, false, 'a rejected load clears loading');
+  assert.deepEqual(down.vm.items, [], 'a rejected load empties the rows');
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
