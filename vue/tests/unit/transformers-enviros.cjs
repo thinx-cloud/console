@@ -213,9 +213,20 @@ const items = () => TRANSFORMERS.map((t) => Object.assign({ id: t.utid }, t));
 
 // ---------------------------------------------------------------- components
 
+const usage = lazy(() => loadModule('utils/transformerUsage.js'));
+
+// The page's transformerUsage imports, or none while the module is missing (B5 reports that).
+function usageDeps() {
+  try {
+    const u = usage();
+    return { countDevicesUsing: u.countDevicesUsing, usageSentence: u.usageSentence };
+  } catch (e) { return {}; }
+}
+
 const iconButton = lazy(() => loadSfc('components/IconButton/IconButton.vue'));
-const page = lazy(() => loadSfc('pages/Transformers/Transformers.vue', { IconButton: iconButton().def }));
+const page = lazy(() => loadSfc('pages/Transformers/Transformers.vue', Object.assign({ IconButton: iconButton().def }, usageDeps())));
 const transformersStore = lazy(() => loadStore('store/transformers.js'));
+const devicesStore = lazy(() => loadStore('store/devices.js'));
 
 function renderTransformers(state = {}) {
   const r = renderPage(page().def, Object.assign({ items: items() }, state));
@@ -508,6 +519,335 @@ checkAsync('S2 a stored write whose re-read fails resolves with refreshed:false;
   }
 });
 
+// ---------------------------------------------------------------- B: bulk, usage, load states (46-02 task 2)
+
+const THIRD = { utid: 'utid-humidity', alias: 'Humidity', body: 'aHVt' };
+const threeItems = () => TRANSFORMERS.concat([THIRD]).map((t) => Object.assign({ id: t.utid }, t));
+const rootChildren = (vnode) => (vnode.children || []).filter((n) => n.tag);
+const toolbarsOf = (vnode) => byClass(vnode, 'bulk-toolbar');
+const bulkOf = (vnode) => one(byCy(vnode, 'transformer-bulk-delete'), 'transformer-bulk-delete');
+const tablesOf = (vnode) => byTag(vnode, 'table');
+const loadAlertsOf = (vnode) => byCy(vnode, 'transformers-load-error');
+
+// A page vm whose own loadData runs against controllable store calls.
+function liveHarness(state = {}, opts = {}) {
+  const h = harness(state);
+  h.vm.loadData = page().def.methods.loadData.bind(h.vm);
+  h.calls.fetchItems = 0;
+  h.calls.loadDevices = 0;
+  h.control.fetchItems = opts.fetchItems || (async () => {});
+  h.control.loadDevices = opts.loadDevices || (async () => {});
+  h.control.devices = opts.devices || [];
+  h.vm.fetchItems = () => { h.calls.fetchItems++; return h.control.fetchItems(); };
+  h.vm.loadDevices = () => { h.calls.loadDevices++; return h.control.loadDevices(); };
+  h.vm.getDevices = () => h.control.devices;
+  return h;
+}
+
+check('B1 the table is captioned, its first header is a screen-reader Select, and names render in span.transformer-name', () => {
+  const blank = { utid: 'utid-blank', alias: '   ', body: 'eA==' };
+  const { vnode } = renderTransformers({ items: items().concat([Object.assign({ id: blank.utid }, blank)]) });
+  const table = one(tablesOf(vnode), 'table');
+  assert.deepEqual(classList(table).filter((c) => /^table|transformers-table$/.test(c)).sort(), ['table', 'table-striped', 'transformers-table']);
+  const wrap = rootChildren(vnode).find((n) => classList(n).includes('table-responsive'));
+  assert.ok(wrap && nodesOf(wrap).includes(table), 'the table sits in .table-responsive');
+  const caption = one(byTag(table, 'caption'), 'caption');
+  assert.ok(classList(caption).includes('sr-only'), 'caption is sr-only');
+  assert.equal(textOf(caption), 'Transformers');
+  const heads = byTag(table, 'th');
+  assert.equal(heads.length, 3, 'three header cells');
+  const sr = (heads[0].children || []).filter((n) => n.tag || (n.text && n.text.trim()));
+  assert.equal(sr.length, 1, 'the first header holds one element');
+  assert.equal(sr[0].tag, 'span');
+  assert.ok(classList(sr[0]).includes('sr-only'), 'its span is sr-only');
+  assert.equal(textOf(sr[0]), 'Select');
+  assert.deepEqual(heads.slice(1).map((th) => textOf(th)), ['Name', 'Actions']);
+  const names = byCy(table, 'transformer-name');
+  assert.equal(names.length, 3, 'one name per row');
+  names.forEach((n) => {
+    assert.equal(n.tag, 'span');
+    assert.ok(classList(n).includes('transformer-name'), 'span.transformer-name');
+    assert.equal(attrsOf(n).dir, 'auto');
+    assert.equal(attrsOf(n).title, textOf(n), 'title is the full name');
+  });
+  assert.equal(textOf(names[0]), TRANSFORMERS[0].alias);
+  assert.equal(textOf(names[2]), blank.utid, 'a blank alias shows the utid');
+});
+
+check('B2 each row has a transformer-select checkbox bound to selectedUtids, disabled while that row is deleted', () => {
+  const list = items();
+  const { vnode } = renderTransformers({ items: list, deletingUtids: [list[1].utid] });
+  const boxes = byCy(vnode, 'transformer-select');
+  assert.equal(boxes.length, list.length, 'one checkbox per row');
+  boxes.forEach((box, i) => {
+    assert.equal(box.tag, 'b-form-checkbox');
+    assert.equal(box.data.model && box.data.model.expression, 'selectedUtids', 'v-model selectedUtids');
+    assert.equal(attrsOf(box).value, list[i].utid, 'value is the utid');
+    assert.equal(attrsOf(box)['aria-label'], 'Select ' + list[i].alias);
+  });
+  assert.ok(!attrsOf(boxes[0]).disabled, 'an idle row is selectable');
+  assert.equal(attrsOf(boxes[1]).disabled, true, 'a row being deleted is not');
+  const first = cellsOf(rowsOf(vnode)[0])[0];
+  assert.ok(nodesOf(first).includes(boxes[0]), 'the checkbox is in the first cell');
+});
+
+check('B3 the bulk toolbar sits between the intro and the table; its label follows the selection', () => {
+  const list = items();
+  const { vnode } = renderTransformers({ items: list });
+  const top = rootChildren(vnode);
+  const intro = top.findIndex((n) => n.tag === 'p' && /Status transformers are JavaScript/.test(textOf(n)));
+  const bar = top.findIndex((n) => classList(n).includes('bulk-toolbar'));
+  const table = top.findIndex((n) => classList(n).includes('table-responsive'));
+  assert.ok(intro !== -1 && bar !== -1 && table !== -1, 'intro ' + intro + ', toolbar ' + bar + ', table ' + table);
+  assert.ok(intro < bar && bar < table, 'order intro < toolbar < table');
+  const toolbar = top[bar];
+  assert.equal(toolbar.tag, 'div');
+  assert.equal(attrsOf(toolbar).role, 'toolbar');
+  assert.equal(attrsOf(toolbar)['aria-label'], 'Selected transformers');
+  const btn = bulkOf(toolbar);
+  assert.equal(btn.tag, 'b-button');
+  assert.equal(attrsOf(btn).variant, 'danger');
+  assert.equal(attrsOf(btn).size, 'sm');
+  const icon = one(byTag(btn, 'i'), 'glyph');
+  assert.deepEqual(classList(icon).sort(), ['fa', 'fa-trash']);
+  assert.equal(attrsOf(icon)['aria-hidden'], 'true');
+  const label = one(byClass(btn, 'button-text'), 'span.button-text');
+  assert.equal(label.tag, 'span');
+  assert.equal(textOf(label), 'Delete selected');
+  assert.equal(attrsOf(btn).disabled, true, 'disabled with nothing selected');
+  const two = bulkOf(renderTransformers({ items: list, selectedUtids: [list[0].utid, list[1].utid] }).vnode);
+  assert.equal(textOf(two), 'Delete selected (2)');
+  assert.ok(!attrsOf(two).disabled, 'enabled with a selection');
+  const busy = bulkOf(renderTransformers({ items: list, selectedUtids: [list[0].utid], bulkDeleting: true }).vnode);
+  assert.equal(textOf(busy), 'Deleting' + ELLIPSIS);
+  assert.equal(attrsOf(busy).disabled, true, 'disabled while a bulk delete runs');
+});
+
+checkAsync('B4 the bulk trash opens the same dialog for the selected transformers that still exist, in table order', async () => {
+  const list = threeItems();
+  const h = harness({ items: list, selectedUtids: [THIRD.utid, 'utid-gone', TRANSFORMERS[0].utid] });
+  click(bulkOf(rerender(h.vm)));
+  assert.deepEqual(h.calls.show, ['transformer-delete-modal'], 'the typed dialog opens once');
+  assert.deepEqual(JSON.parse(JSON.stringify(h.vm.deleteTargets)),
+    [{ utid: TRANSFORMERS[0].utid, name: TRANSFORMERS[0].alias }, { utid: THIRD.utid, name: THIRD.alias }]);
+  let vnode = rerender(h.vm);
+  const modal = one(deleteModalOf(vnode), 'transformer-delete-modal');
+  assert.equal(textOf(one(byCy(modal, 'transformer-delete-question'), 'question')), 'Delete these 2 transformers? This cannot be undone.');
+  const list2 = one(byCy(modal, 'transformer-delete-names'), 'names list');
+  assert.equal(list2.tag, 'ul');
+  assert.ok(classList(list2).includes('typed-confirm__names'), 'ul.typed-confirm__names');
+  const lis = byTag(list2, 'li');
+  assert.deepEqual(lis.map((li) => textOf(li)), [TRANSFORMERS[0].alias, THIRD.alias]);
+  lis.forEach((li) => assert.equal(attrsOf(li).dir, 'auto', 'li dir=auto'));
+  assert.equal(textOf(one(byClass(modal, 'dialog-label'), 'label')), 'Type confirm to delete them.');
+  assert.equal(textOf(keepOf(vnode)), 'Keep transformers');
+  assert.equal(textOf(submitOf(vnode)), 'Delete transformers');
+  // A row-level edit to the selection while the dialog is open: success drops exactly the targets.
+  h.vm.selectedUtids = [TRANSFORMERS[0].utid, THIRD.utid, TRANSFORMERS[1].utid];
+  h.vm.confirmText = 'confirm';
+  h.vm.submitDelete();
+  await tick();
+  assert.deepEqual(h.calls.deleteItems, [[TRANSFORMERS[0].utid, THIRD.utid]], 'one request with both targets');
+  vnode = rerender(h.vm);
+  assert.equal(textOf(bulkOf(vnode)), 'Deleting' + ELLIPSIS, 'the bulk button shows the run');
+  assert.equal(attrsOf(bulkOf(vnode)).disabled, true);
+  h.control.storeItems = [list[1]];
+  h.control.deleteItems.resolve({ success: true });
+  await tick();
+  assert.deepEqual(h.vm.selectedUtids, [TRANSFORMERS[1].utid], 'exactly the deleted utids leave the selection');
+  assert.equal(h.vm.bulkDeleting, false, 'the bulk run is over');
+  // Failure keeps the selection and shows the plural copy.
+  const f = harness({ items: threeItems(), selectedUtids: [TRANSFORMERS[1].utid, THIRD.utid] });
+  click(bulkOf(rerender(f.vm)));
+  f.vm.confirmText = 'confirm';
+  f.vm.submitDelete();
+  await tick();
+  f.control.deleteItems.resolve({ success: false });
+  await tick();
+  assert.deepEqual(f.vm.selectedUtids, [TRANSFORMERS[1].utid, THIRD.utid], 'failure keeps the selection');
+  assert.equal(textOf(errorLineOf(rerender(f.vm))), 'Could not delete the transformers. Try again.');
+  assert.equal(f.vm.bulkDeleting, false);
+  // One selected target: the singular dialog with no names list.
+  const s = harness({ items: threeItems(), selectedUtids: [THIRD.utid] });
+  click(bulkOf(rerender(s.vm)));
+  const single = rerender(s.vm);
+  assert.equal(byCy(single, 'transformer-delete-names').length, 0, 'one target shows no names list');
+  assert.equal(textOf(one(byCy(single, 'transformer-delete-question'), 'question')), 'Delete the transformer "' + THIRD.alias + '"? This cannot be undone.');
+  assert.equal(textOf(submitOf(single)), 'Delete transformer');
+  // The row trash never shows the names list either.
+  const r = harness();
+  openRowDelete(r, TRANSFORMERS[0]);
+  assert.equal(byCy(rerender(r.vm), 'transformer-delete-names').length, 0, 'the row dialog shows no names list');
+});
+
+check('B5 countDevicesUsing counts distinct devices; usageSentence gives the eight contract sentences', () => {
+  const { countDevicesUsing, usageSentence } = usage();
+  const devices = [
+    { udid: 'd1', transformers: ['t1', 't2'] },
+    { udid: 'd2', transformers: ['t2', 'other'] },
+    { udid: 'd3', transformers: ['other'] },
+    { udid: 'd4' },
+    { udid: 'd5', transformers: 't1' },
+    { udid: 'd6', transformers: null },
+  ];
+  assert.equal(countDevicesUsing(devices, ['t1', 't2']), 2, 'a device using two targets counts once');
+  assert.equal(countDevicesUsing(devices, ['t1']), 1);
+  assert.equal(countDevicesUsing(devices, ['nope']), 0, 'non-targets do not count');
+  assert.equal(countDevicesUsing([], ['t1']), 0);
+  assert.equal(countDevicesUsing(devices, []), 0);
+  const want = {
+    'false:0': 'No device uses it.',
+    'true:0': 'No device uses them.',
+    'false:1': '1 device will stop applying it.',
+    'true:1': '1 device will stop applying them.',
+    'false:3': '3 devices will stop applying it.',
+    'true:3': '3 devices will stop applying them.',
+    'false:null': 'Devices using this transformer will stop applying it.',
+    'true:null': 'Devices using these transformers will stop applying them.',
+  };
+  [0, 1, 3, null].forEach((count) => [false, true].forEach((many) => {
+    assert.equal(usageSentence(count, many), want[many + ':' + count], 'usageSentence(' + count + ', ' + many + ')');
+  }));
+});
+
+checkAsync('B6 the dialog warns how many devices stop applying the targets, or says so generically', async () => {
+  const devices = [
+    { udid: 'd1', transformers: [TRANSFORMERS[0].utid, THIRD.utid] },
+    { udid: 'd2', transformers: [THIRD.utid] },
+    { udid: 'd3', transformers: [TRANSFORMERS[1].utid] },
+  ];
+  const h = liveHarness({ items: [], loading: true, selectedUtids: [TRANSFORMERS[0].utid, THIRD.utid] }, { devices });
+  h.control.storeItems = threeItems();
+  await h.vm.loadData();
+  assert.equal(h.calls.fetchItems, 1, 'one transformer fetch');
+  assert.equal(h.calls.loadDevices, 1, 'one device load next to it');
+  assert.equal(h.vm.devicesLoaded, true);
+  click(bulkOf(rerender(h.vm)));
+  const usageLine = one(byCy(rerender(h.vm), 'transformer-delete-usage'), 'usage line');
+  assert.equal(usageLine.tag, 'p');
+  assert.ok(classList(usageLine).includes('typed-confirm__usage'), 'p.typed-confirm__usage');
+  const glyph = one(byTag(usageLine, 'i'), 'warning glyph');
+  assert.deepEqual(classList(glyph).sort(), ['fa', 'fa-warning']);
+  assert.equal(attrsOf(glyph)['aria-hidden'], 'true');
+  assert.equal(textOf(usageLine), '2 devices will stop applying them.');
+  openRowDelete(h, TRANSFORMERS[1]);
+  assert.equal(textOf(one(byCy(rerender(h.vm), 'transformer-delete-usage'), 'usage line')), '1 device will stop applying it.');
+  const u = liveHarness({ items: [], loading: true, error: null, selectedUtids: [TRANSFORMERS[0].utid, THIRD.utid] },
+    { loadDevices: async () => { throw new Error('offline'); } });
+  u.control.storeItems = threeItems();
+  await u.vm.loadData();
+  assert.equal(u.vm.devicesLoaded, false);
+  assert.equal(u.vm.error, null, 'a failed device load shows no page message');
+  assert.equal(u.vm.loadFailed, false, 'the transformer list is not blocked');
+  click(bulkOf(rerender(u.vm)));
+  assert.equal(textOf(one(byCy(rerender(u.vm), 'transformer-delete-usage'), 'usage line')), 'Devices using these transformers will stop applying them.');
+});
+
+checkAsync('B7 devices/loadDevices reads GET /device once and throws on failure; fetchItems never throws on success:false', async () => {
+  const store = devicesStore();
+  assert.equal(typeof store.actions.loadDevices, 'function', 'the devices store has loadDevices');
+  const run = (answer) => {
+    const calls = { get: [], commit: [] };
+    const state = { items: [] };
+    const self = { $api: { $get: async (url) => { calls.get.push(url); if (answer instanceof Error) throw answer; return answer; } } };
+    const ctx = { state, commit: (name, payload) => { calls.commit.push({ name, payload }); store.mutations[name](state, payload); } };
+    return { calls, state, ctx, self };
+  };
+  const list = [{ udid: 'd1', transformers: ['t1'] }];
+  const ok = run({ success: true, response: list });
+  await store.actions.loadDevices.call(ok.self, ok.ctx);
+  assert.deepEqual(ok.calls.get, ['/device'], 'one GET /device');
+  assert.deepEqual(ok.calls.commit.map((c) => c.name), ['saveDevices']);
+  assert.deepEqual(ok.calls.commit[0].payload, { items: list });
+  assert.deepEqual(ok.state.items.map((d) => d.udid), ['d1']);
+  const no = run({ success: false });
+  await assert.rejects(() => store.actions.loadDevices.call(no.self, no.ctx), 'success:false rejects');
+  assert.deepEqual(no.calls.commit, [], 'nothing committed on failure');
+  const down = run(new Error('offline'));
+  await assert.rejects(() => store.actions.loadDevices.call(down.self, down.ctx), 'a rejected request rejects');
+  const legacy = run({ success: false });
+  await store.actions.fetchItems.call(legacy.self, legacy.ctx);
+  assert.deepEqual(legacy.calls.commit, [], 'fetchItems keeps its non-throwing behaviour');
+});
+
+checkAsync('B8 load states: first-load status, one load alert on failure, pruning, in-place reloads, the empty row', async () => {
+  const first = renderTransformers({ items: [], loading: true }).vnode;
+  const status = byTag(first, 'div').filter((n) => attrsOf(n).role === 'status');
+  assert.equal(status.length, 1, 'one role=status');
+  assert.equal(textOf(status[0]), 'Loading' + ELLIPSIS);
+  assert.equal(tablesOf(first).length, 0, 'no table while loading');
+  assert.equal(toolbarsOf(first).length, 0, 'no toolbar while loading');
+  const h = liveHarness({ items: items(), selectedUtids: [TRANSFORMERS[0].utid], error: 'an earlier action error' },
+    { fetchItems: async () => { throw new Error('offline'); } });
+  await h.vm.loadData();
+  assert.deepEqual(h.vm.items, [], 'items emptied');
+  assert.deepEqual(h.vm.selectedUtids, [], 'selection emptied');
+  assert.equal(h.vm.loadFailed, true);
+  assert.equal(h.vm.error, 'an earlier action error', 'the action error is left alone');
+  h.vm.error = null;
+  let vnode = rerender(h.vm);
+  const alert = one(loadAlertsOf(vnode), 'transformers-load-error');
+  assert.equal(alert.tag, 'b-alert');
+  assert.equal(attrsOf(alert).variant, 'danger');
+  assert.ok(!attrsOf(alert).dismissible, 'not dismissible');
+  assert.equal(textOf(alert), 'Could not load transformers. Refresh to retry.');
+  assert.equal(byTag(vnode, 'b-alert').filter((n) => attrsOf(n).show !== false && textOf(n)).length, 1, 'exactly one alert');
+  assert.equal(tablesOf(vnode).length, 0, 'no table after a failed load');
+  assert.equal(toolbarsOf(vnode).length, 0, 'no toolbar after a failed load');
+  h.control.fetchItems = async () => {};
+  h.control.storeItems = [items()[1]];
+  h.vm.selectedUtids = [TRANSFORMERS[0].utid, TRANSFORMERS[1].utid];
+  await h.vm.loadData();
+  assert.equal(h.vm.loadFailed, false, 'a later success clears loadFailed');
+  assert.deepEqual(h.vm.selectedUtids, [TRANSFORMERS[1].utid], 'the selection is pruned to listed utids');
+  assert.equal(loadAlertsOf(rerender(h.vm)).length, 0, 'the load alert is gone');
+  // A reload after the first load keeps the table rendered.
+  const pending = deferred();
+  h.control.fetchItems = () => pending.promise;
+  const reload = h.vm.loadData();
+  vnode = rerender(h.vm);
+  assert.equal(tablesOf(vnode).length, 1, 'the table stays during a reload');
+  assert.equal(byTag(vnode, 'div').filter((n) => attrsOf(n).role === 'status').length, 0, 'no Loading on a reload');
+  pending.resolve();
+  await reload;
+  // Empty successful load.
+  const e = liveHarness({ items: items(), loading: true });
+  e.control.storeItems = [];
+  await e.vm.loadData();
+  vnode = rerender(e.vm);
+  assert.equal(toolbarsOf(vnode).length, 0, 'no toolbar with zero transformers');
+  const cells = byTag(one(tablesOf(vnode), 'table'), 'td');
+  assert.equal(cells.length, 1, 'one empty-row cell');
+  assert.equal(String(attrsOf(cells[0]).colspan), '3', 'the empty row spans 3 columns');
+  assert.equal(textOf(cells[0]), 'No transformers yet. Add one with Add Transformer.');
+  assert.ok(!classList(cells[0]).includes('text-muted'), 'body colour, no text-muted');
+});
+
+check('B9 a name holding HTML and a direction override renders as text in the table, the question and the list', () => {
+  const evil = '<img src=x onerror=alert(1)>' + String.fromCharCode(0x202E) + 'gnp.exe';
+  const list = [{ id: 'utid-evil', utid: 'utid-evil', alias: evil, body: 'eA==' }].concat(items());
+  const h = harness({ items: list, selectedUtids: ['utid-evil', TRANSFORMERS[0].utid] });
+  let vnode = rerender(h.vm);
+  const name = one(byCy(vnode, 'transformer-name').filter((n) => attrsOf(n).title === evil), 'evil name cell');
+  assert.equal(name.children.length, 1, 'one child');
+  assert.equal(name.children[0].tag, undefined, 'a text node');
+  assert.equal(name.children[0].text, evil, 'exactly the stored string');
+  click(bulkOf(vnode));
+  vnode = rerender(h.vm);
+  const lis = byTag(one(byCy(vnode, 'transformer-delete-names'), 'names list'), 'li');
+  assert.equal(lis[0].children.length, 1);
+  assert.equal(lis[0].children[0].text, evil, 'the list item is the plain string');
+  const r = harness({ items: list });
+  openRowDelete(r, list[0]);
+  vnode = rerender(r.vm);
+  const question = one(byCy(vnode, 'transformer-delete-question'), 'question');
+  assert.equal(question.children.length, 1);
+  assert.equal(question.children[0].text, 'Delete the transformer "' + evil + '"? This cannot be undone.');
+  assert.equal(byTag(vnode, 'img').length, 0, 'no img element anywhere');
+  const { template } = page();
+  assert.ok(!/v-html|innerHTML/.test(template), 'no raw-HTML binding in the template');
+});
+
 // ---------------------------------------------------------------- compiled theme
 
 const sass = require('sass');
@@ -570,7 +910,7 @@ function expectDecls(selector, want) {
 }
 
 // Referenced by the checks that later plans add; kept so the harness stays whole.
-void expand; void loadModule; void byTag; void expectDecls;
+void expand; void expectDecls;
 
 // ---------------------------------------------------------------- run
 
