@@ -1166,10 +1166,143 @@ check('K9 rename modal markup: title, form, input, feedback, help and the Keep c
   assert.ok(!template.includes('v-html'), 'no raw-HTML binding');
 });
 
+// ---------------------------------------------------------------- G: Generate form name feedback (45-04 task 2)
+
+const GENERATE_ERROR = 'Could not generate the deploy key. Try again.';
+
+// The Generate form, its input and submit button, and the feedback line right after it.
+function generateParts(vnode) {
+  const top = rootChildren(vnode);
+  const at = top.findIndex((n) => n.tag === 'b-form' && classList(n).includes('key-create-form'));
+  assert.ok(at !== -1, 'the Generate form is a top-level child');
+  const form = top[at];
+  const input = nodesOf(form).find((n) => n.tag === 'b-form-input' && attrsOf(n).id === 'deploy-key-name');
+  const button = nodesOf(form).find((n) => n.tag === 'b-button');
+  return { form, input, button, next: top[at + 1] };
+}
+
+check('G1 the Generate form names a bad name under the form and disables Generate; an empty name only disables it', () => {
+  const idle = generateParts(renderKeys({ keyName: 'Firmware' }).vnode);
+  assert.equal(attrsOf(idle.input)['aria-describedby'], 'deploy-key-name-feedback');
+  assert.equal(attrsOf(idle.input)['aria-invalid'], 'false');
+  const line = idle.next;
+  assert.equal(line.tag, 'p', 'the feedback line follows the form');
+  assert.equal(attrsOf(line).id, 'deploy-key-name-feedback');
+  assert.ok(classList(line).includes('key-name-feedback'));
+  assert.equal(attrsOf(line)['aria-live'], 'polite');
+  assert.equal(cyOf(line), 'create-key-feedback');
+  assert.equal(textOf(line), '', 'no sentence for a valid name');
+  assert.ok(!attrsOf(idle.button).disabled, 'Generate is enabled for a valid name');
+  const bad = [
+    ['a' + ch(0x2028) + 'b', SENTENCES.line_separator],
+    ['a' + ch(0x09) + 'b', SENTENCES.control_chars],
+    ['a' + ch(0x202e) + 'b', SENTENCES.bidi],
+    ['x'.repeat(121), SENTENCES.too_long],
+  ];
+  bad.forEach(([keyName, sentence]) => {
+    const p = generateParts(renderKeys({ keyName }).vnode);
+    assert.equal(textOf(p.next), sentence, JSON.stringify(keyName.slice(0, 3)));
+    assert.equal(attrsOf(p.input)['aria-invalid'], 'true');
+    assert.equal(attrsOf(p.button).disabled, true, 'Generate is disabled for a bad name');
+  });
+  ['', '   '].forEach((keyName) => {
+    const p = generateParts(renderKeys({ keyName }).vnode);
+    assert.equal(textOf(p.next), '', 'no sentence for ' + JSON.stringify(keyName));
+    assert.equal(attrsOf(p.input)['aria-invalid'], 'false');
+    assert.equal(attrsOf(p.button).disabled, true, 'Generate is disabled for ' + JSON.stringify(keyName));
+  });
+});
+
+// A page vm whose createItem, result modal and loadData are recorders.
+function createHarness(keyName) {
+  const { vm } = renderKeys({ keyName });
+  const calls = { createItem: [], shown: [], loadData: 0 };
+  const control = { createItem: null };
+  vm.$bvModal = { show: (id) => calls.shown.push(id) };
+  vm.createItem = (name) => {
+    calls.createItem.push(name);
+    control.createItem = deferred();
+    return control.createItem.promise;
+  };
+  vm.loadData = async () => { calls.loadData++; };
+  return { vm, calls, control };
+}
+
+checkAsync('G2 create: a bad client name sends nothing; a server reason keeps the name; other failures show the generate error', async () => {
+  const refused = createHarness('a' + ch(0x09) + 'b');
+  const r = refused.vm.create();
+  assert.equal(refused.calls.createItem.length, 0, 'an invalid name sends nothing');
+  await r;
+  assert.equal(refused.vm.creating, false);
+
+  const server = createHarness('  Firmware  ');
+  const run = server.vm.create();
+  assert.deepEqual(server.calls.createItem, ['Firmware'], 'the trimmed name is sent once');
+  server.control.createItem.resolve({ success: false, response: 'invalid_key_name', reason: 'control_chars' });
+  await run;
+  assert.equal(server.vm.createFeedback, SENTENCES.control_chars);
+  assert.equal(server.vm.keyName, '  Firmware  ', 'the typed name stays');
+  assert.equal(server.vm.error, null, 'no action alert for a name reason');
+  assert.equal(server.vm.creating, false);
+  const vnode = rerender(server.vm);
+  const parts = generateParts(vnode);
+  assert.equal(textOf(parts.next), SENTENCES.control_chars, 'the server sentence is under the form');
+  assert.equal(attrsOf(parts.input)['aria-invalid'], 'true');
+  server.vm.keyName = 'Firmware 2';
+  await tick();
+  assert.equal(server.vm.createFeedback, '', 'typing clears the server sentence');
+
+  const unknown = createHarness('Firmware');
+  const u = unknown.vm.create();
+  unknown.control.createItem.resolve({ success: false, response: 'invalid_key_name' });
+  await u;
+  assert.equal(unknown.vm.createFeedback, GENERIC_NAME, 'a missing reason gives the generic sentence');
+
+  for (const outcome of ['refused', 'thrown']) {
+    const h = createHarness('Firmware');
+    const p = h.vm.create();
+    if (outcome === 'refused') h.control.createItem.resolve({ success: false });
+    else h.control.createItem.reject(new Error('offline'));
+    await p;
+    assert.equal(h.vm.error, GENERATE_ERROR, outcome + ' error copy');
+    assert.equal(h.vm.createFeedback, '', outcome + ' shows no name sentence');
+    assert.equal(h.vm.keyName, 'Firmware', outcome + ' keeps the name');
+    assert.equal(h.vm.creating, false);
+  }
+
+  const ok = createHarness('Firmware');
+  const o = ok.vm.create();
+  ok.control.createItem.resolve({ success: true, response: { name: 'Firmware', pubkey: 'ssh-ed25519 AAAA Firmware' } });
+  await o;
+  assert.deepEqual(ok.calls.shown, ['rsakey-result-modal'], 'success opens the created-key modal');
+  assert.equal(ok.vm.createdPubkey, 'ssh-ed25519 AAAA Firmware');
+  assert.equal(ok.vm.keyName, '', 'success clears the field');
+  assert.equal(ok.calls.loadData, 1);
+  assert.equal(ok.vm.error, null);
+  assert.ok(!page().source.includes('Failed to generate deploy key'), 'the old generate error copy is gone');
+});
+
+check('G3 compiled theme: key-name-feedback in #FF8A8A, hidden when empty; key-name-help in body colour', () => {
+  const fb = expectDecls('.key-name-feedback', { margin: '4px 0 0', 'font-size': '.875rem', 'font-weight': '400' });
+  assert.match(value(fb, 'color') || '', /^#ff8a8a$/i, '.key-name-feedback colour');
+  expectDecls('.key-name-feedback:empty', { display: 'none' });
+  expectDecls('.key-name-help', { margin: '4px 0 0', color: 'inherit', 'font-size': '.875rem' });
+});
+
 // ---------------------------------------------------------------- run
+
+// An async check that never settles would otherwise let node drain its event loop
+// and exit 0 with the remaining checks unreported.
+let running = null;
+process.on('beforeExit', () => {
+  if (running === null) return;
+  console.log('FAIL ' + running + ' (never settled)');
+  process.exit(1);
+});
 
 (async () => {
   for (const [name, fn] of asyncChecks) {
+    running = name;
     try {
       const detail = await fn();
       console.log('ok   ' + name + (typeof detail === 'string' ? ' (' + detail + ')' : ''));
@@ -1178,5 +1311,6 @@ check('K9 rename modal markup: title, form, input, feedback, help and the Keep c
       console.log('FAIL ' + name + ' (' + String(err && err.message ? err.message : err).split('\n')[0] + ')');
     }
   }
+  running = null;
   process.exit(failures ? 1 : 0);
 })();
