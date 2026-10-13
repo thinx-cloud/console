@@ -818,16 +818,19 @@ check('C6 an empty list shows one body-colour row and no toolbar; no text-muted 
   assert.equal(toolbarsOf(vnode).length, 0, 'no toolbar');
 });
 
-check('C7 compiled theme: key-create-form and key-toolbar flex rows with 8px / 4px gaps', () => {
+check('C7 compiled theme: key-create-form flex row with an 8px gap; key-toolbar right-aligned', () => {
   const form = expectDecls('.key-create-form', {
     display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center', gap: '8px',
   });
   // UI-REVIEW fix 1: the 16px sits below the form + feedback pair, not between them.
   assert.equal(value(form, 'margin-bottom'), undefined, 'no margin between the form and its feedback line');
   expectDecls('.key-create', { 'margin-bottom': '16px' });
-  expectDecls('.key-toolbar', {
-    display: 'flex', 'justify-content': 'flex-end', 'align-items': 'center', gap: '4px', 'margin-bottom': '8px',
+  const toolbar = expectDecls('.key-toolbar', {
+    display: 'flex', 'justify-content': 'flex-end', 'align-items': 'center', 'margin-bottom': '8px',
   });
+  // UI-REVIEW finding 8: one child, so a gap did nothing; the glyph/text gap is the label's margin.
+  assert.equal(value(toolbar, 'gap'), undefined, 'no no-op gap on the one-button toolbar');
+  expectDecls('.key-toolbar__text', { 'margin-left': '4px' });
 });
 
 // ---------------------------------------------------------------- K: rename (45-04 task 1)

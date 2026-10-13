@@ -58,12 +58,12 @@
   gap: 8px;
 }
 
-// Bulk toolbar: its own right-aligned row above the table (UI-K11).
+// Bulk toolbar: its own right-aligned row above the table (UI-K11). It holds one button,
+// so it needs no gap; the glyph/text spacing is the label's own margin.
 .key-toolbar {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 4px;
   margin-bottom: 8px;
 }
 
