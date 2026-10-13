@@ -1,0 +1,44 @@
+// Shared styles for the device list and the console building blocks of phase 44:
+// the platform bullet and the platform-coloured device icon tile live here; plan
+// 44-02 adds the icon button, the actions cell, the status and API-key rules.
+//
+// Platform colours come from the Legacy console (services/console/src/assets/thinx/
+// css/custom.css, lines 612-634) and the phase 44 UI-SPEC palette. Keys match
+// PLATFORMS in src/utils/platforms.js. Text colours reach 4.5:1 on each background.
+
+// (key, background, text)
+$platform-colors: (
+  (arduino, #00979D, #000000),
+  (platformio, #FF9125, #000000),
+  (nodemcu, #005780, #FFFFFF),
+  (pine64, #333333, #FFFFFF),
+  (micropython, #3C393A, #FFFFFF),
+  (mongoose, #0E7CAD, #FFFFFF),
+  (nodejs, #8EC64B, #000000),
+  (sigfox, #6D04D6, #FFFFFF),
+  (unknown, #333333, #FFFFFF)
+);
+
+@each $key, $bg, $fg in $platform-colors {
+  .platform-#{$key} {
+    background-color: $bg;
+    color: $fg;
+  }
+}
+
+.platform-bullet {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: .875rem;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+// Several platform backgrounds sit close to the dark page; the outline keeps the shape visible.
+.platform-bullet,
+.device-icon {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .24);
+}

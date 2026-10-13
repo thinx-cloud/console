@@ -391,6 +391,18 @@ function parseColour(raw) {
       a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1,
     };
   }
+  // Dart Sass may emit rgba(255,255,255,.24) as hsla(0,0%,100%,.24) in compressed output.
+  m = text.match(/^hsla?\(([^)]*)\)$/);
+  if (m) {
+    const [h, s, l, a] = m[1].split(',').map((x) => parseFloat(x));
+    const sat = s / 100;
+    const lig = l / 100;
+    const k = (n) => (n + h / 30) % 12;
+    const f = (n) => lig - sat * Math.min(lig, 1 - lig) * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+    const c = { r: f(0) * 255, g: f(8) * 255, b: f(4) * 255, a: a === undefined || Number.isNaN(a) ? 1 : a };
+    if ([c.r, c.g, c.b, c.a].some((n) => !Number.isFinite(n))) return null;
+    return c;
+  }
   m = text.match(/^rgba?\(([^)]*)\)$/);
   if (!m) return null;
   const parts = m[1].split(',').map((x) => x.trim());

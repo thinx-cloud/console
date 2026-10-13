@@ -33,7 +33,7 @@
           </div>
         </td>
         <td v-for="header in filteredHeaders" :key="header.prop">
-          {{ item[header.prop] }}
+          <slot :name="'cell(' + header.prop + ')'" :item="item" :value="item[header.prop]">{{ item[header.prop] }}</slot>
         </td>
       </tr>
     </tbody>

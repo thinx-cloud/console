@@ -24,7 +24,9 @@
       :datasource="items"
       :dataheaders="headers"
       :showLoading="loading"
-    ></List>
+    >
+      <template #cell(platform)="{ value }"><PlatformBullet :platform="value" /></template>
+    </List>
 
     <!-- Create Modal -->
     <b-modal id="create-repo-modal" title="Add Repository" @ok="create" ok-title="Add" size="lg">
@@ -59,11 +61,12 @@
 
 <script>
 import List from '@/components/List/List';
+import PlatformBullet from '@/components/PlatformBullet/PlatformBullet';
 import { mapGetters, mapActions } from 'vuex';
 
 export default {
   name: "Repositories",
-  components: { List },
+  components: { List, PlatformBullet },
   data() {
     return {
       isSelected: false,
