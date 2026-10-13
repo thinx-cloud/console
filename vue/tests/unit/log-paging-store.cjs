@@ -456,7 +456,10 @@ test('History filter hint singular and plural', async () => {
   vm.auditFlagFilter = ['danger', 'warning'];
   vm.auditlog = auditRows('x', 1200);
   tree = render(vm);
-  const many = hintOf(tree, 'audit') === 'Filtering ' + (1200).toLocaleString() + ' loaded entries; older entries exist.';
+  // textOf collapses whitespace, so the expected grouping is collapsed the same way: under
+  // cs_CZ (1200).toLocaleString() is "1<NBSP>200" and renders as "1 200" (phase 44 IN-05).
+  const grouped = (1200).toLocaleString().replace(/\s+/g, ' ');
+  const many = hintOf(tree, 'audit') === 'Filtering ' + grouped + ' loaded entries; older entries exist.';
   const buildIdle = hintOf(tree, 'build') === null; // flags are audit-only
   vm.auditFlagFilter = ['danger', 'warning', 'info'];
   vm.auditSearch = '   ';
