@@ -1,0 +1,45 @@
+// Phase 45 Deploy Keys page (UI-SPEC UI-K02..UI-K06).
+
+// Stripes per key group, so an open detail row never shifts the stripes below it (UI-K02).
+.deploy-keys-table > tbody.key-group:nth-of-type(odd) > tr {
+  background-color: rgba(0, 0, 0, .05);
+}
+
+// Name: ellipsised on a block inside the cell, full name in the title (UI-K03, 44 IN-03).
+// dir="auto" plus isolation keep a right-to-left name from reordering its neighbours.
+.key-name {
+  display: block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  unicode-bidi: isolate;
+}
+
+@include media-breakpoint-up(md) {
+  .key-name {
+    max-width: 240px;
+  }
+}
+
+// Fingerprint in monospace, body colour (no <code>: its theme colour is pink) (UI-K04).
+.key-fingerprint {
+  font-family: $font-family-monospace;
+  font-size: .875rem;
+  font-weight: 400;
+  color: inherit;
+}
+
+// Expanded public key: wraps inside its detail row and never widens the table (UI-K06).
+.key-text {
+  margin: 0;
+  padding: 8px;
+  background: $pre-bg;
+  color: $pre-color;
+  font-family: $font-family-monospace;
+  font-size: .875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
