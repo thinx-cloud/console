@@ -108,3 +108,38 @@ $platform-colors: (
   white-space: nowrap;
   width: 1%;
 }
+
+// Status: heartbeat, API-key warning, text and markers 8px apart (UI-D13, UI-D14).
+.device-status > * + * {
+  margin-left: 8px;
+}
+
+// Warning glyph colours, each at least 3:1 on the lightest page point #333867.
+.api-key-indicator {
+  color: #FFA500;
+}
+
+.status-alert {
+  color: #FF6B6B;
+}
+
+.status-warning {
+  color: #F0AD4E;
+}
+
+// Firmware (UI-D15): ellipsised table cell with the full text as tip, wrapping grid line.
+.firmware-cell {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-firmware {
+  overflow-wrap: anywhere;
+}
+
+.firmware-cell > .fa-cogs,
+.device-firmware > .fa-cogs {
+  margin-right: 8px;
+}

@@ -476,6 +476,8 @@ function parseColour(raw) {
   const text = String(raw).trim().toLowerCase();
   if (text === 'white') return { r: 255, g: 255, b: 255, a: 1 };
   if (text === 'black') return { r: 0, g: 0, b: 0, a: 1 };
+  // Dart Sass compressed output writes #FFA500 as its shorter name.
+  if (text === 'orange') return { r: 255, g: 165, b: 0, a: 1 };
   let m = text.match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/);
   if (m) {
     let hex = m[1];

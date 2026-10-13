@@ -88,8 +88,35 @@
             </td>
             <td>{{ device.alias }}</td>
             <td><PlatformBullet :platform="device.platform" /></td>
-            <td>{{ device.firmware }}</td>
-            <td>{{ device.status }}</td>
+            <td class="firmware-cell" :title="device.firmware || null"><i class="fa fa-cogs" aria-hidden="true"></i>{{ device.firmware || '—' }}</td>
+            <td>
+              <span class="device-status">
+                <i class="fa fa-heartbeat" aria-hidden="true"></i>
+                <span
+                  v-if="missingApiKey(device)"
+                  class="api-key-indicator"
+                  role="img"
+                  data-cy="api-key-warning"
+                  :aria-label="apiKeyTip"
+                  :title="apiKeyTip"
+                ><i class="fa fa-warning" aria-hidden="true"></i></span>
+                <span :title="statusTitle(device.status)">{{ statusText(device.status) }}</span>
+                <span
+                  v-if="statusHasError(device.status)"
+                  class="status-alert"
+                  role="img"
+                  aria-label="Device reported an error"
+                  title="Device reported an error"
+                ><i class="fa fa-warning" aria-hidden="true"></i></span>
+                <span
+                  v-if="statusHasWarning(device.status)"
+                  class="status-warning"
+                  role="img"
+                  aria-label="Device reported a warning"
+                  title="Device reported a warning"
+                ><i class="fa fa-warning" aria-hidden="true"></i></span>
+              </span>
+            </td>
             <td>{{ device.lastupdate | fromNow }}</td>
             <td class="actions-cell">
               <IconButton
@@ -135,7 +162,35 @@
             </div>
           </template>
           <p class="mb-1"><PlatformBullet :platform="device.platform" /></p>
-          <p class="mb-1 text-muted small">{{ device.firmware }}</p>
+          <p class="mb-1 device-firmware"><i class="fa fa-cogs" aria-hidden="true"></i>{{ device.firmware || '—' }}</p>
+          <p class="mb-1">
+            <span class="device-status">
+              <i class="fa fa-heartbeat" aria-hidden="true"></i>
+              <span
+                v-if="missingApiKey(device)"
+                class="api-key-indicator"
+                role="img"
+                data-cy="api-key-warning"
+                :aria-label="apiKeyTip"
+                :title="apiKeyTip"
+              ><i class="fa fa-warning" aria-hidden="true"></i></span>
+              <span :title="statusTitle(device.status)">{{ statusText(device.status) }}</span>
+              <span
+                v-if="statusHasError(device.status)"
+                class="status-alert"
+                role="img"
+                aria-label="Device reported an error"
+                title="Device reported an error"
+              ><i class="fa fa-warning" aria-hidden="true"></i></span>
+              <span
+                v-if="statusHasWarning(device.status)"
+                class="status-warning"
+                role="img"
+                aria-label="Device reported a warning"
+                title="Device reported a warning"
+              ><i class="fa fa-warning" aria-hidden="true"></i></span>
+            </span>
+          </p>
           <p class="mb-2 text-muted small">{{ device.lastupdate | fromNow }}</p>
           <div class="d-flex align-items-center flex-nowrap">
             <div class="abc-checkbox d-inline-block mr-2">
@@ -207,6 +262,9 @@ import IconButton from '@/components/IconButton/IconButton';
 import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import { basePlatform, platformInfo } from '@/utils/platforms';
 
+// D-14 tip for a device without an API key (DEV-05).
+const API_KEY_TIP = 'No API key assigned. The device cannot check in until you assign one.';
+
 // Legacy device symbols b_medium_01.png .. b_medium_73.png (DEV-01, UI-D10).
 const DEVICE_SYMBOLS = require.context('@/assets/thinx/ioticons', false, /^\.\/b_medium_\d\d\.png$/);
 
@@ -235,6 +293,7 @@ export default {
       searchText: '',
       // udids whose build request is in flight (UI-D17).
       buildingUdids: [],
+      apiKeyTip: API_KEY_TIP,
     };
   },
   computed: {
@@ -302,6 +361,32 @@ export default {
       const n = parseInt(icon, 10);
       const nn = Number.isInteger(n) && n >= 1 && n <= 73 ? String(n).padStart(2, '0') : '01';
       return DEVICE_SYMBOLS('./b_medium_' + nn + '.png');
+    },
+    // Device-supplied status without control characters (code below 32 or 127). A charCode
+    // scan, not a regex: Codacy flags control-character regexes (quick 261012-r9z).
+    cleanStatus(status) {
+      const raw = String(status == null ? '' : status);
+      let out = '';
+      for (let i = 0; i < raw.length; i++) {
+        const code = raw.charCodeAt(i);
+        if (code >= 32 && code !== 127) out += raw[i];
+      }
+      return out;
+    },
+    // Legacy status text (UI-D13): Registered for 0-1 characters, 22 characters plus an ellipsis beyond.
+    statusText(status) {
+      const text = this.cleanStatus(status);
+      if (text.length <= 1) return 'Registered';
+      return text.length > 22 ? text.slice(0, 22) + '…' : text;
+    },
+    statusTitle(status) {
+      const text = this.cleanStatus(status);
+      return text.length > 22 ? text : null;
+    },
+    statusHasError(status) { return this.cleanStatus(status).toLowerCase().includes('#e'); },
+    statusHasWarning(status) { return this.cleanStatus(status).toLowerCase().includes('#w'); },
+    missingApiKey(device) {
+      return device.keyhash === null || device.keyhash === undefined || device.keyhash === '';
     },
     toggleDevice(udid) {
       const i = this.selectedUdids.indexOf(udid);
