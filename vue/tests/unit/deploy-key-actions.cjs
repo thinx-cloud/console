@@ -962,6 +962,30 @@ checkAsync('K3 renameItem sends one PATCH /rsakey with {filename, name} and retu
   }
 });
 
+// 45-UI-REVIEW finding 7: the page reloads the list itself after a mutation (loadData
+// fetches, prunes the selection and keeps the table in place), so the store actions must
+// not fetch as well: one GET per delete or generate, not two.
+checkAsync('K3b deleteItems and createItem send one request and leave the refresh to the page', async () => {
+  const store = loadStore('store/rsakeys.js');
+  for (const success of [true, false]) {
+    const calls = [];
+    const refuse = () => { throw new Error('no list fetch inside the action'); };
+    const $api = {
+      $delete: async (p, b) => { calls.push(['DELETE', p, b]); return { success, response: [] }; },
+      $put: async (p, b) => { calls.push(['PUT', p, b]); return { success, response: {} }; },
+      $get: refuse, $post: refuse, $patch: refuse,
+    };
+    let dispatched = 0;
+    const ctx = { dispatch: () => { dispatched++; return Promise.resolve(); }, commit: () => {} };
+    const del = await store.actions.deleteItems.call({ $api }, ctx, ['f']);
+    const put = await store.actions.createItem.call({ $api }, ctx, 'Name');
+    assert.deepEqual(calls, [['DELETE', '/rsakey', '{"filenames":["f"]}'], ['PUT', '/rsakey', '{"name":"Name"}']]);
+    assert.equal(dispatched, 0, 'no fetchItems dispatch (success ' + success + ')');
+    assert.equal(del.success, success);
+    assert.equal(put.success, success);
+  }
+});
+
 check('K4 Rename sits between Copy key and Delete: fa fa-pencil, Rename, default variant, disabled while deleting', () => {
   const items = keyItems();
   const { vm, vnode } = renderKeys({ items, deletingIds: [items[1].id] });

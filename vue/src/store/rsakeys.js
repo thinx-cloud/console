@@ -62,12 +62,11 @@ export default {
         commit('saveItems', { items: result.response || [] });
         return state.items;
       },
-      async createItem({ dispatch }, name) {
-        const result = await this.$api.$put('/rsakey', JSON.stringify({ name }));
-        // A failed refresh must not turn a created key into a reported failure;
-        // the page reloads the list itself and reports a load error there.
-        if (result.success) await dispatch('fetchItems').catch(() => {});
-        return result;
+      // createItem / deleteItems send one request and return its result. The page reloads
+      // the list itself (loadData: fetch, prune the selection, report a load error), so
+      // fetching here as well cost a second GET per mutation (45-UI-REVIEW finding 7).
+      async createItem(_ctx, name) {
+        return this.$api.$put('/rsakey', JSON.stringify({ name }));
       },
       // KEY-04: PATCH /rsakey { filename, name }. The result comes back unchanged
       // (the page reads `reason` from an invalid_key_name answer) and the page
@@ -75,10 +74,8 @@ export default {
       async renameItem(_ctx, { filename, name }) {
         return this.$api.$patch('/rsakey', JSON.stringify({ filename, name }));
       },
-      async deleteItems({ dispatch }, filenames) {
-        const result = await this.$api.$delete('/rsakey', JSON.stringify({ filenames }));
-        if (result.success) await dispatch('fetchItems').catch(() => {});
-        return result;
+      async deleteItems(_ctx, filenames) {
+        return this.$api.$delete('/rsakey', JSON.stringify({ filenames }));
       },
     },
     getters: {
