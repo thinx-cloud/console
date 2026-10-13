@@ -421,7 +421,6 @@ check('Devices table rows render PlatformBullet with the raw platform, never the
 // ---------------------------------------------------------------- compiled theme (platform palette)
 
 const sass = require('sass');
-const { execFileSync } = require('child_process');
 
 const compiledCss = lazy(() => sass.compileString('@import "theme";\n', {
   loadPaths: [path.join(SRC, 'styles')],
@@ -584,7 +583,7 @@ check('.platform-bullet and .device-icon share the inset white outline', () => {
 
 // ---------------------------------------------------------------- List.vue and Repositories.vue
 
-// Copy of the repositories store headers (store/repositories.js is not changed).
+// Copy of the repositories store headers at phase 44 (the store itself is not changed here).
 const REPO_HEADERS = [
   { title: 'id', prop: 'id', pos: null },
   { title: 'alias', prop: 'alias', pos: 0 },
@@ -659,15 +658,15 @@ check('Repositories bullet markup equals the Devices bullet for arduino:esp8266'
   assert.equal(textOf(v), textOf(ref));
 });
 
-check('store/repositories.js is unchanged since the phase start (cfff199)', () => {
-  let out;
-  try {
-    execFileSync('git', ['cat-file', '-e', 'cfff199^{commit}'], { cwd: SRC, stdio: 'ignore' });
-  } catch (e) {
-    return 'skipped: cfff199 not in this checkout';
-  }
-  out = execFileSync('git', ['diff', 'cfff199', '--', 'store/repositories.js'], { cwd: SRC, encoding: 'utf8' });
-  assert.equal(out, '');
+// The Repositories bullet relies on the store's `platform` column; the check reads the
+// store's headers instead of pinning the file to a commit (phase 44 WR-03).
+check('store/repositories.js still declares a visible platform column', () => {
+  const mod = { exports: {} };
+  new Function('module', read('store/repositories.js').replace(/export default /, 'module.exports.default = '))(mod);
+  const headers = mod.exports.default.state.headers;
+  const platform = headers.filter((h) => h.prop === 'platform');
+  assert.equal(platform.length, 1, 'one platform header');
+  assert.ok(platform[0].pos !== null && platform[0].pos !== undefined, 'platform column is shown');
 });
 
 // ---------------------------------------------------------------- Devices: icon tiles, filter, sort, empty states
