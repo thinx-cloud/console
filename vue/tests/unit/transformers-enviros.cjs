@@ -1433,6 +1433,214 @@ checkAsync('E10 a stored write whose list refresh fails resolves refreshed:false
   assert.equal(h.calls.loadData, 1, 'refreshed:false reloads once');
 });
 
+// ---------------------------------------------------------------- F: bulk delete, load states (46-03 task 2)
+
+const enviroBulkOf = (vnode) => one(byCy(vnode, 'enviro-bulk-delete'), 'enviro-bulk-delete');
+const enviroLoadAlertsOf = (vnode) => byCy(vnode, 'enviros-load-error');
+const CONFIRM_ONE = { title: 'Confirm Delete', okVariant: 'danger', okTitle: 'Delete variable', cancelTitle: 'Keep variable', autoFocusButton: 'cancel', bodyClass: 'text-break' };
+const CONFIRM_MANY = Object.assign({}, CONFIRM_ONE, { okTitle: 'Delete variables', cancelTitle: 'Keep variables' });
+
+check('F1 rows have an enviro-select checkbox; the Selected environment variables toolbar sits between the intro and the table', () => {
+  const { vnode } = renderEnviros();
+  const boxes = byCy(vnode, 'enviro-select');
+  assert.equal(boxes.length, ENVIROS.length, 'one checkbox per row');
+  boxes.forEach((box, i) => {
+    assert.equal(box.tag, 'b-form-checkbox');
+    assert.equal(box.data.model && box.data.model.expression, 'selectedKeys', 'v-model selectedKeys');
+    assert.equal(attrsOf(box).value, ENVIROS[i], 'value is the name');
+    assert.equal(attrsOf(box)['aria-label'], 'Select ' + ENVIROS[i]);
+    assert.ok(!attrsOf(box).disabled, 'an idle row is selectable');
+    assert.ok(nodesOf(cellsOf(enviroRowsOf(vnode)[i])[0]).includes(box), 'the checkbox is in the first cell');
+  });
+  assert.ok(!textOf(vnode).includes('Delete ('), 'the old count button next to Add is gone');
+  const top = rootChildren(vnode);
+  const intro = top.findIndex((n) => n.tag === 'p' && /Global environment variables are available/.test(textOf(n)));
+  const bar = top.findIndex((n) => classList(n).includes('bulk-toolbar'));
+  const table = top.findIndex((n) => classList(n).includes('table-responsive'));
+  assert.ok(intro !== -1 && bar !== -1 && table !== -1, 'intro ' + intro + ', toolbar ' + bar + ', table ' + table);
+  assert.ok(intro < bar && bar < table, 'order intro < toolbar < table');
+  const toolbar = top[bar];
+  assert.equal(toolbar.tag, 'div');
+  assert.equal(attrsOf(toolbar).role, 'toolbar');
+  assert.equal(attrsOf(toolbar)['aria-label'], 'Selected environment variables');
+  const btn = enviroBulkOf(toolbar);
+  assert.equal(btn.tag, 'b-button');
+  assert.equal(attrsOf(btn).variant, 'danger');
+  assert.equal(attrsOf(btn).size, 'sm');
+  const icon = one(byTag(btn, 'i'), 'glyph');
+  assert.deepEqual(classList(icon).sort(), ['fa', 'fa-trash']);
+  assert.equal(attrsOf(icon)['aria-hidden'], 'true');
+  const label = one(byClass(btn, 'button-text'), 'span.button-text');
+  assert.equal(label.tag, 'span');
+  assert.equal(textOf(label), 'Delete selected');
+  assert.equal(attrsOf(btn).disabled, true, 'disabled with nothing selected');
+  const two = enviroBulkOf(renderEnviros({ selectedKeys: ['WIFI', 'MQTT_HOST'] }).vnode);
+  assert.equal(textOf(two), 'Delete selected (2)');
+  assert.ok(!attrsOf(two).disabled, 'enabled with a selection');
+  const busy = enviroBulkOf(renderEnviros({ selectedKeys: ['WIFI'], bulkDeleting: true }).vnode);
+  assert.equal(textOf(busy), 'Deleting' + ELLIPSIS);
+  assert.equal(attrsOf(busy).disabled, true, 'disabled while the delete runs');
+});
+
+checkAsync('F2 one plain confirmation per click naming every selected variable, with the cancel button focused', async () => {
+  const h = enviroHarness({ selectedKeys: ['WIFI'] });
+  const first = h.vm.deleteSelected();
+  const second = h.vm.deleteSelected();
+  await tick();
+  assert.equal(h.calls.confirm.length, 1, 'a second click while the confirmation is open does nothing');
+  assert.equal(typeof h.calls.confirm[0].text, 'string', 'the message is a plain string');
+  assert.equal(h.calls.confirm[0].text, 'Delete the variable "WIFI"? This cannot be undone. Firmware builds will no longer receive it.');
+  assert.deepEqual(h.calls.confirm[0].opts, CONFIRM_ONE);
+  h.control.confirm.resolve(false);
+  await first; await second;
+  const m = enviroHarness({ selectedKeys: ['MQTT_HOST', 'WIFI_SSID'] });
+  const run = m.vm.deleteSelected();
+  await tick();
+  assert.equal(m.calls.confirm[0].text, 'Delete 2 variables (WIFI_SSID, MQTT_HOST)? This cannot be undone. Firmware builds will no longer receive them.', 'every name, in table order');
+  assert.deepEqual(m.calls.confirm[0].opts, CONFIRM_MANY);
+  m.control.confirm.resolve(false);
+  await run;
+});
+
+checkAsync('F3 cancel sends nothing; OK sends one deleteItems and locks the rows; success clears, failure keeps and reloads', async () => {
+  for (const answer of ['no', 'throw']) {
+    const h = enviroHarness({ selectedKeys: ['WIFI'] });
+    const run = h.vm.deleteSelected();
+    await tick();
+    if (answer === 'no') h.control.confirm.resolve(false); else h.control.confirm.reject(new Error('closed'));
+    await run;
+    assert.deepEqual(h.calls.deleteItems, [], answer + ': nothing sent');
+    assert.equal(h.vm.confirming, false, answer + ': the guard is released');
+    assert.deepEqual(h.vm.selectedKeys, ['WIFI'], answer + ': the selection is kept');
+  }
+  const h = enviroHarness({ selectedKeys: ['MQTT_HOST', 'WIFI'] });
+  h.control.storeItems = enviroItems(['WIFI_SSID']);
+  const run = h.vm.deleteSelected();
+  await tick();
+  h.control.confirm.resolve(true);
+  await tick();
+  assert.deepEqual(h.calls.deleteItems, [['WIFI', 'MQTT_HOST']], 'one deleteItems with the names in table order');
+  let vnode = rerender(h.vm);
+  for (const name of ENVIROS) {
+    const row = enviroRowOf(vnode, name);
+    const locked = name !== 'WIFI_SSID';
+    assert.equal(!!attrsOf(one(byCy(row, 'enviro-select'), 'checkbox')).disabled, locked, name + ' checkbox disabled=' + locked);
+    assert.equal(!!propsOf(one(buttonsOf(row, 'enviro-edit'), 'Edit value')).disabled, locked, name + ' Edit value disabled=' + locked);
+  }
+  assert.equal(textOf(enviroBulkOf(vnode)), 'Deleting' + ELLIPSIS);
+  await h.vm.deleteSelected();
+  assert.equal(h.calls.confirm.length, 1, 'a click while the request runs opens nothing');
+  h.control.deleteItems.resolve({ success: true, response: { WIFI: 'deleted', MQTT_HOST: 'deleted' } });
+  await run;
+  assert.deepEqual(h.vm.selectedKeys, [], 'success clears the selection');
+  assert.deepEqual(h.vm.items.map((i) => i.label), ['WIFI_SSID'], 'the store list is shown');
+  assert.equal(h.calls.loadData, 0, 'no second fetch');
+  assert.deepEqual([h.vm.bulkDeleting, h.vm.deletingKeys], [false, []], 'the guards are released');
+  vnode = rerender(h.vm);
+  assert.ok(!attrsOf(one(byCy(vnode, 'enviro-select'), 'checkbox')).disabled, 'rows are usable again');
+  for (const [keys, outcome, copy] of [
+    [['WIFI'], 'answer', 'Could not delete the variable. Try again.'],
+    [['WIFI', 'MQTT_HOST'], 'answer', 'Could not delete the variables. Try again.'],
+    [['WIFI'], 'throw', 'Could not delete the variable. Try again.'],
+  ]) {
+    const f = enviroHarness({ selectedKeys: keys.slice() });
+    const del = f.vm.deleteSelected();
+    await tick();
+    f.control.confirm.resolve(true);
+    await tick();
+    if (outcome === 'answer') f.control.deleteItems.resolve({ success: false, response: 'nothing_to_revoke' });
+    else f.control.deleteItems.reject(new Error('offline'));
+    await del;
+    assert.deepEqual(f.vm.selectedKeys, keys, outcome + ': the selection is kept');
+    assert.equal(f.vm.error, copy);
+    assert.equal(f.calls.loadData, 1, outcome + ': the list reloads once');
+    assert.deepEqual([f.vm.bulkDeleting, f.vm.deletingKeys], [false, []], outcome + ': the guards are released');
+  }
+  const s = enviroHarness({ selectedKeys: ['WIFI'] });
+  const stale = s.vm.deleteSelected();
+  await tick();
+  s.control.confirm.resolve(true);
+  await tick();
+  s.control.deleteItems.resolve({ success: true, response: { WIFI: 'deleted' }, refreshed: false });
+  await stale;
+  assert.deepEqual(s.vm.selectedKeys, []);
+  assert.equal(s.calls.loadData, 1, 'refreshed:false reloads once');
+  assert.equal(s.vm.error, null);
+});
+
+checkAsync('F4 load states: one load alert and no table on failure, pruning, in-place reloads and the empty row', async () => {
+  const h = enviroLiveHarness({ selectedKeys: ['WIFI'], error: 'an earlier action error' }, { loadItems: async () => { throw new Error('offline'); } });
+  await h.vm.loadData();
+  assert.deepEqual(h.vm.items, [], 'items emptied');
+  assert.deepEqual(h.vm.selectedKeys, [], 'selection emptied');
+  assert.equal(h.vm.loadFailed, true);
+  assert.equal(h.vm.error, 'an earlier action error', 'the action error is left alone');
+  let vnode = rerender(h.vm);
+  const top = rootChildren(vnode);
+  const action = top.findIndex((n) => n.tag === 'b-alert' && textOf(n) === 'an earlier action error');
+  const load = top.findIndex((n) => cyOf(n) === 'enviros-load-error');
+  assert.ok(action !== -1 && action < load, 'the load alert follows the action alert');
+  h.vm.error = null;
+  vnode = rerender(h.vm);
+  const alert = one(enviroLoadAlertsOf(vnode), 'enviros-load-error');
+  assert.equal(alert.tag, 'b-alert');
+  assert.equal(attrsOf(alert).variant, 'danger');
+  assert.ok(!attrsOf(alert).dismissible, 'not dismissible');
+  assert.equal(textOf(alert), 'Could not load environment variables. Refresh to retry.');
+  assert.equal(byTag(vnode, 'b-alert').filter((n) => textOf(n)).length, 1, 'exactly one alert');
+  assert.equal(tablesOf(vnode).length, 0, 'no table after a failed load');
+  assert.equal(byClass(vnode, 'bulk-toolbar').length, 0, 'no toolbar after a failed load');
+  assert.ok(byTag(vnode, 'b-button').some((n) => textOf(n) === 'Add Variable'), 'Add Variable still renders');
+  h.control.loadItems = async () => {};
+  h.control.storeItems = enviroItems(['WIFI']);
+  h.vm.selectedKeys = ['WIFI', 'GONE'];
+  await h.vm.loadData();
+  assert.equal(h.vm.loadFailed, false, 'a later success clears loadFailed');
+  assert.deepEqual(h.vm.selectedKeys, ['WIFI'], 'the selection is pruned to listed names');
+  assert.equal(enviroLoadAlertsOf(rerender(h.vm)).length, 0, 'the load alert is gone');
+  const pending = deferred();
+  h.control.loadItems = () => pending.promise;
+  const reload = h.vm.loadData();
+  vnode = rerender(h.vm);
+  assert.equal(tablesOf(vnode).length, 1, 'the table stays during a reload');
+  assert.equal(byTag(vnode, 'div').filter((n) => attrsOf(n).role === 'status').length, 0, 'no Loading on a reload');
+  pending.resolve();
+  await reload;
+  const e = enviroLiveHarness({ loading: true });
+  e.control.storeItems = [];
+  await e.vm.loadData();
+  vnode = rerender(e.vm);
+  assert.equal(byClass(vnode, 'bulk-toolbar').length, 0, 'no toolbar with zero variables');
+  const cells = byTag(one(tablesOf(vnode), 'table'), 'td');
+  assert.equal(cells.length, 1, 'one empty-row cell');
+  assert.equal(String(attrsOf(cells[0]).colspan), '3', 'the empty row spans 3 columns');
+  assert.equal(textOf(cells[0]), 'No environment variables yet. Add one with Add Variable.');
+  assert.ok(!classList(cells[0]).includes('text-muted'), 'body colour, no text-muted');
+});
+
+checkAsync('F5 a name holding markup renders as text in the row, the edit dialog and the confirmation', async () => {
+  const evil = '<b>x</b>';
+  const h = enviroHarness({ items: enviroItems([evil, 'WIFI']), selectedKeys: [evil] });
+  let vnode = rerender(h.vm);
+  const key = one(byCy(vnode, 'enviro-key').filter((n) => attrsOf(n).title === evil), 'evil key cell');
+  assert.equal(key.children.length, 1, 'one child');
+  assert.equal(key.children[0].tag, undefined, 'a text node');
+  assert.equal(key.children[0].text, evil, 'exactly the stored string');
+  h.vm.openEdit({ id: 0, label: evil });
+  vnode = rerender(h.vm);
+  assert.equal(attrsOf(editModalOf(vnode)).title, 'Change value of ' + evil, 'the title is a bound string');
+  const keyText = one(byCy(vnode, 'enviro-edit-key'), 'enviro-edit-key');
+  assert.equal(keyText.children.length, 1);
+  assert.equal(keyText.children[0].text, evil);
+  assert.equal(byTag(vnode, 'b').length, 0, 'no b element anywhere');
+  const run = h.vm.deleteSelected();
+  await tick();
+  assert.equal(h.calls.confirm[0].text, 'Delete the variable "' + evil + '"? This cannot be undone. Firmware builds will no longer receive it.');
+  h.control.confirm.resolve(false);
+  await run;
+  assert.ok(!/v-html|innerHTML/.test(enviroPage().template), 'no raw-HTML binding in the template');
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
