@@ -76,7 +76,7 @@
             </div>
           </td>
           <td>{{ device.alias }}</td>
-          <td>{{ device.platform }}</td>
+          <td><PlatformBullet :platform="device.platform" /></td>
           <td>{{ device.firmware }}</td>
           <td>{{ device.status }}</td>
           <td>{{ device.lastupdate | fromNow }}</td>
@@ -157,6 +157,7 @@
 <script>
 import { mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
+import PlatformBullet from '@/components/PlatformBullet/PlatformBullet';
 
 const CATEGORY_COLORS = {
   'yellow-crusta': '#f3c200',
@@ -170,6 +171,7 @@ const CATEGORY_COLORS = {
 
 export default {
   name: "Devices",
+  components: { PlatformBullet },
   filters: {
     fromNow(val) {
       if (!val) return '—';
