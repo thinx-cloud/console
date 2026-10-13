@@ -21,8 +21,9 @@ export const PLATFORMS = {
 };
 
 // Backend platform values that name a known platform differently. The API's MicroPython
-// plugin (lib/thinx/plugins/python) reports "python" (44 WR-01).
-const ALIASES = { python: 'micropython' };
+// plugin (lib/thinx/plugins/python) reports "python" (44 WR-01); the API also accepts
+// "mongooseos" for MongooseOS (lib/thinx/deployment.js supportedPlatform).
+const ALIASES = { python: 'micropython', mongooseos: 'mongoose' };
 
 // Base platform key of a raw platform string such as "arduino:esp8266".
 // Anything that is not a known key (empty, null, "unknown_platform", ...) is "unknown".

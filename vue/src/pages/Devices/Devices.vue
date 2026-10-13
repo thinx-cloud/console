@@ -85,9 +85,9 @@
                 :title="platformOf(device).label"
               ><img class="device-icon-symbol" :src="symbolSrc(device.icon)" :alt="platformOf(device).label + ' device icon'"></span>
             </td>
-            <td>{{ device.alias }}</td>
+            <td>{{ asText(device.alias) }}</td>
             <td><PlatformBullet :platform="device.platform" /></td>
-            <td><span class="firmware-cell" :title="device.firmware || null"><i class="fa fa-cogs" aria-hidden="true"></i>{{ device.firmware || '—' }}</span></td>
+            <td><span class="firmware-cell" :title="asText(device.firmware) || null"><i class="fa fa-cogs" aria-hidden="true"></i>{{ asText(device.firmware) || '—' }}</span></td>
             <td>
               <span class="device-status">
                 <i class="fa fa-heartbeat" aria-hidden="true"></i>
@@ -157,11 +157,11 @@
                 :class="'platform-' + platformOf(device).key"
                 :title="platformOf(device).label"
               ><img class="device-icon-symbol" :src="symbolSrc(device.icon)" :alt="platformOf(device).label + ' device icon'"></span>
-              <strong>{{ device.alias }}</strong>
+              <strong>{{ asText(device.alias) }}</strong>
             </div>
           </template>
           <p class="mb-1"><PlatformBullet :platform="device.platform" /></p>
-          <p class="mb-1 device-firmware"><i class="fa fa-cogs" aria-hidden="true"></i>{{ device.firmware || '—' }}</p>
+          <p class="mb-1 device-firmware"><i class="fa fa-cogs" aria-hidden="true"></i>{{ asText(device.firmware) || '—' }}</p>
           <p class="mb-1">
             <span class="device-status">
               <i class="fa fa-heartbeat" aria-hidden="true"></i>
@@ -269,6 +269,15 @@ const API_KEY_TIP = 'No API Key assigned';
 // Danger alert text when GET /device or the environment list fails (UI review).
 const LOAD_ERROR = 'Could not load devices. Refresh to retry.';
 
+// Device-sent text fields (alias, firmware, mac) as a string: strings as-is, numbers and
+// booleans as their text, anything else empty, so stored device data cannot make the page
+// throw (44-SECURITY N-1 residual).
+function asText(value) {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return '';
+}
+
 // Legacy device symbols b_medium_01.png .. b_medium_73.png (DEV-01, UI-D10).
 const DEVICE_SYMBOLS = require.context('@/assets/thinx/ioticons', false, /^\.\/b_medium_\d\d\.png$/);
 
@@ -334,14 +343,14 @@ export default {
       if (this.searchText) {
         const q = this.searchText.toLowerCase();
         result = result.filter(d =>
-          (d.alias || '').toLowerCase().includes(q) ||
-          (d.mac || '').toLowerCase().includes(q)
+          asText(d.alias).toLowerCase().includes(q) ||
+          asText(d.mac).toLowerCase().includes(q)
         );
       }
       result = [...result].sort((a, b) => {
         if (this.sortBy === 'lastupdate') return new Date(b.lastupdate || 0).getTime() - new Date(a.lastupdate || 0).getTime();
-        if (this.sortBy === 'platform')   return basePlatform(a.platform).localeCompare(basePlatform(b.platform)) || (a.alias || '').localeCompare(b.alias || '');
-        if (this.sortBy === 'alias')      return (a.alias || '').localeCompare(b.alias || '');
+        if (this.sortBy === 'platform')   return basePlatform(a.platform).localeCompare(basePlatform(b.platform)) || asText(a.alias).localeCompare(asText(b.alias));
+        if (this.sortBy === 'alias')      return asText(a.alias).localeCompare(asText(b.alias));
         return 0;
       });
       return result;
@@ -369,6 +378,7 @@ export default {
     this.$watch(() => this.$route.params, () => { this.loadData(); }, { immediate: true });
   },
   methods: {
+    asText,
     ...mapGetters({ getItems: 'devices/getItems', getEnviros: 'enviros/getItems', getBuildItems: 'buildlog/getItems' }),
     ...mapActions({
       fetchItems: 'devices/fetchItems',

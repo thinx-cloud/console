@@ -227,6 +227,8 @@ check('basePlatform maps known values onto their key and the rest onto unknown',
     ['unknown_platform', 'unknown'], ['foo', 'unknown'], ['esp-idf:foo', 'unknown'],
     // The backend's MicroPython plugin reports "python" (44 WR-01).
     ['python', 'micropython'], ['Python', 'micropython'], ['python:esp32', 'micropython'],
+    // The API also accepts "mongooseos" for MongooseOS (deployment.js supportedPlatform).
+    ['mongooseos', 'mongoose'], ['MongooseOS:esp32', 'mongoose'],
   ];
   cases.forEach(([raw, key]) => assert.equal(basePlatform(raw), key, JSON.stringify(raw)));
 });
@@ -1583,6 +1585,22 @@ check('Devices renders, filters and sorts a device whose platform, status and ic
     const again = withWarnings(() => vm._render());
     assert.equal(again.error, null, viewMode + ' renders without error');
     assert.equal(byCy(again.out, viewMode === 'list' ? 'device-row' : 'device-card').length, 1, viewMode + ' one match');
+  });
+});
+
+check('Devices renders, searches and sorts a device whose alias, firmware and mac are {toString:1}', () => {
+  const weird = { udid: 'w2', alias: WEIRD(), firmware: WEIRD(), mac: WEIRD(), keyhash: 'k', platform: 'arduino', status: 'Registered' };
+  ['list', 'grid'].forEach((viewMode) => {
+    const { vm } = renderDevices({ items: fleet().concat([weird]), viewMode });
+    ['platform', 'alias', 'lastupdate'].forEach((sortBy) => {
+      vm.sortBy = sortBy;
+      assert.equal(vm.filteredItems.length, FLEET.length + 1, viewMode + ' ' + sortBy);
+    });
+    vm.searchText = 'zzz-no-match';
+    assert.equal(vm.filteredItems.length, 0, viewMode + ' search');
+    vm.searchText = '';
+    const again = withWarnings(() => vm._render());
+    assert.equal(again.error, null, viewMode + ' renders without error');
   });
 });
 
