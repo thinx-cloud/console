@@ -1065,7 +1065,6 @@ checkAsync('K7 rename outcomes: success closes, toasts and reloads; server reaso
     ['too_long reason', (c) => c.resolve({ success: false, response: 'invalid_key_name', reason: 'too_long' }), SENTENCES.too_long, 'true'],
     ['missing reason', (c) => c.resolve({ success: false, response: 'invalid_key_name' }), GENERIC_NAME, 'true'],
     ['unknown reason', (c) => c.resolve({ success: false, response: 'invalid_key_name', reason: 'nope' }), GENERIC_NAME, 'true'],
-    ['key_not_found', (c) => c.resolve({ success: false, response: 'key_not_found' }), RENAME_ERROR, 'false'],
     ['empty body', (c) => c.resolve({ success: false, status: 500, response: null }), RENAME_ERROR, 'false'],
     ['thrown', (c) => c.reject(new Error('offline')), RENAME_ERROR, 'false'],
   ];
@@ -1210,6 +1209,61 @@ checkAsync('K10 the rename dialog refuses the key\'s own default name thinx-<tim
   await run;
   assert.equal(s.vm.renameFeedback, SENTENCES.reserved);
   assert.equal(s.calls.toasts.length, 0, 'no success toast');
+});
+
+// 45-REVIEW IN-03: answers that retrying can never fix reload the list and say what happened.
+const GONE_ONE = 'This deploy key no longer exists. The list has been refreshed.';
+const GONE_MANY = 'These deploy keys no longer exist. The list has been refreshed.';
+const CANNOT_RENAME = 'This deploy key cannot be renamed.';
+
+checkAsync('K11 rename of a vanished key closes and reloads; a key that cannot be renamed says so and reloads (IN-03)', async () => {
+  const gone = renameHarness();
+  gone.vm.renameName = 'New name';
+  const p = gone.vm.saveRename();
+  gone.control.renameItem.resolve({ success: false, status: 404, response: 'key_not_found' });
+  await p;
+  assert.deepEqual(gone.calls.hide, ['rsakey-rename-modal'], 'the dialog closes');
+  assert.deepEqual(gone.calls.prevented, [false]);
+  assert.equal(gone.calls.loadData, 1, 'the list is reloaded');
+  assert.equal(gone.vm.error, GONE_ONE);
+  assert.equal(gone.calls.toasts.length, 0, 'no success toast');
+  assert.ok(!/Try again/.test(gone.vm.error));
+
+  const stuck = renameHarness();
+  stuck.vm.renameName = 'New name';
+  const q = stuck.vm.saveRename();
+  stuck.control.renameItem.resolve({ success: false, status: 500, response: 'rename_failed' });
+  await q;
+  assert.equal(stuck.calls.hide.length, 0, 'the dialog stays open on the reason');
+  assert.equal(stuck.vm.renameFeedback, CANNOT_RENAME);
+  assert.equal(stuck.calls.loadData, 1, 'the list is reloaded');
+  assert.equal(stuck.calls.toasts.length, 0);
+});
+
+checkAsync('A5 deleting keys that are already gone reloads the list and says they no longer exist (IN-03)', async () => {
+  const row = harness();
+  const p = row.vm.deleteRow(row.vm.items[1]);
+  row.control.confirm.resolve(true);
+  await tick();
+  row.control.deleteItems.resolve({ success: false, response: [] });
+  await p;
+  assert.equal(row.vm.error, GONE_ONE);
+  assert.equal(row.calls.loadData, 1, 'the list is reloaded');
+  assert.deepEqual(row.vm.deletingIds, []);
+
+  for (const [count, sentence] of [[1, GONE_ONE], [2, GONE_MANY]]) {
+    const bulk = harness();
+    bulk.vm.selectedIds = bulk.vm.items.slice(0, count).map((k) => k.id);
+    const q = bulk.vm.deleteSelected();
+    bulk.control.confirm.resolve(true);
+    await tick();
+    bulk.control.deleteItems.resolve({ success: false, response: [] });
+    await q;
+    assert.equal(bulk.vm.error, sentence, count + ' selected');
+    assert.equal(bulk.calls.loadData, 1, 'the list is reloaded');
+    assert.deepEqual(bulk.vm.selectedIds, [], 'the vanished keys leave the selection');
+    assert.equal(bulk.vm.bulkDeleting, false);
+  }
 });
 
 // ---------------------------------------------------------------- G: Generate form name feedback (45-04 task 2)

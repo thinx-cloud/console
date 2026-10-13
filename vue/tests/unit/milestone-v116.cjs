@@ -268,7 +268,7 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   // 35 WR-06: deleting deploy keys asks first, and Cancel deletes nothing.
   const deleted=[]; let confirmText='';
   const delPage=Object.assign(keyPage.data(),{items:[{id:'f1',filename:'f1',name:'A'},{id:'f2',filename:'f2',name:'B'}],selectedIds:['f1','f2'],
-    deleteItems:async f=>{deleted.push(f);return {success:true};},loadData:async()=>{},isDeleting:keyPage.methods.isDeleting,
+    deleteItems:async f=>{deleted.push(f);return {success:true};},loadData:async()=>{},isDeleting:keyPage.methods.isDeleting,keysGone:keyPage.methods.keysGone,reloadGone:keyPage.methods.reloadGone,
     $bvModal:{msgBoxConfirm:async text=>{confirmText=text;return false;}}});
   await keyPage.methods.deleteSelected.call(delPage);
   assert.equal(deleted.length,0,'cancelled confirmation deletes nothing'); assert.ok(/2 deploy keys/.test(confirmText),'confirmation names the count');

@@ -69,6 +69,10 @@ import { mapGetters, mapActions } from 'vuex';
 import IconButton from '@/components/IconButton/IconButton';
 import { validateKeyName, keyNameMessage, isReservedKeyName } from '@/utils/keyNames';
 
+// 45-REVIEW IN-03: the key is gone, so "Try again" would never succeed.
+const GONE_ONE = 'This deploy key no longer exists. The list has been refreshed.';
+const GONE_MANY = 'These deploy keys no longer exist. The list has been refreshed.';
+
 export default {
   name: 'Rsakeys',
   components: { IconButton },
@@ -173,6 +177,7 @@ export default {
       this.error = null;
       try {
         const result = await this.deleteItems([item.filename]);
+        if (this.keysGone(result)) { await this.reloadGone(GONE_ONE); return; }
         if (!result || !result.success) { this.error = 'Could not delete the deploy key. Try again.'; return; }
         await this.loadData();
       } catch (e) { this.error = 'Could not delete the deploy key. Try again.'; }
@@ -203,6 +208,11 @@ export default {
       this.error = null;
       try {
         const result = await this.deleteItems(selected.filter(item => ids.includes(item.id)).map(item => item.filename));
+        if (this.keysGone(result)) {
+          this.selectedIds = this.selectedIds.filter(id => !ids.includes(id));
+          await this.reloadGone(ids.length === 1 ? GONE_ONE : GONE_MANY);
+          return;
+        }
         if (!result || !result.success) { this.error = 'Could not delete the deploy keys. Try again.'; return; }
         this.selectedIds = [];
         await this.loadData();
@@ -262,7 +272,28 @@ export default {
         this.$nextTick(() => this.focusRenameInput());
         return;
       }
+      // IN-03: final answers. The key was deleted elsewhere, or its stored public key cannot
+      // be rewritten; retrying never helps, so the list is reloaded and the copy says why.
+      if (result && result.response === 'key_not_found') {
+        this.$bvModal.hide('rsakey-rename-modal');
+        await this.reloadGone(GONE_ONE);
+        return;
+      }
+      if (result && result.response === 'rename_failed') {
+        this.renameError = 'This deploy key cannot be renamed.';
+        await this.loadData();
+        return;
+      }
       this.renameError = 'Could not rename the deploy key. Try again.';
+    },
+    // A revoke answered success:false with an empty list: none of the keys exists any more
+    // (deleted elsewhere). Anything else (no body, a thrown request) may be transient.
+    keysGone(result) {
+      return !!result && result.success === false && Array.isArray(result.response) && result.response.length === 0;
+    },
+    async reloadGone(message) {
+      await this.loadData();
+      if (!this.loadFailed) this.error = message;
     },
     // A failed load clears everything behind one non-dismissible alert (UI-K12); a
     // successful one prunes the selection and the open keys to listed ids (UI-K13).
