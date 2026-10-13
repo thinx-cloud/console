@@ -262,8 +262,10 @@ import IconButton from '@/components/IconButton/IconButton';
 import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import { basePlatform, platformInfo } from '@/utils/platforms';
 
-// D-14 tip for a device without an API key (DEV-05).
-const API_KEY_TIP = 'No API key assigned. The device cannot check in until you assign one.';
+// Tip for a device without an API key (DEV-05). Legacy's text from device.html: keyhash
+// is the key chosen for the device in the console (builds use it); devices register and
+// report with the key they send, so the tip says nothing about connectivity (44 CR-01).
+const API_KEY_TIP = 'No API Key assigned';
 
 // Legacy device symbols b_medium_01.png .. b_medium_73.png (DEV-01, UI-D10).
 const DEVICE_SYMBOLS = require.context('@/assets/thinx/ioticons', false, /^\.\/b_medium_\d\d\.png$/);

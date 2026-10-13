@@ -1166,7 +1166,9 @@ check('compiled theme: icomoon font face (woff, ttf) and only the hammer glyph r
 // ---------------------------------------------------------------- Devices: status, firmware, API-key warning (44-02)
 
 const CC = (n) => String.fromCharCode(n);
-const API_KEY_TIP = 'No API key assigned. The device cannot check in until you assign one.';
+// Legacy's text (device.html "No API Key assigned"); keyhash is a console-chosen key used by
+// builds, not a check-in precondition, so the tip makes no claim about check-in (44 CR-01).
+const API_KEY_TIP = 'No API Key assigned';
 const LONG_STATUS = Array.from({ length: 200 }, (_, i) => CC(97 + (i % 26))).join('');
 // Status fixtures are built with String.fromCharCode, so this file holds no control-character escapes.
 const STATUS_DEVICES = [
@@ -1331,6 +1333,7 @@ check('Devices.vue: no control-character escape or regex, no raw HTML, tip defin
   const bs = CC(92);
   [bs + 'x0', bs + 'x1', bs + 'u000', bs + 'u001', 'v-html'].forEach((s) => assert.equal(source.indexOf(s), -1, 'found ' + s));
   assert.equal(source.split(API_KEY_TIP).length - 1, 1, 'API-key tip defined once');
+  assert.doesNotMatch(source, /check in|check-in/i, 'no check-in claim in Devices.vue');
   assert.ok(source.split('fa fa-heartbeat').length - 1 >= 2, 'heartbeat in table and grid');
 });
 
