@@ -910,7 +910,170 @@ function expectDecls(selector, want) {
 }
 
 // Referenced by the checks that later plans add; kept so the harness stays whole.
-void expand; void expectDecls;
+void expand;
+
+// ---------------------------------------------------------------- C: add, create, styles (46-02 task 3)
+
+const createModalOf = (vnode) => one(nodesOf(vnode).filter((n) => n.tag === 'b-modal' && attrsOf(n).id === 'create-transformer-modal'), 'create-transformer-modal');
+
+// A page vm whose create runs against a controllable createItem.
+function createHarness(state = {}) {
+  const h = harness(state);
+  h.calls.createItem = [];
+  h.vm.createItem = (name) => {
+    h.calls.createItem.push(name);
+    h.control.createItem = deferred();
+    return h.control.createItem.promise;
+  };
+  return h;
+}
+
+const okEvent = () => { const e = { prevented: 0 }; e.preventDefault = () => { e.prevented++; }; return e; };
+
+check('C1 Add Transformer is a green button with a plus glyph and visible text in div.settings-add', () => {
+  const h = harness();
+  const vnode = rerender(h.vm);
+  const top = rootChildren(vnode);
+  const rows = top.filter((n) => classList(n).includes('settings-add'));
+  assert.equal(rows.length, 1, 'one div.settings-add at the top level');
+  assert.equal(rows[0].tag, 'div');
+  const btn = one(byCy(rows[0], 'transformer-add'), 'transformer-add');
+  assert.equal(btn.tag, 'b-button');
+  assert.equal(attrsOf(btn).variant, 'success');
+  const kids = (btn.children || []).filter((n) => n.tag);
+  assert.deepEqual(kids.map((n) => n.tag), ['i', 'span'], 'glyph then text');
+  assert.deepEqual(classList(kids[0]).sort(), ['fa', 'fa-plus']);
+  assert.equal(attrsOf(kids[0])['aria-hidden'], 'true');
+  assert.ok(classList(kids[1]).includes('button-text'), 'span.button-text');
+  assert.equal(textOf(kids[1]), 'Add Transformer');
+  assert.ok(!top.some((n) => n.tag === 'p' && byCy(n, 'transformer-add').length), 'no <p> wrapper');
+  click(btn);
+  assert.deepEqual(h.calls.show, ['create-transformer-modal'], 'opens the create dialog');
+});
+
+check('C2 the create dialog says Name, has verb + noun buttons and its own feedback line', () => {
+  const { vnode } = renderTransformers();
+  const modal = createModalOf(vnode);
+  const a = attrsOf(modal);
+  assert.deepEqual(
+    { title: a.title, ok: a['ok-title'], okVariant: a['ok-variant'], cancel: a['cancel-title'], cancelVariant: a['cancel-variant'], okDisabled: a['ok-disabled'] },
+    { title: 'Add Transformer', ok: 'Create Transformer', okVariant: 'success', cancel: 'Close without adding', cancelVariant: 'default', okDisabled: false });
+  const busy = attrsOf(createModalOf(renderTransformers({ creating: true }).vnode));
+  assert.equal(busy['ok-title'], 'Creating' + ELLIPSIS);
+  assert.equal(busy['ok-disabled'], true, 'OK disabled while creating');
+  const group = one(nodesOf(modal).filter((n) => n.tag === 'b-form-group'), 'b-form-group');
+  assert.equal(attrsOf(group).label, 'Name');
+  assert.equal(attrsOf(group)['label-for'], 'transformer-name');
+  const input = one(byCy(modal, 'transformer-create-input'), 'transformer-create-input');
+  assert.equal(input.tag, 'b-form-input');
+  assert.equal(attrsOf(input).id, 'transformer-name');
+  assert.equal(attrsOf(input).placeholder, 'e.g. Battery Parser');
+  assert.equal(attrsOf(input)['aria-describedby'], 'transformer-create-feedback');
+  assert.equal(byTag(modal, 'b-alert').length, 0, 'no alert inside the dialog');
+  const kids = (modal.children || []).filter((n) => n.tag);
+  const at = kids.indexOf(group);
+  const feedback = kids[at + 1];
+  assert.ok(feedback, 'a line follows the group');
+  assert.equal(feedback.tag, 'p');
+  assert.equal(attrsOf(feedback).id, 'transformer-create-feedback');
+  assert.ok(classList(feedback).includes('dialog-feedback'), 'p.dialog-feedback');
+  assert.equal(attrsOf(feedback)['aria-live'], 'polite');
+  assert.equal(textOf(feedback), '', 'silent until there is something to say');
+});
+
+checkAsync('C3 create validates in the dialog, sends once, keeps the dialog on failure and never writes the page error', async () => {
+  const pageError = 'an earlier action error';
+  const h = createHarness({ error: pageError });
+  for (const blank of ['', '   ']) {
+    h.vm.form.alias = blank;
+    const e = okEvent();
+    await h.vm.create(e);
+    assert.equal(e.prevented, 1, 'the dialog stays while validating');
+    assert.equal(h.vm.createError, 'Enter a transformer name.');
+  }
+  h.vm.form.alias = '  ' + TRANSFORMERS[0].alias + ' ';
+  await h.vm.create(okEvent());
+  assert.equal(h.vm.createError, 'A transformer with this name already exists.');
+  assert.deepEqual(h.calls.createItem, [], 'nothing sent for a blank or duplicate name');
+  assert.equal(textOf(one(byCy(rerender(h.vm), 'transformer-create-feedback'), 'feedback')), 'A transformer with this name already exists.');
+  for (const outcome of ['answer', 'throw']) {
+    h.vm.form.alias = ' Pressure ';
+    const first = h.vm.create(okEvent());
+    const second = h.vm.create(okEvent());
+    await tick();
+    assert.equal(h.calls.createItem.length, 1, outcome + ': two rapid calls send one createItem');
+    assert.equal(h.calls.createItem[0], 'Pressure', 'the trimmed name is sent');
+    if (outcome === 'answer') h.control.createItem.resolve({ success: false });
+    else h.control.createItem.reject(new Error('offline'));
+    await first; await second;
+    assert.equal(h.vm.createError, 'Could not create the transformer. Try again.');
+    assert.deepEqual(h.calls.hide, [], outcome + ': the dialog stays open');
+    assert.equal(h.vm.creating, false);
+    h.calls.createItem = [];
+  }
+  h.control.storeItems = items().concat([{ id: 'utid-new', utid: 'utid-new', alias: 'Pressure', body: 'eA==' }]);
+  h.vm.form.alias = 'Pressure';
+  const run = h.vm.create(okEvent());
+  await tick();
+  h.control.createItem.resolve({ success: true, utid: 'utid-new' });
+  await run;
+  assert.deepEqual(h.calls.hide, ['create-transformer-modal'], 'success closes the dialog');
+  assert.equal(h.vm.form.alias, '', 'the field is reset');
+  assert.equal(h.vm.createError, null);
+  assert.deepEqual(h.vm.items.map((t) => t.utid), TRANSFORMERS.map((t) => t.utid).concat(['utid-new']), 'the store list is shown');
+  assert.equal(h.calls.loadData, 0, 'no second fetch after a refreshed write');
+  h.vm.form.alias = 'Wind';
+  const stale = h.vm.create(okEvent());
+  await tick();
+  h.control.createItem.resolve({ success: true, refreshed: false });
+  await stale;
+  assert.equal(h.calls.loadData, 1, 'refreshed:false reloads once');
+  assert.equal(h.vm.error, pageError, 'create never writes the page error');
+});
+
+check('C4 compiled theme: white wrench glyph, bulk toolbar, button text, add row and the transformer name', () => {
+  const white = expectDecls('.icon-button .icon-white', {});
+  assert.match(value(white, 'color') || '', /^#(fff|ffffff)$/i, '.icon-white color');
+  const bar = expectDecls('.bulk-toolbar', { display: 'flex', 'justify-content': 'flex-end', 'align-items': 'center', 'margin-bottom': '8px' });
+  assert.equal(value(bar, 'gap'), undefined, 'the one-button toolbar has no gap');
+  expectDecls('.button-text', { 'margin-left': '4px', 'font-weight': '400' });
+  expectDecls('.settings-add', { 'margin-bottom': '16px' });
+  expectDecls('.transformer-name', {
+    display: 'block', 'max-width': '160px', overflow: 'hidden', 'text-overflow': 'ellipsis',
+    'white-space': 'nowrap', 'unicode-bidi': 'isolate',
+  });
+  const md = allRules().filter((r) => /min-width:\s*768px/.test(r.media) && r.selectors.some((x) => loose(x) === '.transformer-name'));
+  assert.equal(value(md.map((r) => r.body), 'max-width'), '240px', '.transformer-name from 768px');
+});
+
+check('C5 compiled theme: dialog stack, label, feedback and help lines, typed-confirm names, word and glyph', () => {
+  expectDecls('.dialog-stack', { display: 'flex', 'flex-direction': 'column', gap: '8px' });
+  expectDecls('.dialog-stack > *', { margin: '0' });
+  expectDecls('.dialog-label', { display: 'block', margin: '0 0 4px' });
+  const fb = expectDecls('.dialog-feedback', { margin: '4px 0 0', 'font-size': '.875rem', 'font-weight': '400' });
+  assert.match(value(fb, 'color') || '', /^#ff8a8a$/i, '.dialog-feedback color');
+  expectDecls('.dialog-feedback:empty', { display: 'none' });
+  expectDecls('.dialog-help', { margin: '4px 0 0', color: 'inherit', 'font-size': '.875rem', 'font-weight': '400' });
+  expectDecls('.typed-confirm__names', { 'max-height': '160px', 'overflow-y': 'auto', 'padding-left': '16px', 'overflow-wrap': 'anywhere' });
+  const word = expectDecls('.typed-confirm__word', { 'font-size': '.875rem', 'font-weight': '400' });
+  assert.match(value(word, 'font-family') || '', /monospace/, '.typed-confirm__word monospace');
+  const glyph = expectDecls('.typed-confirm__usage .fa-warning', { 'margin-right': '4px' });
+  assert.match(value(glyph, 'color') || '', /^#f0ad4e$/i, 'usage glyph colour');
+});
+
+check('C6 Transformers.vue holds no forbidden string; theme.scss imports settings-pages once, after deploy-keys', () => {
+  const source = read('pages/Transformers/Transformers.vue');
+  const forbidden = ['Alias', 'alias already exists', 'text-muted', 'ok-title="Create"', 'Delete this transformer?', 'Failed to',
+    '>Cancel<', '>Save<', 'class="mr-2"', 'msgBoxConfirm', 'v-html', 'innerHTML'];
+  const found = forbidden.filter((x) => source.includes(x));
+  assert.deepEqual(found, [], 'forbidden strings in Transformers.vue');
+  const theme = read('styles/theme.scss');
+  const imports = theme.split('\n').map((l) => l.trim()).filter((l) => /^@import/.test(l));
+  const at = imports.indexOf("@import 'settings-pages';");
+  assert.equal(imports.filter((l) => l === "@import 'settings-pages';").length, 1, 'imported once');
+  assert.equal(imports[at - 1], "@import 'deploy-keys';", 'right after deploy-keys');
+  assert.ok(fs.existsSync(path.join(SRC, 'styles', '_settings-pages.scss')), 'the partial exists');
+});
 
 // ---------------------------------------------------------------- run
 
