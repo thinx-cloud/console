@@ -356,6 +356,255 @@ checkAsync('A4 a pending row delete disables that row only; success reloads, fai
   }
 });
 
+// ---------------------------------------------------------------- B: icon actions and columns (45-03 task 2)
+
+const DASH = String.fromCharCode(0x2014);
+const iconButtonsOf = (top) => componentsOf(top, 'IconButton');
+const actionOf = (row, cy) => iconButtonsOf(row).filter((n) => cyOf(n) === cy)[0];
+const groupOf = (vnode, item) => byCy(vnode, 'deploy-key-group').find((g) => textOf(byCy(g, 'deploy-key-row')[0]).includes(item.name));
+const directText = (n) => (n.children || []).filter((c) => !c.tag).map((c) => c.text).join('');
+
+check('B1 header: sr-only Select, then Name, Generated, Public key, Actions; deploy-keys-table with an sr-only caption', () => {
+  const { vnode } = renderKeys();
+  const tables = byTag(vnode, 'table');
+  assert.equal(tables.length, 1, 'one table');
+  const cls = classList(tables[0]);
+  assert.ok(cls.includes('table') && cls.includes('deploy-keys-table'), 'table classes: ' + cls.join(' '));
+  assert.ok(!cls.includes('table-striped'), 'no Bootstrap striped-table class');
+  const captions = byTag(tables[0], 'caption');
+  assert.equal(captions.length, 1, 'one caption');
+  assert.ok(classList(captions[0]).includes('sr-only'), 'caption is sr-only');
+  assert.equal(textOf(captions[0]), 'Deploy keys');
+  const heads = byTag(tables[0], 'th');
+  assert.deepEqual(heads.map((th) => textOf(th)), ['Select', 'Name', 'Generated', 'Public key', 'Actions']);
+  const first = (heads[0].children || []).filter((c) => c.tag || (c.text && c.text.trim()));
+  assert.equal(first.length, 1, 'the Select header holds one element');
+  assert.equal(first[0].tag, 'span');
+  assert.ok(classList(first[0]).includes('sr-only'), 'Select text is screen-reader only');
+});
+
+check('B2 the Name cell is span.key-name[dir=auto] with the full name as title', () => {
+  const { vnode } = renderKeys();
+  KEYS.forEach((item) => {
+    const row = rowOf(vnode, item);
+    const name = cellsOf(row)[1];
+    const spans = byCy(name, 'key-name');
+    assert.equal(spans.length, 1, item.name + ' one key-name');
+    const span = spans[0];
+    assert.equal(span.tag, 'span');
+    assert.ok(classList(span).includes('key-name'), 'class key-name');
+    assert.equal(attrsOf(span).dir, 'auto');
+    assert.equal(attrsOf(span).title, item.name);
+    assert.equal(directText(span), item.name);
+  });
+});
+
+check('B3 Generated and Public key cells are text-nowrap; bad dates and fingerprints render a dash', () => {
+  const { vm, vnode } = renderKeys();
+  KEYS.forEach((item) => {
+    const cells = cellsOf(rowOf(vnode, item));
+    assert.ok(classList(cells[2]).includes('text-nowrap'), 'Generated is text-nowrap');
+    assert.equal(textOf(cells[2]), vm.formatDate(item.date));
+    assert.notEqual(vm.formatDate(item.date), DASH, 'a valid date is formatted');
+    assert.ok(classList(cells[3]).includes('text-nowrap'), 'Public key is text-nowrap');
+    const fp = byCy(cells[3], 'key-fingerprint');
+    assert.equal(fp.length, 1, 'one key-fingerprint');
+    assert.equal(fp[0].tag, 'span');
+    assert.ok(classList(fp[0]).includes('key-fingerprint'));
+    assert.equal(attrsOf(fp[0]).title, 'SHA-256 fingerprint of the public key');
+    assert.equal(directText(fp[0]), item.fingerprint);
+  });
+  [undefined, '', 'not a date', null].forEach((d) => assert.equal(vm.formatDate(d), DASH, 'formatDate(' + JSON.stringify(d) + ')'));
+  [null, 42, ''].forEach((bad) => {
+    const items = keyItems();
+    items[0].fingerprint = bad;
+    items[0].date = 'not a date';
+    const r = renderKeys({ items });
+    const cells = cellsOf(rowOf(r.vnode, items[0]));
+    assert.equal(directText(byCy(cells[3], 'key-fingerprint')[0]), DASH, 'fingerprint ' + JSON.stringify(bad));
+    assert.equal(textOf(cells[2]), DASH, 'unparseable date');
+  });
+});
+
+check('B4 actions: Show key, Copy key, Delete in that order, Show wired to its key text', () => {
+  const { vnode } = renderKeys();
+  KEYS.forEach((item) => {
+    const cell = cellsOf(rowOf(vnode, item))[4];
+    const buttons = iconButtonsOf(cell);
+    assert.deepEqual(buttons.map(cyOf), ['key-show', 'key-copy', 'key-delete']);
+    const show = buttons[0];
+    assert.equal(propsOf(show).icon, 'fa fa-eye');
+    assert.equal(propsOf(show).label, 'Show key');
+    assert.equal(propsOf(show).variant, undefined, 'Show uses the default variant');
+    assert.equal(attrsOf(show)['aria-expanded'], 'false');
+    assert.equal(attrsOf(show)['aria-controls'], 'key-text-' + item.id);
+    const copy = buttons[1];
+    assert.equal(propsOf(copy).icon, 'fa fa-copy');
+    assert.equal(propsOf(copy).label, 'Copy key');
+    assert.equal(propsOf(copy).variant, undefined, 'Copy uses the default variant');
+    assert.ok(!propsOf(show).disabled && !propsOf(copy).disabled, 'enabled with a pubkey');
+  });
+  const rows = byCy(vnode, 'deploy-key-row');
+  rows.forEach((row) => assert.equal(nodesOf(row).filter((n) => n.tag === 'b-button').length, 0, 'no text buttons left in the row'));
+});
+
+check('B5 Show key toggles a detail row with the key text inline; several can be open; no modal opens', () => {
+  const { vm } = renderKeys();
+  vm.$bvModal = { show: () => { throw new Error('the row eye must not open a modal'); } };
+  const [a, b] = vm.items;
+  vm.toggleKey(a);
+  let vnode = rerender(vm);
+  const group = groupOf(vnode, a);
+  const details = byClass(group, 'key-detail-row');
+  assert.equal(details.length, 1, 'one detail row in the group');
+  assert.equal(details[0].tag, 'tr');
+  const tds = byTag(details[0], 'td');
+  assert.equal(tds.length, 1, 'one cell');
+  assert.equal(String(attrsOf(tds[0]).colspan), '5');
+  const pres = byCy(tds[0], 'key-text');
+  assert.equal(pres.length, 1, 'one key-text');
+  assert.equal(pres[0].tag, 'pre');
+  assert.ok(classList(pres[0]).includes('key-text'));
+  assert.equal(attrsOf(pres[0]).id, 'key-text-' + a.id);
+  assert.equal(directText(pres[0]), a.pubkey);
+  const show = actionOf(byCy(group, 'deploy-key-row')[0], 'key-show');
+  assert.equal(propsOf(show).icon, 'fa fa-eye-slash');
+  assert.equal(propsOf(show).label, 'Hide key');
+  assert.equal(attrsOf(show)['aria-expanded'], 'true');
+  assert.equal(byClass(groupOf(vnode, b), 'key-detail-row').length, 0, 'the other key stays closed');
+  vm.toggleKey(b);
+  vnode = rerender(vm);
+  assert.equal(byCy(vnode, 'key-text').length, 2, 'two keys open at once');
+  vm.toggleKey(a);
+  vnode = rerender(vm);
+  assert.equal(byClass(groupOf(vnode, a), 'key-detail-row').length, 0, 'a second toggle closes it');
+  assert.equal(byClass(groupOf(vnode, b), 'key-detail-row').length, 1, 'the other stays open');
+  const handler = actionOf(byCy(groupOf(vnode, b), 'deploy-key-row')[0], 'key-show').componentOptions.listeners.click;
+  handler();
+  assert.equal(byCy(rerender(vm), 'key-text').length, 0, 'the click handler toggles too');
+});
+
+check('B6 an empty or non-string pubkey disables Show and Copy; a deleting key disables all three', () => {
+  ['', null, 42].forEach((bad) => {
+    const items = keyItems();
+    items[0].pubkey = bad;
+    const { vnode } = renderKeys({ items });
+    const row = rowOf(vnode, items[0]);
+    assert.equal(propsOf(actionOf(row, 'key-show')).disabled, true, 'Show disabled for ' + JSON.stringify(bad));
+    assert.equal(propsOf(actionOf(row, 'key-copy')).disabled, true, 'Copy disabled for ' + JSON.stringify(bad));
+    assert.equal(propsOf(actionOf(row, 'key-show')).label, 'Show key', 'label unchanged');
+    assert.equal(propsOf(actionOf(row, 'key-copy')).label, 'Copy key', 'label unchanged');
+    assert.ok(!propsOf(actionOf(row, 'key-delete')).disabled, 'Delete stays enabled');
+  });
+  const items = keyItems();
+  const { vnode } = renderKeys({ items, deletingIds: [items[1].id] });
+  const busy = rowOf(vnode, items[1]);
+  ['key-show', 'key-copy', 'key-delete'].forEach((cy) => assert.equal(propsOf(actionOf(busy, cy)).disabled, true, cy + ' disabled while deleting'));
+  const idle = rowOf(vnode, items[0]);
+  ['key-show', 'key-copy', 'key-delete'].forEach((cy) => assert.ok(!propsOf(actionOf(idle, cy)).disabled, cy + ' enabled on the other row'));
+});
+
+// navigator is a global getter in recent Node; replace it for one check.
+async function withNavigator(nav, fn) {
+  const prev = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', { value: nav, configurable: true, writable: true });
+  try { return await fn(); } finally {
+    if (prev) Object.defineProperty(globalThis, 'navigator', prev); else delete globalThis.navigator;
+  }
+}
+
+checkAsync('B7 copy: success toasts Copied to clipboard, a total failure shows the UI-SPEC copy error', async () => {
+  const { vm } = renderKeys();
+  const toasts = [];
+  vm.$toasted = { show: (text, opts) => toasts.push([text, opts]) };
+  const written = [];
+  await withNavigator({ clipboard: { writeText: async (v) => { written.push(v); } } }, () => vm.copyToClipboard(KEYS[0].pubkey));
+  assert.deepEqual(written, [KEYS[0].pubkey]);
+  assert.deepEqual(toasts, [['Copied to clipboard', { type: 'success', duration: 2000 }]]);
+  assert.equal(vm.error, null);
+  vm.copyFallback = () => { throw new Error('copy failed'); };
+  await withNavigator({ clipboard: { writeText: async () => { throw new Error('denied'); } } }, () => vm.copyToClipboard(KEYS[0].pubkey));
+  assert.equal(vm.error, 'Could not copy the key. Use Show key and copy the text manually.');
+  assert.equal(toasts.length, 1, 'no success toast after a failure');
+});
+
+// ---------------------------------------------------------------- compiled theme
+
+const sass = require('sass');
+
+const compiledCss = lazy(() => sass.compileString('@import "theme";\n', {
+  loadPaths: [path.join(SRC, 'styles')],
+  style: 'compressed',
+  quietDeps: true,
+  logger: sass.Logger.silent,
+}).css);
+
+// Flat list of { media, selectors, body } for every style rule (copied from device-list-parity.cjs).
+function cssRules(text) {
+  const rules = [];
+  (function parse(chunk, media) {
+    let i = 0;
+    while (i < chunk.length) {
+      const open = chunk.indexOf('{', i);
+      if (open === -1) break;
+      const prelude = chunk.slice(i, open).replace(/^[;\s]+/, '').trim();
+      let depth = 0;
+      let end = open;
+      for (; end < chunk.length; end++) {
+        const ch = chunk[end];
+        if (ch === '"' || ch === "'") { const q = ch; end++; while (end < chunk.length && chunk[end] !== q) { if (chunk[end] === '\\') end++; end++; } continue; }
+        if (ch === '{') depth++;
+        else if (ch === '}') { depth--; if (depth === 0) break; }
+      }
+      const body = chunk.slice(open + 1, end);
+      if (/^@media/.test(prelude)) parse(body, prelude);
+      else if (prelude[0] !== '@') rules.push({ media, selectors: prelude.split(',').map((x) => x.trim()), body });
+      i = end + 1;
+    }
+  }(text, ''));
+  return rules;
+}
+
+const allRules = lazy(() => cssRules(compiledCss()));
+
+const loose = (sel) => sel.replace(/\s*([>+~])\s*/g, '$1').replace(/\s+/g, ' ').trim();
+function decls(selector, media = '') {
+  const want = loose(selector);
+  return allRules().filter((r) => r.media === media && r.selectors.some((s) => loose(s) === want)).map((r) => r.body);
+}
+
+function value(bodies, prop) {
+  let found;
+  bodies.forEach((body) => body.split(';').forEach((d) => {
+    const at = d.indexOf(':');
+    if (at !== -1 && d.slice(0, at).trim() === prop) found = d.slice(at + 1).trim();
+  }));
+  return found;
+}
+
+function expectDecls(selector, want) {
+  const bodies = decls(selector);
+  assert.ok(bodies.length, selector + ' has a rule');
+  Object.keys(want).forEach((p) => assert.equal(value(bodies, p), want[p], selector + ' ' + p));
+  return bodies;
+}
+
+check('B8 compiled theme: key-name ellipsis 160/240px, key-text wraps, monospace fingerprint, group stripes', () => {
+  expectDecls('.key-name', {
+    display: 'block', 'max-width': '160px', overflow: 'hidden', 'text-overflow': 'ellipsis',
+    'white-space': 'nowrap', 'unicode-bidi': 'isolate',
+  });
+  const md = allRules().filter((r) => /min-width:\s*768px/.test(r.media) && r.selectors.some((s) => loose(s) === '.key-name'));
+  assert.equal(value(md.map((r) => r.body), 'max-width'), '240px', '.key-name from 768px');
+  const text = expectDecls('.key-text', { 'white-space': 'pre-wrap', 'word-break': 'break-all', padding: '8px', margin: '0' });
+  assert.match(value(text, 'font-family') || '', /monospace/, '.key-text monospace');
+  const fp = expectDecls('.key-fingerprint', { 'font-size': '.875rem' });
+  assert.match(value(fp, 'font-family') || '', /monospace/, '.key-fingerprint monospace');
+  const stripe = decls('.deploy-keys-table>tbody.key-group:nth-of-type(odd)>tr');
+  assert.ok(stripe.length, 'group stripe rule');
+  assert.match(value(stripe, 'background-color') || '', /^rgba\(0,\s*0,\s*0,\s*0?\.05\)$/, 'stripe colour');
+});
+
 // ---------------------------------------------------------------- run
 
 (async () => {
