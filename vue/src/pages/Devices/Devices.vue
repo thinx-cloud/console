@@ -87,7 +87,7 @@
             </td>
             <td>{{ device.alias }}</td>
             <td><PlatformBullet :platform="device.platform" /></td>
-            <td class="firmware-cell" :title="device.firmware || null"><i class="fa fa-cogs" aria-hidden="true"></i>{{ device.firmware || '—' }}</td>
+            <td><span class="firmware-cell" :title="device.firmware || null"><i class="fa fa-cogs" aria-hidden="true"></i>{{ device.firmware || '—' }}</span></td>
             <td>
               <span class="device-status">
                 <i class="fa fa-heartbeat" aria-hidden="true"></i>

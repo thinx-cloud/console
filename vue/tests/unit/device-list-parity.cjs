@@ -1489,16 +1489,22 @@ check('grid: the same status line in every card', () => {
   cards.forEach((card) => checkStatus(card, statusDeviceOf(card, vm)));
 });
 
-check('table: firmware cell with cogs, full text as title, dash when empty', () => {
+// IN-03: max-width on a <td> is undefined in CSS 2.1, so the 240px limit sits on a block inside it.
+check('table: firmware block with cogs inside the cell, full text as title, dash when empty', () => {
   const { vm, vnode } = renderStatus('list');
   byCy(vnode, 'device-row').forEach((row) => {
     const dev = statusDeviceOf(row, vm);
     const td = (row.children || []).filter((n) => n.tag === 'td')[4];
-    assert.deepEqual(classList(td), ['firmware-cell'], dev.alias + ' firmware-cell');
+    assert.deepEqual(classList(td), [], dev.alias + ' the cell carries no width class');
+    assert.ok(attrsOf(td).title == null, dev.alias + ' no title on the cell');
+    const inner = tagged(td);
+    assert.equal(inner.length, 1, dev.alias + ' one block in the cell');
+    assert.equal(inner[0].tag, 'span');
+    assert.deepEqual(classList(inner[0]), ['firmware-cell'], dev.alias + ' firmware-cell');
     const want = EXPECT_STATUS[dev.udid].firmware;
-    if (want) assert.equal(attrsOf(td).title, want, dev.alias + ' firmware title');
-    else assert.ok(attrsOf(td).title == null, dev.alias + ' no firmware title');
-    checkCogs(td, dev);
+    if (want) assert.equal(attrsOf(inner[0]).title, want, dev.alias + ' firmware title');
+    else assert.ok(attrsOf(inner[0]).title == null, dev.alias + ' no firmware title');
+    checkCogs(inner[0], dev);
   });
 });
 
@@ -1592,7 +1598,7 @@ check('compiled CSS: warning colours reach 3:1, firmware ellipsis at 240px, 8px 
     ratios.push(sel + ' ' + ratio.toFixed(2));
   });
   const fw = decls('.firmware-cell');
-  const want = { 'max-width': '240px', overflow: 'hidden', 'text-overflow': 'ellipsis', 'white-space': 'nowrap' };
+  const want = { display: 'block', 'max-width': '240px', overflow: 'hidden', 'text-overflow': 'ellipsis', 'white-space': 'nowrap' };
   Object.keys(want).forEach((p) => assert.equal(value(fw, p), want[p], '.firmware-cell ' + p));
   assert.equal(value(decls('.device-firmware'), 'overflow-wrap'), 'anywhere');
   assert.equal(value(declsLoose('.device-status > * + *'), 'margin-left'), '8px', 'status gap');

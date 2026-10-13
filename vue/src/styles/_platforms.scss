@@ -135,8 +135,11 @@ $platform-colors: (
   color: #F0AD4E;
 }
 
-// Firmware (UI-D15): ellipsised table cell with the full text as tip, wrapping grid line.
+// Firmware (UI-D15): ellipsised at 240px in the table with the full text as tip, wrapping
+// grid line. The limit sits on a block inside the <td>: max-width on a table cell is
+// undefined in CSS 2.1 and the cell grew with spare width instead (44 IN-03).
 .firmware-cell {
+  display: block;
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
