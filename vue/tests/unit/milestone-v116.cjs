@@ -67,7 +67,10 @@ const transformers = load('store/transformers.js');
 const keys = load('store/rsakeys.js');
 const device = load('pages/Devices/DeviceDetail.vue');
 const dialog = load('components/BuildLogDialog/BuildLogDialog.vue',{buildLogText:text});
-const keyPage = load('pages/Rsakeys/Rsakeys.vue', { IconButton: {} });
+// Phase 45: the page imports the client key-name check; load the real module.
+const keyNamesModule = {exports:{}};
+new Function('module', fs.readFileSync(path.join(root,'utils/keyNames.js'),'utf8').replace(/export function (\w+)/g,'module.exports.$1 = function $1').replace(/export const (\w+) =/g,'const $1 = module.exports.$1 ='))(keyNamesModule);
+const keyPage = load('pages/Rsakeys/Rsakeys.vue', { IconButton: {}, validateKeyName: keyNamesModule.exports.validateKeyName, keyNameMessage: keyNamesModule.exports.keyNameMessage });
 load('components/Header/Header.vue'); load('components/Notifications/Notifications.vue');
 const history = load('pages/History/History.vue'); load('pages/Transformers/Transformers.vue');
 // 35 WR-01: build rows stay table rows; row click ignores inner controls and text selection.
@@ -311,6 +314,8 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   await keyPage.methods.create.call(page); assert.equal(page.createdPubkey,'public-key'); assert.equal(page.creating,false);
   page.keyName='retry'; page.createItem=async()=>{throw new Error('offline');}; await keyPage.methods.create.call(page);
   assert.equal(page.creating,false); assert.ok(page.error);
+  page.keyName='a'+String.fromCharCode(9)+'b'; page.error=null; page.createItem=async()=>{throw new Error('a refused name must not be sent');};
+  await keyPage.methods.create.call(page); assert.equal(page.error,null,'a name the client check refuses sends nothing');
   // G-36-3: device Build History is summary-only; the full log opens only from the row's button.
   const zDev = { udid: 'udid-z', alias: 'zephyr-01', last_build_id: 'build-1', environment: {} };
   const zLogs = ['compiling module 1 of 12', 'linking firmware', 'error: missing header', 'other device output'];

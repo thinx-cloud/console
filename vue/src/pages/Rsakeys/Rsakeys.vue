@@ -4,9 +4,10 @@
     <h1 class="page-title">Settings - <span class="fw-semi-bold">Deploy Keys</span></h1>
     <b-form inline class="key-create-form" @submit.prevent="create">
       <label for="deploy-key-name">Key name</label>
-      <b-form-input id="deploy-key-name" v-model="keyName" maxlength="120" required placeholder="e.g. Firmware Repository" :disabled="creating" />
-      <b-button type="submit" variant="success" :disabled="creating || !keyName.trim()">{{ creating ? 'Generating…' : 'Generate Deploy Key' }}</b-button>
+      <b-form-input id="deploy-key-name" v-model="keyName" maxlength="120" required placeholder="e.g. Firmware Repository" :disabled="creating" aria-describedby="deploy-key-name-feedback" :aria-invalid="String(!!(createServerReason || createClientReason))" />
+      <b-button type="submit" variant="success" :disabled="creating || !createNameValid">{{ creating ? 'Generating…' : 'Generate Deploy Key' }}</b-button>
     </b-form>
+    <p id="deploy-key-name-feedback" class="key-name-feedback" aria-live="polite" data-cy="create-key-feedback">{{ createFeedback }}</p>
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
     <b-alert v-if="loadFailed" variant="danger" show data-cy="keys-load-error">Could not load deploy keys. Refresh to retry.</b-alert>
     <p>Deploy keys grant access to private Git repositories. Add the public key to your repository's deploy keys.</p>
@@ -71,11 +72,23 @@ import { validateKeyName, keyNameMessage } from '@/utils/keyNames';
 export default {
   name: 'Rsakeys',
   components: { IconButton },
-  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createdPubkey: '', shownName: '', deletingIds: [], confirming: false, shownIds: [], bulkDeleting: false, renameTarget: null, renameName: '', renaming: false, renameServerReason: null, renameError: null }; },
+  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createServerReason: null, createdPubkey: '', shownName: '', deletingIds: [], confirming: false, shownIds: [], bulkDeleting: false, renameTarget: null, renameName: '', renaming: false, renameServerReason: null, renameError: null }; },
   computed: {
     bulkLabel() {
       if (this.bulkDeleting) return 'Deleting…';
       return this.selectedIds.length ? 'Delete selected (' + this.selectedIds.length + ')' : 'Delete selected';
+    },
+    // Generate form (UI-K09): an empty field only disables Generate; any other refused
+    // name is named under the form, and a server invalid_key_name reason replaces it
+    // until the name changes.
+    createNameValid() { return validateKeyName(this.keyName).ok; },
+    createClientReason() {
+      const check = validateKeyName(this.keyName);
+      return check.ok || check.reason === 'empty' ? null : check.reason;
+    },
+    createFeedback() {
+      const reason = this.createServerReason || this.createClientReason;
+      return reason ? keyNameMessage(reason) : '';
     },
     // Rename dialog (UI-K07..UI-K09): the client check runs as the user types; a server
     // invalid_key_name reason or the request error replaces it until the name changes.
@@ -91,6 +104,7 @@ export default {
     },
   },
   watch: {
+    keyName() { this.createServerReason = null; },
     renameName() {
       this.renameServerReason = null;
       this.renameError = null;
@@ -100,18 +114,28 @@ export default {
   methods: {
     ...mapGetters({ getItems: 'rsakeys/getItems' }),
     ...mapActions({ fetchItems: 'rsakeys/fetchItems', createItem: 'rsakeys/createItem', deleteItems: 'rsakeys/deleteItems', renameItem: 'rsakeys/renameItem' }),
+    // The client check runs first; the server stays the authority, so its invalid_key_name
+    // reason is shown under the form and the typed name is kept (KEY-04, D-07).
     async create() {
-      if (this.creating || !this.keyName.trim()) return;
+      if (this.creating || !validateKeyName(this.keyName).ok) return;
       this.creating = true;
       this.error = null;
+      this.createServerReason = null;
       try {
         const result = await this.createItem(this.keyName.trim());
-        if (!result || !result.success) { this.error = 'Failed to generate deploy key.'; return; }
-        const key = result.response;
-        if (key && key.pubkey) this.showKey(key);
-        this.keyName = '';
-        await this.loadData();
-      } catch (e) { this.error = 'Failed to generate deploy key.'; }
+        if (result && result.success) {
+          const key = result.response;
+          if (key && key.pubkey) this.showKey(key);
+          this.keyName = '';
+          await this.loadData();
+          return;
+        }
+        if (result && result.response === 'invalid_key_name') {
+          this.createServerReason = typeof result.reason === 'string' && result.reason ? result.reason : 'unknown';
+          return;
+        }
+        this.error = 'Could not generate the deploy key. Try again.';
+      } catch (e) { this.error = 'Could not generate the deploy key. Try again.'; }
       finally { this.creating = false; }
     },
     // The created-key result modal only; row keys open inline (UI-K06).

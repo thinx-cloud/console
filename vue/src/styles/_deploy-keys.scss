@@ -1,4 +1,4 @@
-// Phase 45 Deploy Keys page (UI-SPEC UI-K02..UI-K06, UI-K11, UI-K15).
+// Phase 45 Deploy Keys page (UI-SPEC UI-K02..UI-K06, UI-K09, UI-K11, UI-K15).
 
 // Stripes per key group, so an open detail row never shifts the stripes below it (UI-K02).
 .deploy-keys-table > tbody.key-group:nth-of-type(odd) > tr {
@@ -64,4 +64,24 @@
 
 .key-toolbar__text {
   margin-left: 4px;
+}
+
+// Name feedback under the Generate form and the rename field (UI-K09). #FF8A8A measures
+// 4.86:1 on the page and 6.46:1 on the modal; the line takes no space when it is empty.
+.key-name-feedback {
+  margin: 4px 0 0;
+  color: #FF8A8A;
+  font-size: .875rem;
+  font-weight: 400;
+}
+
+.key-name-feedback:empty {
+  display: none;
+}
+
+// Rename help line in body colour, not form-text's muted grey (UI-K09).
+.key-name-help {
+  margin: 4px 0 0;
+  color: inherit;
+  font-size: .875rem;
 }
