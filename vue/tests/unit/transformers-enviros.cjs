@@ -7,6 +7,7 @@
 // Name naming; for the transformers store (deleteItems with one write, the Phase 35 IN-02
 // refreshed flag) and for the Phase 46 rules compiled from src/styles/theme.scss.
 // 46-03 and 46-04 extend this file for Environment Globals and Device Detail.
+// 46-06 (gap closure, CR-01, WR-05) adds K: Device Detail saves keep the drafts they did not write.
 //
 // SFC templates are compiled with vue-template-compiler (whitespace: 'condense', as
 // vue-cli does) and rendered with vue.runtime.common; bootstrap-vue elements (b-*) stay
@@ -2149,6 +2150,200 @@ checkAsync('J1 the editor says Name, saves with Save Transformer (success) and g
   const source = read('pages/Transformers/TransformerEditor.vue');
   const forbidden = ['Alias', '>Cancel<', "'Save'", 'Saving...', "okTitle: 'Leave'", 'Transformer alias is required.'];
   assert.deepEqual(forbidden.filter((x) => source.includes(x)), [], 'forbidden strings in TransformerEditor.vue');
+});
+
+// ---------------------------------------------------------------- K: drafts across Device Detail saves (46-06 gap closure)
+
+const RELOAD_ERROR = 'Some device details could not be loaded. Refresh to retry.';
+const copyOf = (x) => JSON.parse(JSON.stringify(x));
+
+// A Device Detail vm that runs the page's real loadDevice() against a fake server and a fake
+// device store. updateDevice writes to the server; both device-list loaders the page may call
+// copy the server device into the store (loadDevices throws while control.listFails, fetchItems
+// leaves the stale list as the store does on success: false). The page's reload method itself is
+// never replaced: calls.list proves that it ran.
+function draftHarness(opts = {}) {
+  const device = opts.device || DEVICE;
+  const vm = deviceHarness(device, opts.state || {});
+  vm.$route = { params: { udid: device.udid } };
+  const calls = { updateDevice: [], list: 0 };
+  const control = { updateFails: false, listFails: false };
+  const server = Object.assign(copyOf(device), copyOf(opts.server || {}));
+  const store = { items: [copyOf(vm.device)] };
+  const reread = () => { store.items = [copyOf(server)]; };
+  vm.updateDevice = async (x) => {
+    calls.updateDevice.push(copyOf(x));
+    if (control.updateFails) return { success: false };
+    Object.assign(server, copyOf(x.changes));
+    return { success: true };
+  };
+  vm.loadDevices = async () => {
+    calls.list++;
+    if (control.listFails) throw new Error('Could not load devices.');
+    reread();
+    return store.items;
+  };
+  vm.fetchItems = async () => {
+    calls.list++;
+    if (!control.listFails) reread();
+    return store.items;
+  };
+  vm.getByUdid = () => (udid) => store.items.find((d) => d.udid === udid);
+  vm.fetchBuildLog = async () => {};
+  vm.fetchTransformers = async () => {};
+  vm.fetchRepositories = async () => {};
+  vm.getBuildItems = () => [];
+  vm.createTransformerItem = async () => ({ success: true, utid: 'utid-new' });
+  const confirm = confirmRecorder();
+  vm.$bvModal = { hide: () => {}, msgBoxConfirm: confirm.$bvModal.msgBoxConfirm };
+  return { vm, calls, control, server, store, confirm };
+}
+
+const TICKS = ['utid-battery', 'utid-temp'];
+const sameSet = (a, b, msg) => assert.deepEqual([...new Set(a)].sort(), [...new Set(b)].sort(), msg);
+const noteOf = (vm) => textOf(one(byCy(cardOf(rerender(vm)), 'transformers-dirty'), 'transformers-dirty'));
+
+checkAsync('K1 saving the alias or the description keeps unsaved ticks, the note, the leave guard and the other draft', async () => {
+  const h = draftHarness();
+  h.vm.editForm.transformers = [...TICKS];
+  h.vm.editForm.description = 'typed description';
+  h.vm.editForm.alias = 'delta-renamed';
+  await h.vm.saveField('alias');
+  assert.deepEqual(h.calls.updateDevice, [{ udid: 'udid-delta', changes: { alias: 'delta-renamed' } }], 'one alias write');
+  assert.equal(h.calls.list, 1, 'the real loadDevice re-read the device list once');
+  assert.deepEqual([...h.vm.editForm.transformers], TICKS, 'the unsaved ticks are kept');
+  assert.equal(h.vm.transformersDirty, true, 'still dirty');
+  const card = cardOf(rerender(h.vm));
+  assert.equal(textOf(one(byCy(card, 'transformers-dirty'), 'transformers-dirty')), 'Unsaved changes', 'the note stays');
+  assert.ok(!attrsOf(saveButtonOf(card)).disabled, 'Save Transformers stays enabled');
+  assert.equal(h.vm.editForm.description, 'typed description', 'the typed description is kept');
+  assert.equal(h.vm.editForm.alias, 'delta-renamed', 'the alias field holds the saved alias');
+  assert.equal(h.vm.device.alias, 'delta-renamed', 'the device shows the saved alias');
+  assert.equal(h.vm.message, 'Saved.');
+  const nexts = leave(devicePage().def.beforeRouteLeave, h.vm);
+  await tick();
+  assert.deepEqual(h.confirm.calls, [[LEAVE_MESSAGE, LEAVE_OPTIONS]], 'the leave guard asks through the shared confirm once');
+  h.confirm.answer.resolve(false);
+  await settle();
+  assert.deepEqual(nexts, [[false]], 'Keep editing stays');
+  h.vm.editForm.alias = 'unsaved alias';
+  await h.vm.saveField('description');
+  assert.deepEqual(h.calls.updateDevice[1], { udid: 'udid-delta', changes: { description: 'typed description' } }, 'one description write');
+  assert.equal(h.calls.list, 2, 'a second re-read');
+  assert.equal(h.vm.editForm.alias, 'unsaved alias', 'the unsaved alias is kept');
+  assert.deepEqual([...h.vm.editForm.transformers], TICKS, 'the ticks are still kept');
+  assert.equal(h.vm.transformersDirty, true, 'still dirty after the description save');
+  assert.equal(h.vm.editForm.description, 'typed description', 'the description is the stored one');
+  assert.equal(h.vm.device.description, 'typed description');
+});
+
+checkAsync('K2 saving transformers keeps the unsaved alias and description; the ticks become the stored list', async () => {
+  const h = draftHarness();
+  h.vm.editForm.alias = 'typed-not-saved';
+  h.vm.editForm.description = 'typed desc';
+  h.vm.editForm.transformers = [...TICKS];
+  await h.vm.saveTransformers();
+  assert.equal(h.calls.updateDevice.length, 1, 'one write');
+  assert.deepEqual(h.calls.updateDevice[0].changes.transformers, TICKS, 'the ticks are sent');
+  assert.equal(h.calls.list, 1, 'the real loadDevice re-read the device list once');
+  assert.equal(h.vm.editForm.alias, 'typed-not-saved', 'the unsaved alias is kept');
+  assert.equal(h.vm.editForm.description, 'typed desc', 'the unsaved description is kept');
+  sameSet(h.vm.editForm.transformers, h.vm.device.transformers, 'the ticks equal the stored list');
+  sameSet(h.vm.device.transformers, TICKS, 'the stored list is the saved ticks');
+  assert.equal(h.vm.transformersDirty, false, 'clean after the save');
+  assert.equal(noteOf(h.vm), '', 'the note is empty');
+  assert.equal(h.vm.transformersMessage, SAVED);
+});
+
+checkAsync('K3 saving the environment keeps the unsaved ticks, the note and the alias and description drafts', async () => {
+  const h = draftHarness({ state: { envEditing: true, envDraft: '{}' } });
+  h.vm.editForm.transformers = [...TICKS];
+  h.vm.editForm.alias = 'typed alias';
+  h.vm.editForm.description = 'typed desc';
+  await h.vm.saveEnvironment();
+  assert.equal(h.calls.updateDevice.length, 1, 'one write');
+  assert.ok('environment' in h.calls.updateDevice[0].changes, 'the write carries the environment');
+  assert.equal(h.calls.list, 1, 'the real loadDevice re-read the device list once');
+  assert.equal(h.vm.message, 'Environment saved.');
+  assert.equal(h.vm.envEditing, false, 'the editor closes');
+  assert.deepEqual([...h.vm.editForm.transformers], TICKS, 'the unsaved ticks are kept');
+  assert.equal(h.vm.transformersDirty, true, 'still dirty');
+  assert.equal(noteOf(h.vm), 'Unsaved changes', 'the note stays');
+  assert.equal(h.vm.editForm.alias, 'typed alias', 'the alias draft is kept');
+  assert.equal(h.vm.editForm.description, 'typed desc', 'the description draft is kept');
+});
+
+checkAsync('K4 a failed re-read after a stored write shows what was written, never the stale list or the sent environment', async () => {
+  const h = draftHarness();
+  h.control.listFails = true;
+  h.vm.editForm.transformers = [...TICKS];
+  await h.vm.saveTransformers();
+  assert.equal(h.calls.list, 1, 'the real loadDevice tried the re-read');
+  sameSet(h.server.transformers, TICKS, 'the server holds the saved ticks');
+  sameSet(h.vm.device.transformers || [], TICKS, 'the device shows the saved list, not the stale one');
+  sameSet(h.vm.editForm.transformers, TICKS, 'the ticks show the saved list');
+  assert.equal(h.vm.transformersDirty, false, 'no dirty note under Transformers saved.');
+  assert.equal(h.vm.transformersMessage, SAVED);
+  assert.ok(!h.vm.transformersError, 'no card error');
+  assert.equal(h.vm.error, RELOAD_ERROR, 'the page reports the failed re-read');
+  assert.equal(attrsOf(saveButtonOf(cardOf(rerender(h.vm)))).disabled, true, 'Save stays disabled: the old list cannot be written back');
+  const a = draftHarness();
+  a.control.listFails = true;
+  a.vm.editForm.alias = 'delta-renamed';
+  await a.vm.saveField('alias');
+  assert.equal(a.vm.device.alias, 'delta-renamed', 'the device keeps the saved alias');
+  assert.equal(a.vm.editForm.alias, 'delta-renamed', 'the field keeps the saved alias');
+  assert.equal(a.vm.error, RELOAD_ERROR);
+  const masked = Object.assign(copyOf(DEVICE), { environment: { ssid: '*****' } });
+  const e = draftHarness({ device: masked, state: { envEditing: true, envDraft: '{}' } });
+  e.control.listFails = true;
+  await e.vm.saveEnvironment();
+  assert.equal(e.calls.updateDevice.length, 1, 'one environment write');
+  assert.equal(e.vm.message, 'Environment saved.');
+  assert.deepEqual(e.vm.device.environment, { ssid: '*****' }, 'the card keeps the masked list copy');
+});
+
+checkAsync('K5 untouched fields follow the re-read; a refused save reads nothing and keeps every draft', async () => {
+  const h = draftHarness({ server: { description: 'changed elsewhere', transformers: ['utid-temp'] } });
+  h.vm.editForm.alias = 'delta-renamed';
+  await h.vm.saveField('alias');
+  assert.equal(h.vm.editForm.description, 'changed elsewhere', 'an untouched description follows the server');
+  assert.deepEqual([...h.vm.editForm.transformers], ['utid-temp'], 'untouched ticks follow the server');
+  assert.equal(h.vm.transformersDirty, false);
+  const r = draftHarness();
+  r.control.updateFails = true;
+  r.vm.editForm.alias = 'refused alias';
+  r.vm.editForm.description = 'refused desc';
+  r.vm.editForm.transformers = [...TICKS];
+  await r.vm.saveField('alias');
+  assert.equal(r.calls.updateDevice.length, 1, 'one request');
+  assert.equal(r.calls.list, 0, 'no re-read');
+  assert.ok(r.vm.error, 'the page error is set');
+  assert.equal(r.vm.editForm.alias, 'refused alias');
+  assert.equal(r.vm.editForm.description, 'refused desc');
+  assert.deepEqual([...r.vm.editForm.transformers], TICKS);
+  const t = draftHarness();
+  t.control.updateFails = true;
+  t.vm.editForm.transformers = [...TICKS];
+  await t.vm.saveTransformers();
+  assert.deepEqual([...t.vm.editForm.transformers], TICKS, 'the ticks are kept');
+  assert.equal(t.vm.transformersDirty, true, 'still dirty');
+  assert.equal(t.vm.transformersError, SAVE_FAILED);
+  assert.equal(t.calls.list, 0, 'no re-read');
+});
+
+checkAsync('K6 Create & Assign writes stored plus new, keeps the unsaved alias and restores the pending ticks plus the new one', async () => {
+  const h = draftHarness({ state: { transformerForm: { alias: 'New One', body: 'return status;' } } });
+  h.vm.editForm.transformers = [...TICKS];
+  h.vm.editForm.alias = 'typed alias';
+  await h.vm.createTransformer({ preventDefault() {} });
+  assert.equal(h.calls.updateDevice.length, 1, 'one assignment write');
+  assert.deepEqual(h.calls.updateDevice[0].changes.transformers, ['utid-battery', 'utid-new'], 'stored plus new, never the unsaved tick');
+  assert.equal(h.calls.list, 1, 'the real loadDevice re-read the device list once');
+  assert.deepEqual([...h.vm.editForm.transformers], ['utid-battery', 'utid-temp', 'utid-new'], 'pending ticks plus the new transformer');
+  assert.equal(h.vm.transformersDirty, true, 'the unsaved tick is still a change');
+  assert.equal(h.vm.editForm.alias, 'typed alias', 'the unsaved alias is kept');
+  assert.equal(h.vm.message, 'Transformer created and assigned.');
 });
 
 // ---------------------------------------------------------------- run

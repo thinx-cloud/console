@@ -124,7 +124,7 @@ async function renderDeviceDetail(builds, dev, transformerItems = []) {
   const compiled = compiler.compileToFunctions(sfc.template.content);
   const opened = [];
   const noop = async () => {};
-  const overrides = { openBuildLog: b => opened.push(b), fetchItems: noop, fetchBuildLog: noop, fetchTransformers: noop, fetchRepositories: noop,
+  const overrides = { openBuildLog: b => opened.push(b), fetchItems: noop, loadDevices: noop, fetchBuildLog: noop, fetchTransformers: noop, fetchRepositories: noop,
     getByUdid: () => udid => (udid === dev.udid ? dev : null), getBuildItems: () => builds, getTransformers: () => transformerItems, getRepositories: () => [] };
   const vm = new Vue({ render: compiled.render, staticRenderFns: compiled.staticRenderFns, data: device.data, computed: device.computed,
     filters: { fromNow: v => (v ? String(v) : '—') }, components: { BuildLogDialog: { render: h => h('div') } },
