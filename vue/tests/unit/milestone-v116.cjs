@@ -70,7 +70,7 @@ const dialog = load('components/BuildLogDialog/BuildLogDialog.vue',{buildLogText
 // Phase 45: the page imports the client key-name check; load the real module.
 const keyNamesModule = {exports:{}};
 new Function('module', fs.readFileSync(path.join(root,'utils/keyNames.js'),'utf8').replace(/export function (\w+)/g,'module.exports.$1 = function $1').replace(/export const (\w+) =/g,'const $1 = module.exports.$1 ='))(keyNamesModule);
-const keyPage = load('pages/Rsakeys/Rsakeys.vue', { IconButton: {}, validateKeyName: keyNamesModule.exports.validateKeyName, keyNameMessage: keyNamesModule.exports.keyNameMessage });
+const keyPage = load('pages/Rsakeys/Rsakeys.vue', { IconButton: {}, validateKeyName: keyNamesModule.exports.validateKeyName, keyNameMessage: keyNamesModule.exports.keyNameMessage, isReservedKeyName: keyNamesModule.exports.isReservedKeyName });
 load('components/Header/Header.vue'); load('components/Notifications/Notifications.vue');
 const history = load('pages/History/History.vue'); load('pages/Transformers/Transformers.vue');
 // 35 WR-01: build rows stay table rows; row click ignores inner controls and text selection.

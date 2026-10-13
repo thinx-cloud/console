@@ -234,7 +234,7 @@ const keyNames = lazy(() => loadModule('utils/keyNames.js'));
 function keyNameDeps() {
   try {
     const k = keyNames();
-    return { validateKeyName: k.validateKeyName, keyNameMessage: k.keyNameMessage };
+    return { validateKeyName: k.validateKeyName, keyNameMessage: k.keyNameMessage, isReservedKeyName: k.isReservedKeyName };
   } catch (e) { return {}; }
 }
 
@@ -862,6 +862,7 @@ const SENTENCES = {
   line_separator: 'The name contains a hidden line or paragraph separator.',
   bidi: 'The name contains a hidden direction-override character.',
   invisible: 'The name contains an invisible character, such as a zero-width space.',
+  reserved: 'This name is reserved for the key\'s default label. Choose a different name.',
 };
 const GENERIC_NAME = 'This name is not allowed. Choose a different name.';
 const RENAME_ERROR = 'Could not rename the deploy key. Try again.';
@@ -1178,6 +1179,37 @@ check('K9 rename modal markup: title, form, input, feedback, help and the Keep c
   const template = page().template;
   ['>Cancel<', '>Save<'].forEach((s) => assert.ok(!template.includes(s), 'no generic button text ' + s));
   assert.ok(!template.includes('v-html'), 'no raw-HTML binding');
+});
+
+// 45-REVIEW IN-02: the server refuses a key's own generated default comment thinx-<timestamp>
+// (the list shows the date for it) as `reserved`; the dialog names that before sending.
+checkAsync('K10 the rename dialog refuses the key\'s own default name thinx-<timestamp> before sending (IN-02)', async () => {
+  const { isReservedKeyName } = keyNames();
+  const f = KEYS[0].filename;
+  assert.equal(isReservedKeyName('thinx-1760000000000', f), true);
+  assert.equal(isReservedKeyName('  thinx-1760000000000 ', f), true);
+  assert.equal(isReservedKeyName('thinx-1760000001000', f), false, 'another key\'s default is an ordinary name');
+  assert.equal(isReservedKeyName('Thinx-1760000000000', f), false);
+  [[undefined, f], ['thinx-1', null], [42, f]].forEach(([n, file]) => assert.equal(isReservedKeyName(n, file), false));
+  const items = keyItems();
+  const m = (top) => nodesOf(top).find((n) => n.tag === 'b-modal' && attrsOf(n).id === 'rsakey-rename-modal');
+  const vnode = renderKeys({ items, renameTarget: items[0], renameName: 'thinx-1760000000000' }).vnode;
+  assert.equal(attrsOf(byCy(m(vnode), 'rename-key-save')[0]).disabled, true, 'Save name is disabled');
+  assert.equal(textOf(byCy(m(vnode), 'rename-key-feedback')[0]), SENTENCES.reserved);
+  assert.equal(attrsOf(renameInputOf(m(vnode)))['aria-invalid'], 'true');
+  const h = renameHarness();
+  h.vm.renameName = 'thinx-1760000000000';
+  await h.vm.saveRename();
+  assert.equal(h.calls.renameItem.length, 0, 'nothing is sent');
+  assert.equal(h.vm.renameFeedback, SENTENCES.reserved);
+  // The server answer is shown the same way (a client that skipped the check).
+  const s = renameHarness();
+  s.vm.renameName = 'Other';
+  const run = s.vm.saveRename();
+  s.control.renameItem.resolve({ success: false, response: 'invalid_key_name', reason: 'reserved' });
+  await run;
+  assert.equal(s.vm.renameFeedback, SENTENCES.reserved);
+  assert.equal(s.calls.toasts.length, 0, 'no success toast');
 });
 
 // ---------------------------------------------------------------- G: Generate form name feedback (45-04 task 2)

@@ -67,7 +67,7 @@
 <script>
 import { mapGetters, mapActions } from 'vuex';
 import IconButton from '@/components/IconButton/IconButton';
-import { validateKeyName, keyNameMessage } from '@/utils/keyNames';
+import { validateKeyName, keyNameMessage, isReservedKeyName } from '@/utils/keyNames';
 
 export default {
   name: 'Rsakeys',
@@ -92,9 +92,12 @@ export default {
     },
     // Rename dialog (UI-K07..UI-K09): the client check runs as the user types; a server
     // invalid_key_name reason or the request error replaces it until the name changes.
+    // The key's own default comment thinx-<timestamp> is refused as `reserved` (IN-02).
     renameClientReason() {
       const check = validateKeyName(this.renameName);
-      return check.ok ? null : check.reason;
+      if (!check.ok) return check.reason;
+      const target = this.renameTarget;
+      return target && isReservedKeyName(this.renameName, target.filename) ? 'reserved' : null;
     },
     renameReason() { return this.renameServerReason || this.renameClientReason; },
     renameFeedback() {
@@ -236,7 +239,7 @@ export default {
     // so its invalid_key_name reason is always shown.
     async saveRename() {
       if (this.renaming || !this.renameTarget) return;
-      if (!validateKeyName(this.renameName).ok) return; // the feedback line names the problem
+      if (this.renameClientReason) return; // the feedback line names the problem
       const item = this.renameTarget;
       const name = this.renameName.trim();
       if (name === item.name) { this.$bvModal.hide('rsakey-rename-modal'); return; }

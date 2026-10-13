@@ -62,6 +62,14 @@ export function validateKeyName(name) {
   return { ok: true };
 }
 
+// True when `name`, trimmed, is the generated default comment `thinx-<timestamp>` of the key
+// stored as `<owner>-<timestamp>`. The list shows the date for that comment, so the server
+// refuses it on rename as `reserved` (45-REVIEW IN-02); the dialog says so before sending.
+export function isReservedKeyName(name, filename) {
+  if (typeof name !== 'string' || typeof filename !== 'string') return false;
+  return name.trim() === 'thinx-' + filename.slice(filename.lastIndexOf('-') + 1);
+}
+
 // UI-SPEC Copywriting Contract: one sentence per reason, a generic one otherwise.
 const MESSAGES = {
   empty: 'Enter a name for the key.',
@@ -70,6 +78,7 @@ const MESSAGES = {
   line_separator: 'The name contains a hidden line or paragraph separator.',
   bidi: 'The name contains a hidden direction-override character.',
   invisible: 'The name contains an invisible character, such as a zero-width space.',
+  reserved: 'This name is reserved for the key\'s default label. Choose a different name.',
 };
 
 export function keyNameMessage(reason) {
