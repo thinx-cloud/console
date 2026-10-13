@@ -605,6 +605,191 @@ check('B8 compiled theme: key-name ellipsis 160/240px, key-text wraps, monospace
   assert.match(value(stripe, 'background-color') || '', /^rgba\(0,\s*0,\s*0,\s*0?\.05\)$/, 'stripe colour');
 });
 
+// ---------------------------------------------------------------- C: bulk toolbar, form, load error (45-03 task 3)
+
+const rootChildren = (vnode) => (vnode.children || []).filter((n) => n.tag);
+const toolbarsOf = (vnode) => byClass(vnode, 'key-toolbar');
+const bulkOf = (vnode) => byCy(vnode, 'key-bulk-delete');
+const formsOf = (vnode) => nodesOf(vnode).filter((n) => n.tag === 'b-form');
+const MARGIN_UTILITY = /^m[trblxy]?-(\d|auto)$/;
+
+check('C1 the bulk toolbar sits between the intro and the table; its label follows the selection', () => {
+  const { vnode } = renderKeys();
+  const top = rootChildren(vnode);
+  const intro = top.findIndex((n) => n.tag === 'p' && /Deploy keys grant access/.test(textOf(n)));
+  const bar = top.findIndex((n) => classList(n).includes('key-toolbar'));
+  const table = top.findIndex((n) => classList(n).includes('table-responsive'));
+  assert.ok(intro !== -1 && bar !== -1 && table !== -1, 'intro ' + intro + ', toolbar ' + bar + ', table ' + table);
+  assert.ok(intro < bar && bar < table, 'order intro < toolbar < table');
+  const toolbar = top[bar];
+  assert.equal(toolbar.tag, 'div');
+  assert.equal(attrsOf(toolbar).role, 'toolbar');
+  assert.equal(attrsOf(toolbar)['aria-label'], 'Selected deploy keys');
+  const buttons = nodesOf(toolbar).filter((n) => n.tag === 'b-button');
+  assert.equal(buttons.length, 1, 'one button in the toolbar');
+  const btn = buttons[0];
+  assert.equal(cyOf(btn), 'key-bulk-delete');
+  assert.equal(attrsOf(btn).variant, 'danger');
+  assert.equal(attrsOf(btn).size, 'sm');
+  const icons = byTag(btn, 'i');
+  assert.equal(icons.length, 1, 'one glyph');
+  assert.deepEqual(classList(icons[0]).sort(), ['fa', 'fa-trash']);
+  assert.equal(attrsOf(icons[0])['aria-hidden'], 'true');
+  assert.equal(textOf(btn), 'Delete selected');
+  assert.equal(attrsOf(btn).disabled, true, 'disabled with nothing selected');
+  const items = keyItems();
+  const two = bulkOf(renderKeys({ items, selectedIds: [items[0].id, items[1].id] }).vnode)[0];
+  assert.equal(textOf(two), 'Delete selected (2)');
+  assert.ok(!attrsOf(two).disabled, 'enabled with a selection');
+  const busy = bulkOf(renderKeys({ items, selectedIds: [items[0].id], bulkDeleting: true }).vnode)[0];
+  assert.equal(textOf(busy), 'Deleting' + ELLIPSIS);
+  assert.equal(attrsOf(busy).disabled, true, 'disabled while deleting');
+  assert.equal(toolbarsOf(renderKeys({ items: [] }).vnode).length, 0, 'no toolbar with zero keys');
+  assert.equal(toolbarsOf(renderKeys({ items: [], loadFailed: true }).vnode).length, 0, 'no toolbar after a failed load');
+  assert.equal(toolbarsOf(renderKeys({ loading: true }).vnode).length, 0, 'no toolbar while loading');
+});
+
+check('C2 the Generate form is b-form.key-create-form with one submit button and no margin utilities', () => {
+  const { vnode } = renderKeys({ selectedIds: [KEYS[0].id] });
+  const forms = formsOf(vnode);
+  assert.equal(forms.length, 1, 'one b-form on the page');
+  const form = forms[0];
+  assert.ok(classList(form).includes('key-create-form'), 'form class: ' + classList(form).join(' '));
+  const buttons = nodesOf(form).filter((n) => n.tag === 'b-button');
+  assert.equal(buttons.length, 1, 'one button in the form');
+  assert.equal(attrsOf(buttons[0]).type, 'submit');
+  assert.ok(!/Delete/.test(textOf(form)), 'no Delete text in the form');
+  nodesOf(form).filter((n) => n.tag).forEach((n) => {
+    const bad = classList(n).filter((c) => MARGIN_UTILITY.test(c));
+    assert.deepEqual(bad, [], n.tag + ' carries a margin utility');
+  });
+  assert.equal(bulkOf(form).length, 0, 'bulk Delete is outside the form');
+});
+
+checkAsync('C3 deleteSelected: one dialog, Keep key / Keep keys, rows disabled while pending, success and failure', async () => {
+  const one = harness();
+  one.vm.selectedIds = [one.vm.items[0].id];
+  const p1 = one.vm.deleteSelected();
+  const p2 = one.vm.deleteSelected();
+  const p3 = one.vm.deleteRow(one.vm.items[1]);
+  assert.equal(one.calls.confirm.length, 1, 'one msgBoxConfirm while a confirmation is open');
+  assert.ok(/this deploy key/.test(one.calls.confirm[0].text), 'count wording for one: ' + one.calls.confirm[0].text);
+  assert.deepEqual(one.calls.confirm[0].options, {
+    title: 'Confirm Delete', okVariant: 'danger', okTitle: 'Delete', cancelTitle: 'Keep key',
+    autoFocusButton: 'cancel', bodyClass: 'text-break',
+  });
+  one.control.confirm.resolve(false);
+  await Promise.all([p1, p2, p3]);
+  assert.equal(one.calls.deleteItems.length, 0, 'Keep key deletes nothing');
+
+  const h = harness();
+  const [a, b] = h.vm.items;
+  h.vm.selectedIds = [a.id, b.id];
+  const run = h.vm.deleteSelected();
+  assert.equal(h.calls.confirm[0].options.cancelTitle, 'Keep keys');
+  assert.ok(/2 deploy keys/.test(h.calls.confirm[0].text), 'count wording for two');
+  h.control.confirm.resolve(true);
+  await tick();
+  h.vm.deleteSelected();
+  assert.equal(h.calls.confirm.length, 1, 'no second dialog while the bulk request runs');
+  assert.deepEqual(h.calls.deleteItems, [[a.filename, b.filename]], 'one request with both filenames');
+  const vnode = rerender(h.vm);
+  [a, b].forEach((item) => {
+    const row = rowOf(vnode, item);
+    ['key-show', 'key-copy', 'key-delete'].forEach((cy) => assert.equal(propsOf(actionOf(row, cy)).disabled, true, item.name + ' ' + cy));
+    assert.equal(attrsOf(nodesOf(row).filter((n) => n.tag === 'b-form-checkbox')[0]).disabled, true, item.name + ' checkbox');
+  });
+  assert.equal(textOf(bulkOf(vnode)[0]), 'Deleting' + ELLIPSIS);
+  h.control.deleteItems.resolve({ success: true });
+  await run;
+  assert.deepEqual(h.vm.selectedIds, [], 'success clears the selection');
+  assert.equal(h.calls.loadData, 1, 'success reloads');
+  assert.equal(h.vm.bulkDeleting, false);
+  assert.deepEqual(h.vm.deletingIds, []);
+
+  for (const outcome of ['refused', 'thrown']) {
+    const f = harness();
+    f.vm.selectedIds = [f.vm.items[1].id];
+    const p = f.vm.deleteSelected();
+    f.control.confirm.resolve(true);
+    await tick();
+    if (outcome === 'refused') f.control.deleteItems.resolve({ success: false });
+    else f.control.deleteItems.reject(new Error('offline'));
+    await p;
+    assert.deepEqual(f.vm.selectedIds, [f.vm.items[1].id], outcome + ' keeps the selection');
+    assert.equal(f.vm.error, 'Could not delete the deploy keys. Try again.', outcome + ' error copy');
+    assert.equal(f.calls.loadData, 0, outcome + ' does not reload');
+    assert.equal(f.vm.bulkDeleting, false, outcome + ' releases the toolbar');
+    assert.deepEqual(f.vm.deletingIds, [], outcome + ' releases the rows');
+  }
+});
+
+// The real loadData with the store calls replaced.
+function loader(state, fetch, listed) {
+  const { vm } = renderKeys(state);
+  vm.fetchItems = fetch;
+  vm.getItems = () => listed;
+  return vm;
+}
+
+checkAsync('C4 a failed load clears rows, selection and open keys and shows exactly one load alert', async () => {
+  const items = keyItems();
+  const vm = loader({ items, selectedIds: [items[0].id], shownIds: [items[1].id], error: 'Could not delete the deploy key. Try again.' },
+    async () => { throw new Error('offline'); }, []);
+  await vm.loadData();
+  assert.deepEqual(vm.items, []);
+  assert.deepEqual(vm.selectedIds, []);
+  assert.deepEqual(vm.shownIds, []);
+  assert.equal(vm.loadFailed, true);
+  assert.equal(vm.error, null, 'a load failure leaves no action error');
+  assert.equal(vm.loading, false);
+  const vnode = rerender(vm);
+  const alerts = nodesOf(vnode).filter((n) => n.tag === 'b-alert');
+  assert.equal(alerts.length, 1, 'exactly one alert');
+  assert.equal(cyOf(alerts[0]), 'keys-load-error');
+  assert.equal(textOf(alerts[0]), 'Could not load deploy keys. Refresh to retry.');
+  assert.equal(attrsOf(alerts[0]).variant, 'danger');
+  assert.ok(!('dismissible' in attrsOf(alerts[0])), 'the load alert is not dismissible');
+  assert.equal(byTag(vnode, 'table').length, 0, 'no table');
+  assert.equal(toolbarsOf(vnode).length, 0, 'no toolbar');
+  assert.ok(!/No deploy keys yet/.test(textOf(vnode)), 'no empty-row text');
+  assert.equal(formsOf(vnode).length, 1, 'the Generate form stays');
+});
+
+checkAsync('C5 a successful load clears the failure and prunes selection and open keys to listed ids', async () => {
+  const items = keyItems();
+  const vm = loader({ items: [], loadFailed: true, selectedIds: [items[0].id, 'gone'], shownIds: ['gone', items[1].id] },
+    async () => items, items);
+  await vm.loadData();
+  assert.equal(vm.loadFailed, false);
+  assert.deepEqual(vm.items.map((k) => k.id), items.map((k) => k.id));
+  assert.deepEqual(vm.selectedIds, [items[0].id]);
+  assert.deepEqual(vm.shownIds, [items[1].id]);
+  const vnode = rerender(vm);
+  assert.equal(byCy(vnode, 'keys-load-error').length, 0, 'the load alert is gone');
+  assert.equal(byCy(vnode, 'key-text').length, 1, 'the still-listed key stays open');
+});
+
+check('C6 an empty list shows one body-colour row and no toolbar; no text-muted in the template', () => {
+  const { vnode } = renderKeys({ items: [] });
+  const tds = byTag(vnode, 'td');
+  assert.equal(tds.length, 1, 'one row cell');
+  assert.equal(String(attrsOf(tds[0]).colspan), '5');
+  assert.equal(textOf(tds[0]), 'No deploy keys yet. Generate one with the form above.');
+  assert.deepEqual(classList(tds[0]), [], 'no class on the empty cell');
+  assert.ok(!page().template.includes('text-muted'), 'no text-muted in the template');
+  assert.equal(toolbarsOf(vnode).length, 0, 'no toolbar');
+});
+
+check('C7 compiled theme: key-create-form and key-toolbar flex rows with 8px / 4px gaps', () => {
+  expectDecls('.key-create-form', {
+    display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center', gap: '8px', 'margin-bottom': '16px',
+  });
+  expectDecls('.key-toolbar', {
+    display: 'flex', 'justify-content': 'flex-end', 'align-items': 'center', gap: '4px', 'margin-bottom': '8px',
+  });
+});
+
 // ---------------------------------------------------------------- run
 
 (async () => {
