@@ -105,20 +105,35 @@
           </div>
         </b-card>
 
-        <b-card title="Transformer Assignment" class="mb-3" data-cy="card-transformers">
+        <!-- UI-T15/UI-T16: the note says when the ticks differ from the stored assignment; the
+             save result is reported inside this card, not in the page alerts. -->
+        <b-card class="mb-3" data-cy="card-transformers">
+          <div class="transformer-card-head">
+            <h4 class="card-title">Transformer Assignment</h4>
+            <span class="unsaved-note" role="status" data-cy="transformers-dirty">{{ transformersDirty ? 'Unsaved changes' : '' }}</span>
+          </div>
           <b-form-group label="Assigned transformers">
             <b-form-checkbox-group
               v-if="assignmentOptions.length"
               v-model="editForm.transformers"
               :options="assignmentOptions"
+              :disabled="transformersSaving"
               stacked
               data-cy="transformer-checkboxes"
+              @change="onTransformersTicked"
             />
-            <p v-else class="text-muted small mb-0" data-cy="transformers-empty">No transformers yet. Use Create &amp; Assign to add one.</p>
+            <p v-else class="mb-0" data-cy="transformers-empty">No transformers yet. Use Create &amp; Assign to add one.</p>
           </b-form-group>
-          <b-button variant="primary" size="sm" @click="saveTransformers">Save Transformers</b-button>
-          <b-button variant="success" size="sm" class="ml-2" @click="$bvModal.show('device-transformer-modal')">Create &amp; Assign</b-button>
-          <b-button variant="warning" size="sm" class="ml-2" to="/app/transformers" data-cy="manage-transformers">Manage Transformers</b-button>
+          <b-alert variant="success" dismissible class="transformer-card-alert" :show="!!transformersMessage" data-cy="transformers-saved" @dismissed="transformersMessage = null">{{ transformersMessage }}</b-alert>
+          <b-alert variant="danger" dismissible class="transformer-card-alert" :show="!!transformersError" data-cy="transformers-error" @dismissed="transformersError = null">{{ transformersError }}</b-alert>
+          <div class="transformer-card-actions">
+            <b-button variant="success" size="sm" data-cy="transformers-save" :disabled="!transformersDirty || transformersSaving" @click="saveTransformers">
+              <template v-if="transformersSaving"><i class="fa fa-spin fa-circle-o-notch" aria-hidden="true"></i><span class="button-text">Saving…</span></template>
+              <template v-else>Save Transformers</template>
+            </b-button>
+            <b-button variant="default" size="sm" :disabled="transformersSaving" @click="$bvModal.show('device-transformer-modal')">Create &amp; Assign</b-button>
+            <b-button variant="warning" size="sm" to="/app/transformers" data-cy="manage-transformers">Manage Transformers</b-button>
+          </div>
         </b-card>
 
         <b-card title="Build History" class="mb-3" data-cy="card-build-history">
@@ -153,7 +168,7 @@
       </b-col>
     </b-row>
 
-    <b-modal id="device-transformer-modal" title="Create & Assign Transformer" @ok="createTransformer" :ok-disabled="transformerSaving" ok-title="Create & Assign">
+    <b-modal id="device-transformer-modal" title="Create & Assign Transformer" @ok="createTransformer" :ok-disabled="transformerSaving" ok-title="Create & Assign" cancel-title="Close without creating" cancel-variant="default">
       <b-alert v-if="transformerError" variant="danger" show>{{ transformerError }}</b-alert>
       <b-form-group label="Name" label-for="device-transformer-name">
         <b-form-input id="device-transformer-name" v-model="transformerForm.alias" required />
@@ -212,6 +227,10 @@ export default {
       // Set while the unsaved-changes confirm is open, so a second leave attempt
       // (a double click on a link) is refused instead of opening a second dialog.
       leavePrompting: false,
+      // Transformer Assignment save (POL-03, D-11): single-shot flag and the card's own result.
+      transformersSaving: false,
+      transformersMessage: null,
+      transformersError: null,
       buildHistory: [],
       transferForm: { to: '', mig_sources: false, mig_apikeys: false },
       // Environment editor. envDraft is the textarea's raw text; it only reaches
@@ -459,16 +478,37 @@ export default {
         this.transformerSaving = false;
       }
     },
+    // The checkbox group's user change event, not a watcher: loadDevice() reassigns the array
+    // after a save, and that must not wipe the "Transformers saved." it just set.
+    onTransformersTicked() {
+      this.transformersMessage = null;
+      this.transformersError = null;
+    },
     async saveTransformers() {
-      const result = await this.updateDevice({
-        udid: this.device.udid,
-        changes: { transformers: this.editForm.transformers },
-      });
-      if (result.success) {
-        this.message = 'Transformers saved.';
+      if (this.transformersSaving) return;
+      this.transformersSaving = true;
+      this.transformersMessage = null;
+      this.transformersError = null;
+      try {
+        let result = null;
+        try {
+          result = await this.updateDevice({
+            udid: this.device.udid,
+            changes: { transformers: this.editForm.transformers },
+          });
+        } catch (e) {
+          result = null;
+        }
+        if (!result || !result.success) {
+          // The ticks stay as they are, so the dirty note stays and a retry sends them again.
+          this.transformersError = 'Could not save the transformers. Try again.';
+          return;
+        }
+        // Set before the reload: the write is stored even if the reload reports a problem.
+        this.transformersMessage = 'Transformers saved.';
         await this.loadDevice();
-      } else {
-        this.error = result.message || 'Failed to save transformers.';
+      } finally {
+        this.transformersSaving = false;
       }
     },
     async transferDevice(bvModalEvt) {

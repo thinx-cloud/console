@@ -122,3 +122,30 @@
   font-weight: 400;
   overflow-wrap: anywhere;
 }
+
+// Device Detail Transformer Assignment card (UI-T15, UI-T16): the title shares a line with the
+// Unsaved changes note (caution text #F0AD4E, 7.03:1 on the card), the three buttons sit in one
+// wrapping row 8px apart, and the in-card save result keeps 8px above the row.
+.transformer-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+}
+
+.unsaved-note {
+  color: #F0AD4E;
+  font-size: .875rem;
+  font-weight: 400;
+}
+
+.transformer-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.transformer-card-alert {
+  margin-bottom: 8px;
+}
