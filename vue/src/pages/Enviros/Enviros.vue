@@ -162,7 +162,9 @@ export default {
       if (result && result.success) {
         this.$bvModal.hide('enviro-edit-modal');
         this.$toasted.show('Value saved', { type: 'success', duration: 2000 });
-        this.items = this.getItems();
+        // The store refreshed the list; when only that refresh failed, reload once.
+        if (result.refreshed === false) await this.loadData();
+        else this.items = this.getItems();
         return;
       }
       this.editError = 'Could not save the new value. ' + key + ' keeps its current value. Try again.';

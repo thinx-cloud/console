@@ -1,4 +1,17 @@
 
+// A write the server stored stays a success when only the follow-up list read fails (the
+// Phase 35 IN-02 / 46-02 pattern): it resolves with refreshed: false and the page reloads,
+// instead of telling the user the write failed.
+async function refreshAfter(dispatch, result) {
+  if (!result || !result.success) return result;
+  try {
+    await dispatch('fetchItems');
+  } catch (e) {
+    return Object.assign({}, result, { refreshed: false });
+  }
+  return result;
+}
+
 export default {
     namespaced: true,
     state: {
@@ -85,13 +98,11 @@ export default {
       },
       async createItem({ dispatch }, { key, value }) {
         const result = await this.$api.$put('/env', JSON.stringify({ key, value }));
-        if (result.success) await dispatch('fetchItems');
-        return result;
+        return refreshAfter(dispatch, result);
       },
       async deleteItems({ dispatch }, names) {
         const result = await this.$api.$delete('/env', JSON.stringify({ names }));
-        if (result.success) await dispatch('fetchItems');
-        return result;
+        return refreshAfter(dispatch, result);
       },
     },
     getters: {

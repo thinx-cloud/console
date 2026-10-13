@@ -1394,6 +1394,45 @@ checkAsync('E9 loadData uses loadItems: the first load shows only Loading, succe
   assert.deepEqual(down.vm.items, [], 'a rejected load empties the rows');
 });
 
+checkAsync('E10 a stored write whose list refresh fails resolves refreshed:false; the edit then closes and reloads once', async () => {
+  const store = envirosStore();
+  const run = (getAnswer, writeAnswer = { success: true, response: 'WIFI' }) => {
+    const calls = { get: 0, put: 0, del: 0 };
+    const state = { items: [] };
+    const self = { $api: {
+      $get: async () => { calls.get++; if (getAnswer instanceof Error) throw getAnswer; return getAnswer; },
+      $put: async () => { calls.put++; return writeAnswer; },
+      $delete: async () => { calls.del++; return writeAnswer; },
+    } };
+    const ctx = { state };
+    ctx.commit = (name, payload) => store.mutations[name](state, payload);
+    ctx.dispatch = (name, payload) => store.actions[name].call(self, ctx, payload);
+    return { calls, ctx };
+  };
+  const down = new Error('offline');
+  const put = run(down);
+  assert.deepEqual(await put.ctx.dispatch('createItem', { key: 'WIFI', value: 'v' }), { success: true, response: 'WIFI', refreshed: false });
+  assert.equal(put.calls.get, 1, 'one refresh after the write');
+  const del = run(down, { success: true, response: { WIFI: 'deleted' } });
+  assert.deepEqual(await del.ctx.dispatch('deleteItems', ['WIFI']), { success: true, response: { WIFI: 'deleted' }, refreshed: false });
+  const fine = run({ success: true, response: ['WIFI'] });
+  assert.deepEqual(await fine.ctx.dispatch('createItem', { key: 'WIFI', value: 'v' }), { success: true, response: 'WIFI' }, 'a refreshed write carries no flag');
+  const refused = run({ success: true, response: [] }, { success: false });
+  assert.deepEqual(await refused.ctx.dispatch('createItem', { key: 'WIFI', value: 'v' }), { success: false });
+  assert.equal(refused.calls.get, 0, 'a failed write makes no refresh');
+  const h = enviroHarness();
+  h.vm.openEdit(enviroItems()[1]);
+  h.vm.editValue = SECRET;
+  const save = h.vm.saveEdit();
+  await tick();
+  h.control.createItem.resolve({ success: true, response: 'WIFI', refreshed: false });
+  await save;
+  assert.deepEqual(h.calls.hide, ['enviro-edit-modal'], 'the stored value closes the dialog');
+  assert.deepEqual(h.calls.toast, [['Value saved', { type: 'success', duration: 2000 }]]);
+  assert.ok(!h.vm.editError, 'no error for a stored value');
+  assert.equal(h.calls.loadData, 1, 'refreshed:false reloads once');
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
