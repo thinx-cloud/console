@@ -1775,6 +1775,154 @@ checkAsync('G6 without a loaded list add reads it first, refuses while it cannot
   assert.equal(h.vm.addError, DUPLICATE_KEY);
 });
 
+// ---------------------------------------------------------------- H: unsaved transformer leave guard (46-04 task 1)
+
+const LEAVE_MESSAGE = 'You have unsaved changes. Leave anyway?';
+const LEAVE_OPTIONS = {
+  title: 'Unsaved Changes', okVariant: 'warning', okTitle: 'Leave without saving', cancelTitle: 'Keep editing', autoFocusButton: 'cancel',
+};
+
+const confirmLeaveModule = lazy(() => loadModule('utils/confirmLeave.js'));
+
+// The pages' confirmLeave import, or none while the module is missing (H1 reports that).
+function confirmLeaveDeps() {
+  try { return { confirmLeave: confirmLeaveModule().confirmLeave }; } catch (e) { return {}; }
+}
+
+const stubComponent = (name) => ({ name, render: (h) => h('div') });
+const devicePage = lazy(() => loadSfc('pages/Devices/DeviceDetail.vue', Object.assign({
+  BuildLogDialog: stubComponent('BuildLogDialog'),
+  moment: () => ({ fromNow: () => 'just now' }),
+  parseEnvironmentJSON: () => ({ ok: true, value: {} }),
+  buildStatusVariant: () => 'success',
+}, confirmLeaveDeps())));
+const editorPage = lazy(() => loadSfc('pages/Transformers/TransformerEditor.vue', Object.assign({
+  codemirror: stubComponent('codemirror'),
+}, confirmLeaveDeps())));
+
+const DEVICE = { udid: 'udid-delta', alias: 'delta-01', transformers: ['utid-battery'], environment: {} };
+
+// A Device Detail vm on DEVICE (or `device`), its checkboxes matching the stored list, with
+// the getters it reads replaced. Rendering it proves the page still renders cleanly.
+function deviceHarness(device = DEVICE, state = {}) {
+  const r = renderPage(devicePage().def, Object.assign({
+    device: JSON.parse(JSON.stringify(device)),
+    editForm: { alias: device.alias, description: '', transformers: [...(device.transformers || [])] },
+    getTransformers: () => items(),
+    getRepositories: () => [],
+  }, state));
+  assert.equal(r.error, null, 'DeviceDetail renders without error');
+  assert.deepEqual(r.warnings, [], 'DeviceDetail renders without Vue warnings');
+  return r.vm;
+}
+
+// A $bvModal whose msgBoxConfirm records its arguments and answers through a deferred.
+function confirmRecorder() {
+  const rec = { calls: [], answer: null };
+  rec.$bvModal = {
+    msgBoxConfirm: (msg, opts) => {
+      rec.calls.push([msg, opts]);
+      rec.answer = deferred();
+      return rec.answer.promise;
+    },
+  };
+  return rec;
+}
+
+// Run a beforeRouteLeave guard; the returned list collects every next(...) call's arguments.
+function leave(guard, vm) {
+  const nexts = [];
+  guard.call(vm, { path: '/app/transformers' }, { path: '/app/device/x' }, (...args) => { nexts.push(args); });
+  return nexts;
+}
+
+const settle = async () => { for (let i = 0; i < 3; i++) await tick(); };
+
+checkAsync('H1 confirmLeave asks once with the Unsaved Changes options; only an explicit OK resolves true', async () => {
+  const { confirmLeave } = confirmLeaveModule();
+  assert.equal(typeof confirmLeave, 'function', 'confirmLeave is exported');
+  const outcomes = [
+    ['resolve', true, true], ['resolve', false, false], ['resolve', null, false], ['resolve', undefined, false], ['reject', new Error('closed'), false],
+  ];
+  for (const [how, answer, want] of outcomes) {
+    const rec = confirmRecorder();
+    const result = confirmLeave(rec);
+    assert.ok(result && typeof result.then === 'function', 'confirmLeave returns a promise');
+    await tick();
+    assert.equal(rec.calls.length, 1, 'one dialog per call');
+    assert.equal(rec.calls[0][0], LEAVE_MESSAGE);
+    assert.deepEqual(rec.calls[0][1], LEAVE_OPTIONS, 'dialog options');
+    if (how === 'resolve') rec.answer.resolve(answer); else rec.answer.reject(answer);
+    assert.equal(await result, want, how + ' ' + String(answer) + ' resolves ' + want);
+  }
+  const thrown = await confirmLeave({ $bvModal: { msgBoxConfirm: () => { throw new Error('no modal'); } } });
+  assert.equal(thrown, false, 'a dialog that throws resolves false');
+});
+
+check('H2 transformersDirty compares the ticks with the stored list as sets; a missing list is empty', () => {
+  const vm = deviceHarness({ udid: 'udid-delta', alias: 'delta-01', transformers: ['b', 'a'], environment: {} });
+  const dirty = (ticks) => { vm.editForm.transformers = ticks; return vm.transformersDirty; };
+  assert.equal(dirty(['a', 'b']), false, 'order is ignored');
+  assert.equal(dirty(['a', 'a', 'b']), false, 'duplicates are ignored');
+  assert.equal(dirty(['a']), true, 'an unticked transformer is a change');
+  assert.equal(dirty(['a', 'b', 'c']), true, 'a ticked transformer is a change');
+  assert.equal(dirty(['b', 'a']), false, 're-ticking the stored set is clean again');
+  const bare = deviceHarness({ udid: 'udid-bare', alias: 'bare' });
+  bare.editForm.transformers = [];
+  assert.equal(bare.transformersDirty, false, 'no stored list and no ticks is clean');
+  bare.editForm.transformers = ['a'];
+  assert.equal(bare.transformersDirty, true, 'a tick on a device without a list is a change');
+});
+
+checkAsync('H3 Device Detail asks before every leave while dirty, once per attempt; clean leaves at once', async () => {
+  const guard = devicePage().def.beforeRouteLeave;
+  assert.equal(typeof guard, 'function', 'DeviceDetail has a beforeRouteLeave guard');
+  assert.ok(!read('pages/Devices/DeviceDetail.vue').includes('beforeunload'), 'no page-unload prompt (D-12)');
+  const vm = deviceHarness();
+  const rec = confirmRecorder();
+  vm.$bvModal = rec.$bvModal;
+  const clean = leave(guard, vm);
+  await settle();
+  assert.deepEqual(clean, [[]], 'clean: next() once');
+  assert.equal(rec.calls.length, 0, 'clean: no dialog');
+  vm.editForm.transformers = ['utid-battery', 'utid-temp'];
+  for (const [answer, want] of [[true, [[]]], [false, [[false]]], [null, [[false]]], ['reject', [[false]]]]) {
+    rec.calls = [];
+    const first = leave(guard, vm);
+    await tick();
+    assert.equal(rec.calls.length, 1, 'dirty: one dialog');
+    assert.deepEqual(rec.calls[0], [LEAVE_MESSAGE, LEAVE_OPTIONS], 'dirty: the shared confirm');
+    assert.deepEqual(first, [], 'dirty: waits for the answer');
+    const second = leave(guard, vm);
+    assert.deepEqual(second, [[false]], 'a second leave while the dialog is open is refused at once');
+    assert.equal(rec.calls.length, 1, 'no second dialog');
+    if (answer === 'reject') rec.answer.reject(new Error('closed')); else rec.answer.resolve(answer);
+    await settle();
+    assert.deepEqual(first, want, 'answer ' + String(answer));
+  }
+});
+
+checkAsync('H4 TransformerEditor leaves at once without changes and asks through the shared confirm with them', async () => {
+  const guard = editorPage().def.beforeRouteLeave;
+  assert.equal(typeof guard, 'function', 'TransformerEditor has a beforeRouteLeave guard');
+  const rec = confirmRecorder();
+  const ctx = Object.assign(editorPage().def.data(), { $bvModal: rec.$bvModal });
+  const clean = leave(guard, ctx);
+  await settle();
+  assert.deepEqual(clean, [[]], 'no changes: next() once');
+  assert.equal(rec.calls.length, 0, 'no changes: no dialog');
+  ctx.hasChanges = true;
+  for (const [answer, want] of [[true, [[]]], [false, [[false]]]]) {
+    rec.calls = [];
+    const nexts = leave(guard, ctx);
+    await tick();
+    assert.deepEqual(rec.calls, [[LEAVE_MESSAGE, LEAVE_OPTIONS]], 'changes: the shared confirm');
+    rec.answer.resolve(answer);
+    await settle();
+    assert.deepEqual(nexts, want, 'answer ' + String(answer));
+  }
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
