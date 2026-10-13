@@ -69,6 +69,12 @@ export default {
         if (result.success) await dispatch('fetchItems').catch(() => {});
         return result;
       },
+      // KEY-04: PATCH /rsakey { filename, name }. The result comes back unchanged
+      // (the page reads `reason` from an invalid_key_name answer) and the page
+      // reloads the list itself after a success.
+      async renameItem(_ctx, { filename, name }) {
+        return this.$api.$patch('/rsakey', JSON.stringify({ filename, name }));
+      },
       async deleteItems({ dispatch }, filenames) {
         const result = await this.$api.$delete('/rsakey', JSON.stringify({ filenames }));
         if (result.success) await dispatch('fetchItems').catch(() => {});

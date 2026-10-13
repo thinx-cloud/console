@@ -141,6 +141,11 @@ export default class Api {
       return this.request('PUT', path, body);
   }
 
+  // Mutating like PUT and DELETE, so request() sends it through fetchWithCsrf.
+  async $patch(path, body) {
+      return this.request('PATCH', path, body);
+  }
+
   async $delete(path, body) {
       return this.request('DELETE', path, body);
   }

@@ -90,7 +90,7 @@ function loadModule(rel, transform = (s) => s) {
   const names = [];
   const code = transform(read(rel))
     .replace(/^import .*;?$/gm, '')
-    .replace(/export (const|let|function) (\w+)/g, (m, kind, name) => { names.push(name); return kind + ' ' + name; });
+    .replace(/export (const|let|function|async function) (\w+)/g, (m, kind, name) => { names.push(name); return kind + ' ' + name; });
   return new Function(code + '\nreturn { ' + names.join(', ') + ' };')();
 }
 

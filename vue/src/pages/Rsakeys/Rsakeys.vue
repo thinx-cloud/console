@@ -29,6 +29,7 @@
             <td class="actions-cell">
               <IconButton :icon="isShown(item) ? 'fa fa-eye-slash' : 'fa fa-eye'" :label="isShown(item) ? 'Hide key' : 'Show key'" :aria-expanded="String(isShown(item))" :aria-controls="'key-text-' + item.id" :disabled="isDeleting(item) || !hasPubkey(item)" data-cy="key-show" @click="toggleKey(item)" />
               <IconButton icon="fa fa-copy" label="Copy key" :disabled="isDeleting(item) || !hasPubkey(item)" data-cy="key-copy" @click="copyToClipboard(item.pubkey)" />
+              <IconButton icon="fa fa-pencil" label="Rename" :disabled="isDeleting(item)" data-cy="key-rename" @click="openRename(item)" />
               <IconButton :icon="isDeleting(item) ? 'fa fa-spin fa-circle-o-notch' : 'fa fa-trash'" :label="isDeleting(item) ? 'Deleting…' : 'Delete'" variant="danger" :disabled="isDeleting(item)" data-cy="key-delete" @click="deleteRow(item)" />
             </td>
           </tr>
@@ -48,26 +49,57 @@
         <b-button variant="outline-secondary" size="sm" @click="copyToClipboard(createdPubkey)">Copy to clipboard</b-button>
       </b-form-group>
     </b-modal>
+    <b-modal id="rsakey-rename-modal" title="Rename deploy key" @shown="onRenameShown" @hide="onRenameHide">
+      <b-form id="rsakey-rename-form" @submit.prevent="saveRename">
+        <label for="rename-key-name">Key name</label>
+        <b-form-input id="rename-key-name" ref="renameInput" v-model="renameName" maxlength="120" :disabled="renaming" :aria-invalid="String(!!renameReason)" aria-describedby="rename-key-name-feedback rename-key-name-help" data-cy="rename-key-input" />
+        <p id="rename-key-name-feedback" class="key-name-feedback" aria-live="polite" data-cy="rename-key-feedback">{{ renameFeedback }}</p>
+        <p id="rename-key-name-help" class="key-name-help">Up to 120 characters. The key itself does not change.</p>
+      </b-form>
+      <template #modal-footer>
+        <b-button variant="default" :disabled="renaming" data-cy="rename-key-cancel" @click="$bvModal.hide('rsakey-rename-modal')">Keep current name</b-button>
+        <b-button variant="success" type="submit" form="rsakey-rename-form" :disabled="renaming || !!renameClientReason" data-cy="rename-key-save">{{ renaming ? 'Saving…' : 'Save name' }}</b-button>
+      </template>
+    </b-modal>
   </div>
 </template>
 <script>
 import { mapGetters, mapActions } from 'vuex';
 import IconButton from '@/components/IconButton/IconButton';
+import { validateKeyName, keyNameMessage } from '@/utils/keyNames';
 
 export default {
   name: 'Rsakeys',
   components: { IconButton },
-  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createdPubkey: '', shownName: '', deletingIds: [], confirming: false, shownIds: [], bulkDeleting: false }; },
+  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createdPubkey: '', shownName: '', deletingIds: [], confirming: false, shownIds: [], bulkDeleting: false, renameTarget: null, renameName: '', renaming: false, renameServerReason: null, renameError: null }; },
   computed: {
     bulkLabel() {
       if (this.bulkDeleting) return 'Deleting…';
       return this.selectedIds.length ? 'Delete selected (' + this.selectedIds.length + ')' : 'Delete selected';
     },
+    // Rename dialog (UI-K07..UI-K09): the client check runs as the user types; a server
+    // invalid_key_name reason or the request error replaces it until the name changes.
+    renameClientReason() {
+      const check = validateKeyName(this.renameName);
+      return check.ok ? null : check.reason;
+    },
+    renameReason() { return this.renameServerReason || this.renameClientReason; },
+    renameFeedback() {
+      if (this.renameError) return this.renameError;
+      if (this.renameReason) return keyNameMessage(this.renameReason);
+      return '';
+    },
+  },
+  watch: {
+    renameName() {
+      this.renameServerReason = null;
+      this.renameError = null;
+    },
   },
   created() { this.loadData(); },
   methods: {
     ...mapGetters({ getItems: 'rsakeys/getItems' }),
-    ...mapActions({ fetchItems: 'rsakeys/fetchItems', createItem: 'rsakeys/createItem', deleteItems: 'rsakeys/deleteItems' }),
+    ...mapActions({ fetchItems: 'rsakeys/fetchItems', createItem: 'rsakeys/createItem', deleteItems: 'rsakeys/deleteItems', renameItem: 'rsakeys/renameItem' }),
     async create() {
       if (this.creating || !this.keyName.trim()) return;
       this.creating = true;
@@ -152,6 +184,58 @@ export default {
         this.bulkDeleting = false;
         this.deletingIds = this.deletingIds.filter(id => !ids.includes(id));
       }
+    },
+    // Rename (KEY-04, D-10): prefilled with the displayed name; feedback from an earlier
+    // dialog is cleared.
+    openRename(item) {
+      this.renameTarget = item;
+      this.renameName = typeof item.name === 'string' ? item.name : '';
+      this.renameServerReason = null;
+      this.renameError = null;
+      this.$bvModal.show('rsakey-rename-modal');
+    },
+    onRenameShown() {
+      const input = this.$refs.renameInput;
+      if (input && typeof input.focus === 'function') input.focus();
+      if (input && typeof input.select === 'function') input.select();
+    },
+    // Esc, the backdrop and the header close are ignored while the request runs (UI-K08).
+    onRenameHide(evt) {
+      if (this.renaming) evt.preventDefault();
+    },
+    focusRenameInput() {
+      const input = this.$refs.renameInput;
+      if (input && typeof input.focus === 'function') input.focus();
+    },
+    // UI-K08: the trimmed name is checked on the client first and an unchanged one closes
+    // the dialog without a request. Otherwise one PATCH; the server stays the authority,
+    // so its invalid_key_name reason is always shown.
+    async saveRename() {
+      if (this.renaming || !this.renameTarget) return;
+      if (!validateKeyName(this.renameName).ok) return; // the feedback line names the problem
+      const item = this.renameTarget;
+      const name = this.renameName.trim();
+      if (name === item.name) { this.$bvModal.hide('rsakey-rename-modal'); return; }
+      this.renaming = true;
+      this.renameServerReason = null;
+      this.renameError = null;
+      let result = null;
+      try {
+        result = await this.renameItem({ filename: item.filename, name });
+      } catch (e) { result = null; }
+      this.renaming = false;
+      if (result && result.success) {
+        this.$bvModal.hide('rsakey-rename-modal');
+        this.$toasted.show('Deploy key renamed', { type: 'success', duration: 2000 });
+        await this.loadData();
+        return;
+      }
+      if (result && result.response === 'invalid_key_name') {
+        this.renameServerReason = typeof result.reason === 'string' && result.reason ? result.reason : 'unknown';
+        this.$nextTick(() => this.focusRenameInput());
+        return;
+      }
+      this.renameError = 'Could not rename the deploy key. Try again.';
     },
     // A failed load clears everything behind one non-dismissible alert (UI-K12); a
     // successful one prunes the selection and the open keys to listed ids (UI-K13).
