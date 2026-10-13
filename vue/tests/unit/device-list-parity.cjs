@@ -39,6 +39,10 @@ function check(name, fn) {
   }
 }
 
+// Async checks run in order after every synchronous check.
+const asyncChecks = [];
+function checkAsync(name, fn) { asyncChecks.push([name, fn]); }
+
 function lazy(fn) {
   let done = false;
   let value;
@@ -377,10 +381,14 @@ const DEVICES = [
   { udid: 'd5', alias: 'Echo', icon: null, keyhash: 'k5', lastupdate: '2026-10-05T10:00:00Z', mac: 'EE' },
 ];
 
+// BuildLogDialog is stubbed: the page only needs one instance it can open by ref.
+const BUILD_LOG_DIALOG_STUB = { name: 'BuildLogDialog', render(h) { return h('div'); }, methods: { open() {} } };
+
 const devices = lazy(() => {
   const p = platforms();
   return loadSfc('pages/Devices/Devices.vue', {
-    PlatformBullet: bullet().def, IconButton: iconButtonDep(), basePlatform: p.basePlatform, platformInfo: p.platformInfo,
+    PlatformBullet: bullet().def, IconButton: iconButtonDep(), BuildLogDialog: BUILD_LOG_DIALOG_STUB,
+    basePlatform: p.basePlatform, platformInfo: p.platformInfo,
   });
 });
 
@@ -964,4 +972,205 @@ check('compiled CSS: one-line actions cell and 32px icon buttons 4px apart', () 
   assert.equal(value(gap.map((r) => r.body), 'margin-right'), '4px', 'gap between icon buttons');
 });
 
-process.exit(failures ? 1 : 0);
+// ---------------------------------------------------------------- Devices: build, view log, revoke, grid actions (44-02)
+
+const ELLIPSIS = String.fromCharCode(0x2026);
+const ACTION_DEVICES = [
+  { udid: 'a1', alias: 'Anvil', platform: 'arduino:esp8266', source: 's1', last_build_id: 'b1', keyhash: 'k' },
+  { udid: 'a2', alias: 'Beacon', platform: 'sigfox', source: 's2', last_build_id: 'b2', keyhash: 'k' },
+  { udid: 'a3', alias: 'Cinder', platform: 'nodemcu', last_build_id: '', keyhash: 'k' },
+  { udid: 'a4', alias: 'Dynamo', platform: 'platformio', source: 's4', last_build_id: '   ', keyhash: 'k' },
+  { udid: 'a5', alias: 'Ember', platform: 'mongoose', source: '', keyhash: 'k' },
+  { udid: 'a6', alias: 'Flint', platform: 'sigfox', last_build_id: null, keyhash: 'k' },
+];
+// With a4 in flight: [icon, label, disabled] for Build, and whether View log is enabled.
+const EXPECT_ACTIONS = {
+  a1: { build: ['icomoon-hammer_icon', 'Build', false], log: true },
+  a2: { build: ['fa fa-ban', 'Not supported', true], log: true },
+  a3: { build: ['fa fa-ban', 'No source', true], log: false },
+  a4: { build: ['fa fa-spin fa-circle-o-notch', 'Building' + ELLIPSIS, true], log: false },
+  a5: { build: ['fa fa-ban', 'No source', true], log: false },
+  a6: { build: ['fa fa-ban', 'Not supported', true], log: false },
+};
+
+function renderActions(state) {
+  return renderDevices(Object.assign({ items: ACTION_DEVICES.map((d) => Object.assign({}, d)), buildingUdids: ['a4'] }, state));
+}
+
+const actionDeviceOf = (top) => ACTION_DEVICES.find((d) => textOf(top).includes(d.alias));
+const propsOf = (n) => n.componentOptions.propsData;
+
+function checkBuildAndLog(top, dev, prefix, vm) {
+  const want = EXPECT_ACTIONS[dev.udid];
+  const build = iconButtonsOf(top).filter((n) => cyOf(n) === prefix + '-build');
+  assert.equal(build.length, 1, dev.alias + ' one ' + prefix + '-build');
+  const bp = propsOf(build[0]);
+  assert.deepEqual([bp.icon, bp.label, !!bp.disabled], want.build, dev.alias + ' build state');
+  const log = iconButtonsOf(top).filter((n) => cyOf(n) === prefix + '-log');
+  assert.equal(log.length, 1, dev.alias + ' one ' + prefix + '-log');
+  const lp = propsOf(log[0]);
+  assert.equal(lp.icon, 'fa fa-eye', dev.alias + ' log icon');
+  assert.equal(lp.label, want.log ? 'View log' : 'No build yet', dev.alias + ' log label');
+  assert.equal(!!lp.disabled, !want.log, dev.alias + ' log disabled');
+  const opened = [];
+  vm.$refs.buildLogDialog = { open: (b) => opened.push(b) };
+  log[0].componentOptions.listeners.click();
+  assert.deepEqual(opened, want.log ? [{ build_id: dev.last_build_id }] : [], dev.alias + ' log opens');
+}
+
+check('table: Build and View log states for in-flight, Sigfox, no source, no build and buildable devices', () => {
+  const { vm, vnode } = renderActions({ viewMode: 'list' });
+  const rows = byCy(vnode, 'device-row');
+  assert.equal(rows.length, ACTION_DEVICES.length);
+  rows.forEach((row) => checkBuildAndLog(lastCell(row), actionDeviceOf(row), 'row', vm));
+});
+
+check('grid: Build and View log states match the table', () => {
+  const { vm, vnode } = renderActions({ viewMode: 'grid' });
+  const cards = byCy(vnode, 'device-card');
+  assert.equal(cards.length, ACTION_DEVICES.length);
+  cards.forEach((card) => {
+    const dev = ACTION_DEVICES.find((d) => deepText(card, vm).includes(d.alias));
+    checkBuildAndLog(card, dev, 'card', vm);
+  });
+});
+
+check('buildAction: in flight wins over every other state', () => {
+  const { vm } = renderActions({ viewMode: 'list', buildingUdids: ['a2', 'a3'] });
+  ['a2', 'a3'].forEach((udid) => {
+    const a = vm.buildAction(vm.items.find((d) => d.udid === udid));
+    assert.deepEqual([a.icon, a.label, a.disabled], ['fa fa-spin fa-circle-o-notch', 'Building' + ELLIPSIS, true], udid);
+  });
+});
+
+checkAsync('buildDevice sends one request while in flight and releases it on success, failure and rejection', async () => {
+  const cases = [
+    [{ success: true }, 'message', 'Build triggered.'],
+    [{ success: false, message: 'm' }, 'error', 'm'],
+    [{ success: false }, 'error', 'Build failed.'],
+    ['reject', 'error', 'Build failed.'],
+  ];
+  for (const [reply, field, text] of cases) {
+    const { vm } = renderActions({ viewMode: 'list', buildingUdids: [] });
+    const calls = [];
+    let settle;
+    vm.buildFirmware = (payload) => {
+      calls.push(payload);
+      return new Promise((resolve, reject) => {
+        settle = () => (reply === 'reject' ? reject(new Error('network')) : resolve(reply));
+      });
+    };
+    const dev = vm.items.find((d) => d.udid === 'a1');
+    const first = vm.buildDevice(dev);
+    const second = vm.buildDevice(dev);
+    assert.equal(calls.length, 1, JSON.stringify(reply) + ' one request');
+    assert.deepEqual(calls[0], { udid: 'a1', source_id: 's1' });
+    assert.deepEqual(vm.buildingUdids, ['a1'], 'in flight');
+    assert.equal(vm.buildAction(dev).label, 'Building' + ELLIPSIS);
+    settle();
+    await Promise.all([first, second]);
+    assert.deepEqual(vm.buildingUdids, [], JSON.stringify(reply) + ' released');
+    assert.equal(vm[field], text, JSON.stringify(reply) + ' ' + field);
+    const after = vm.buildAction(dev);
+    assert.deepEqual([after.icon, after.label, after.disabled], ['icomoon-hammer_icon', 'Build', false], 'enabled again');
+  }
+});
+
+checkAsync('buildDevice sends nothing for a disabled state', async () => {
+  const { vm } = renderActions({ viewMode: 'list', buildingUdids: ['a4'] });
+  const calls = [];
+  vm.buildFirmware = (payload) => { calls.push(payload); return Promise.resolve({ success: true }); };
+  for (const udid of ['a2', 'a3', 'a4', 'a5', 'a6']) await vm.buildDevice(vm.items.find((d) => d.udid === udid));
+  assert.deepEqual(calls, []);
+});
+
+check('table actions: Build, View log, Edit, Revoke, all IconButtons; Revoke keeps its confirmation', () => {
+  const { vm, vnode } = renderActions({ viewMode: 'list' });
+  const asked = [];
+  vm.$bvModal = { msgBoxConfirm: (body, opts) => { asked.push([body, opts]); return Promise.resolve(false); } };
+  byCy(vnode, 'device-row').forEach((row) => {
+    const dev = actionDeviceOf(row);
+    const cell = lastCell(row);
+    const buttons = iconButtonsOf(cell);
+    assert.deepEqual(buttons.map(cyOf), ['row-build', 'row-log', 'row-detail', 'row-revoke'], dev.alias + ' order');
+    assert.equal(nodesOf(cell).filter((n) => n.tag === 'b-button').length, 0, dev.alias + ' no text buttons');
+    const revoke = propsOf(buttons[3]);
+    assert.deepEqual([revoke.icon, revoke.label, revoke.variant], ['fa fa-trash', 'Revoke', 'danger']);
+    asked.length = 0;
+    buttons[3].componentOptions.listeners.click();
+    assert.equal(asked.length, 1, dev.alias + ' asks once');
+    assert.equal(asked[0][0], 'Revoke this device? This cannot be undone.');
+    assert.equal(asked[0][1].title, 'Confirm Revoke');
+    assert.equal(asked[0][1].okVariant, 'danger');
+    assert.equal(asked[0][1].okTitle, 'Revoke');
+  });
+});
+
+check('grid actions: one non-wrapping row of checkbox, Build, View log, Edit (pushed right); no Revoke', () => {
+  const { vm, vnode } = renderActions({ viewMode: 'grid' });
+  const pushed = [];
+  vm.$router = { push: (to) => pushed.push(to) };
+  byCy(vnode, 'device-card').forEach((card) => {
+    const dev = ACTION_DEVICES.find((d) => deepText(card, vm).includes(d.alias));
+    const rows = nodesOf(card).filter((n) => n.tag === 'div' && ['d-flex', 'align-items-center', 'flex-nowrap'].every((c) => classList(n).includes(c)));
+    assert.equal(rows.length, 1, dev.alias + ' one action row');
+    const parts = tagged(rows[0]);
+    assert.equal(parts.length, 4, dev.alias + ' four parts');
+    assert.ok(classList(parts[0]).includes('abc-checkbox'), dev.alias + ' checkbox first');
+    assert.equal(attrsOf(nodesOf(parts[0]).find((n) => n.tag === 'input')).id, 'grid-checkbox-' + dev.udid);
+    assert.deepEqual(parts.slice(1).map(cyOf), ['card-build', 'card-log', 'card-detail']);
+    parts.slice(1).forEach((p) => assert.ok(isComponent(p, 'IconButton'), dev.alias + ' ' + cyOf(p) + ' is an IconButton'));
+    const edit = parts[3];
+    assert.deepEqual([propsOf(edit).icon, propsOf(edit).label], ['fa fa-pencil', 'Edit']);
+    assert.ok(classList(edit).includes('ml-auto'), dev.alias + ' Edit pushed right');
+    pushed.length = 0;
+    edit.componentOptions.listeners.click();
+    assert.deepEqual(pushed, [{ name: 'DeviceDetail', params: { udid: dev.udid } }]);
+    assert.ok(!iconButtonsOf(card).some((n) => propsOf(n).label === 'Revoke' || /revoke/.test(cyOf(n) || '')), dev.alias + ' no Revoke');
+    assert.equal(nodesOf(card).filter((n) => n.tag === 'b-button').length, 0, dev.alias + ' no text buttons');
+  });
+});
+
+check('Devices renders exactly one BuildLogDialog with ref buildLogDialog, in both views', () => {
+  ['list', 'grid'].forEach((viewMode) => {
+    const { vnode } = renderActions({ viewMode });
+    const dialogs = componentsOf(vnode, 'BuildLogDialog');
+    assert.equal(dialogs.length, 1, viewMode);
+    assert.equal(dialogs[0].data.ref, 'buildLogDialog', viewMode);
+  });
+});
+
+check('icomoon fonts are byte copies of the Legacy files', () => {
+  ['icomoon.woff', 'icomoon.ttf'].forEach((f) => {
+    const legacy = fs.readFileSync(path.join(SRC, '..', '..', 'src', 'assets', 'thinx', 'fonts', f));
+    const copy = fs.readFileSync(path.join(SRC, 'fonts', 'icomoon', f));
+    assert.ok(legacy.equals(copy), f + ' differs');
+  });
+});
+
+check('compiled theme: icomoon font face (woff, ttf) and only the hammer glyph rule', () => {
+  const css = compiledCss();
+  const faces = (css.match(/@font-face\{[^}]*\}/g) || []).filter((f) => /font-family:\s*["']?icomoon["']?/.test(f));
+  assert.equal(faces.length, 1, 'one icomoon @font-face');
+  assert.ok(faces[0].includes('icomoon.woff') && faces[0].includes('icomoon.ttf'), 'woff and ttf: ' + faces[0]);
+  const content = value(decls('.icomoon-hammer_icon:before'), 'content');
+  assert.ok(content === '"\\e900"' || content === '"' + String.fromCharCode(0xE900) + '"', 'hammer content ' + JSON.stringify(content));
+  assert.match(String(value(decls('.icomoon-hammer_icon'), 'font-family')), /icomoon.*!important/);
+  const icomoonSelectors = [...new Set(allRules().flatMap((r) => r.selectors).filter((s) => /icomoon-/.test(s)))].sort();
+  assert.deepEqual(icomoonSelectors, ['.icomoon-hammer_icon', '.icomoon-hammer_icon:before']);
+  const imports = read('styles/theme.scss').split('\n').filter((l) => l.trim() === "@import '../fonts/icomoon/icomoon';");
+  assert.equal(imports.length, 1, 'theme imports the icomoon partial once');
+});
+
+(async () => {
+  for (const [name, fn] of asyncChecks) {
+    try {
+      const detail = await fn();
+      console.log('ok   ' + name + (typeof detail === 'string' ? ' (' + detail + ')' : ''));
+    } catch (err) {
+      failures++;
+      console.log('FAIL ' + name + ' (' + String(err && err.message ? err.message : err).split('\n')[0] + ')');
+    }
+  }
+  process.exit(failures ? 1 : 0);
+})();
