@@ -369,7 +369,7 @@ export default {
       // Never retain the token in component state once it has been submitted.
       this.githubForm.token = '';
       if (result && result.success) {
-        // Success payload is { key_pushed, created_key } (parsed by core/api.js into
+        // Success payload is { key_pushed, created_key, keys_in_use_elsewhere } (parsed by core/api.js into
         // result.response). Report whether a key was created vs. reused, and whether
         // the public key actually reached GitHub. key_pushed:false means the token
         // was stored but the key push failed — surface that as a warning, not success.
@@ -378,9 +378,17 @@ export default {
         const pushPart = r.key_pushed
           ? 'and pushed to GitHub'
           : 'but the public key could not be pushed to GitHub';
+        // keys_in_use_elsewhere: keys GitHub reported as registered on another account or
+        // as a repository deploy key, skipped before the one that was pushed.
+        const skipped = Number(r.keys_in_use_elsewhere) || 0;
+        const skippedPart = skipped > 0
+          ? ' ' + (skipped === 1 ? 'One of your keys is' : skipped + ' of your keys are') +
+            ' already registered on another GitHub account or as a repository deploy key, so ' +
+            (skipped === 1 ? 'it was' : 'they were') + ' skipped.'
+          : '';
         this.githubResult = {
           variant: r.key_pushed ? 'success' : 'warning',
-          text: 'GitHub token linked — ' + keyPart + ' ' + pushPart + '.',
+          text: 'GitHub token linked — ' + keyPart + ' ' + pushPart + '.' + skippedPart,
         };
       } else {
         // Failure responses carry a string code in result.response:

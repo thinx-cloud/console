@@ -27,6 +27,10 @@ const checks = [
     assert.ok(line && !/scope/i.test(line), line);
   }],
   ['no raw HTML rendering on the page', () => assert.ok(!template.includes('v-html'))],
+  ['the link result explains keys skipped as in use elsewhere', () => {
+    assert.ok(source.includes('r.keys_in_use_elsewhere'));
+    assert.ok(source.includes('already registered on another GitHub account or as a repository deploy key'));
+  }],
 ];
 
 let failed = 0;
