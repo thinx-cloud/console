@@ -9,21 +9,23 @@
 
     <p>
       <b-button variant="success" @click="$bvModal.show('create-enviro-modal')">Add Variable</b-button>
-      <b-button
-        variant="danger"
-        @click="deleteSelected"
-        :disabled="!selectedKeys.length"
-        class="ml-2"
-      >Delete ({{ selectedKeys.length }})</b-button>
     </p>
 
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
+    <b-alert v-if="loadFailed" variant="danger" show data-cy="enviros-load-error">Could not load environment variables. Refresh to retry.</b-alert>
 
     <p>Global environment variables are available to all your devices during firmware builds.</p>
 
+    <!-- Bulk delete (D-16, UI-T23): its own right-aligned row above the table. -->
+    <div v-if="!loading && !loadFailed && items.length" class="bulk-toolbar" role="toolbar" aria-label="Selected environment variables">
+      <b-button size="sm" variant="danger" data-cy="enviro-bulk-delete" :disabled="!selectedKeys.length || bulkDeleting" @click="deleteSelected">
+        <i class="fa fa-trash" aria-hidden="true"></i><span class="button-text">{{ bulkLabel }}</span>
+      </b-button>
+    </div>
+
     <!-- Page-local table (UI-T19, UI-T20): rows keyed by the variable name; values are never listed. -->
     <div v-if="loading" role="status">Loading…</div>
-    <div v-else class="table-responsive">
+    <div v-else-if="!loadFailed" class="table-responsive">
       <table class="table table-striped enviros-table">
         <caption class="sr-only">Environment variables</caption>
         <thead>
@@ -31,10 +33,10 @@
         </thead>
         <tbody>
           <tr v-for="item in items" :key="item.label" data-cy="enviro-row">
-            <td><b-form-checkbox v-model="selectedKeys" :value="item.label" :aria-label="'Select ' + item.label" /></td>
+            <td><b-form-checkbox v-model="selectedKeys" :value="item.label" :aria-label="'Select ' + item.label" :disabled="isDeleting(item)" data-cy="enviro-select" /></td>
             <td><span class="enviro-key" :title="item.label" data-cy="enviro-key">{{ item.label }}</span></td>
             <td class="actions-cell">
-              <IconButton icon="fa fa-pencil" label="Edit value" data-cy="enviro-edit" @click="openEdit(item)" />
+              <IconButton icon="fa fa-pencil" label="Edit value" :disabled="isDeleting(item)" data-cy="enviro-edit" @click="openEdit(item)" />
             </td>
           </tr>
           <tr v-if="!items.length">
@@ -96,7 +98,16 @@ export default {
       editValue: '',
       editSaving: false,
       editError: null,
+      confirming: false,
+      bulkDeleting: false,
+      deletingKeys: [],
     };
+  },
+  computed: {
+    bulkLabel() {
+      if (this.bulkDeleting) return 'Deleting…';
+      return this.selectedKeys.length ? 'Delete selected (' + this.selectedKeys.length + ')' : 'Delete selected';
+    },
   },
   created() {
     this.$watch(() => this.$route.params, () => { this.loadData(); }, { immediate: true });
@@ -111,18 +122,54 @@ export default {
       if (result.success) {
         this.form = { key: '', value: '' };
         this.$bvModal.hide('create-enviro-modal');
-        this.items = this.getItems();
+        this.showItems(this.getItems());
       } else {
         this.error = result.message || 'Failed to add environment variable.';
       }
     },
+    isDeleting(item) { return this.deletingKeys.includes(item.label); },
+    // Bulk delete (D-16, UI-T23): one plain confirmation that names every selected variable,
+    // with the cancel button focused. `confirming` makes a click a no-op while it is open,
+    // `bulkDeleting` and `deletingKeys` while the request runs, so one confirmation sends one
+    // DELETE /api/v2/env. The names are passed as plain text, never as markup.
     async deleteSelected() {
-      const names = this.selectedKeys.filter(name => this.items.some(item => item.label === name));
+      if (this.confirming || this.bulkDeleting) return;
+      const names = this.items.map(item => item.label).filter(name => this.selectedKeys.includes(name) && !this.deletingKeys.includes(name));
       if (!names.length) return;
-      const result = await this.deleteItems(names);
-      if (!result.success) this.error = result.message || 'Failed to delete environment variables.';
-      this.selectedKeys = [];
-      this.items = this.getItems();
+      const one = names.length === 1;
+      const text = one
+        ? 'Delete the variable "' + names[0] + '"? This cannot be undone. Firmware builds will no longer receive it.'
+        : 'Delete ' + names.length + ' variables (' + names.join(', ') + ')? This cannot be undone. Firmware builds will no longer receive them.';
+      this.confirming = true;
+      let confirmed = false;
+      try {
+        confirmed = await this.$bvModal.msgBoxConfirm(text, {
+          title: 'Confirm Delete', okVariant: 'danger', okTitle: one ? 'Delete variable' : 'Delete variables',
+          cancelTitle: one ? 'Keep variable' : 'Keep variables', autoFocusButton: 'cancel', bodyClass: 'text-break' });
+      } catch (e) { confirmed = false; }
+      finally { this.confirming = false; }
+      if (!confirmed || this.bulkDeleting) return;
+      const failure = one ? 'Could not delete the variable. Try again.' : 'Could not delete the variables. Try again.';
+      this.bulkDeleting = true;
+      this.deletingKeys = names.slice();
+      this.error = null;
+      try {
+        const result = await this.deleteItems(names);
+        if (result && result.success) {
+          this.selectedKeys = [];
+          if (result.refreshed === false) await this.loadData();
+          else this.showItems(this.getItems());
+          return;
+        }
+        this.error = failure;
+        await this.loadData();
+      } catch (e) {
+        this.error = failure;
+        await this.loadData();
+      } finally {
+        this.bulkDeleting = false;
+        this.deletingKeys = [];
+      }
     },
     // Edit value (D-03): the field opens empty on every open, and an earlier error is cleared.
     openEdit(item) {
@@ -164,20 +211,30 @@ export default {
         this.$toasted.show('Value saved', { type: 'success', duration: 2000 });
         // The store refreshed the list; when only that refresh failed, reload once.
         if (result.refreshed === false) await this.loadData();
-        else this.items = this.getItems();
+        else this.showItems(this.getItems());
         return;
       }
       this.editError = 'Could not save the new value. ' + key + ' keeps its current value. Try again.';
       await this.loadData();
     },
+    // The listed rows; the selection keeps only names that are still listed (UI-T25).
+    showItems(items) {
+      const listed = items.map(item => item.label);
+      this.items = items;
+      this.selectedKeys = this.selectedKeys.filter(name => listed.includes(name));
+    },
     // Only the first load shows Loading… (`loading` starts true); reloads refresh in place.
+    // A failed load clears the rows and the selection behind one non-dismissible alert and
+    // leaves the action error alone (UI-T25).
     async loadData() {
       try {
         await this.loadItems();
-        this.items = this.getItems();
+        this.showItems(this.getItems());
         this.loadFailed = false;
       } catch (e) {
         this.items = [];
+        this.selectedKeys = [];
+        this.loadFailed = true;
       } finally { this.loading = false; }
     },
   },
