@@ -449,7 +449,13 @@ export default {
         if (i > -1) this.buildingUdids.splice(i, 1);
       }
       if (result && result.success) this.message = 'Build triggered.';
-      else this.error = (result && result.message) || 'Build failed.';
+      else this.error = this.buildFailure(result);
+    },
+    // The API answers a failed /build with { success: false, response: <reason> }; the reason
+    // is shown as text when it is a non-blank string, else Build failed. (44 IN-01).
+    buildFailure(result) {
+      const text = (v) => (typeof v === 'string' && v.trim() !== '' ? v : null);
+      return (result && (text(result.message) || text(result.response))) || 'Build failed.';
     },
     // Newest build of the device, failed ones included: the first entry for its udid in the
     // build list (GET /logs/build answers newest first, as Legacy's deviceBuilds[udid][0]).

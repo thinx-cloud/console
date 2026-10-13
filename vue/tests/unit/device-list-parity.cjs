@@ -1165,6 +1165,11 @@ checkAsync('buildDevice sends one request while in flight and releases it on suc
     [{ success: false, message: 'm' }, 'error', 'm'],
     [{ success: false }, 'error', 'Build failed.'],
     ['reject', 'error', 'Build failed.'],
+    // IN-01: the API answers { success: false, response: <reason> }; the reason is shown as text.
+    [{ success: false, response: 'device_not_found' }, 'error', 'device_not_found'],
+    [{ success: false, response: '   ' }, 'error', 'Build failed.'],
+    [{ success: false, response: JSON.parse('{"toString":1}') }, 'error', 'Build failed.'],
+    [{ success: false, response: 42 }, 'error', 'Build failed.'],
   ];
   for (const [reply, field, text] of cases) {
     const { vm } = renderActions({ viewMode: 'list', buildingUdids: [] });
