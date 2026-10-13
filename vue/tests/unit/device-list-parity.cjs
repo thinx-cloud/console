@@ -130,7 +130,7 @@ function renderPage(def, state = {}, components = {}) {
 function expand(vnode, parentVm) {
   const opts = vnode.componentOptions;
   assert.ok(opts, 'not a component vnode');
-  const child = new opts.Ctor({ propsData: opts.propsData, _parentVnode: vnode, parent: parentVm });
+  const child = new opts.Ctor({ propsData: opts.propsData, _parentVnode: vnode, _parentListeners: opts.listeners, parent: parentVm });
   const { out, warnings, error } = withWarnings(() => child._render());
   return { vm: child, vnode: out, warnings, error };
 }
@@ -281,6 +281,92 @@ check('PlatformBullet has no "Platform:" text and no raw-HTML binding', () => {
   assert.equal(source.indexOf('v-html'), -1);
 });
 
+// ---------------------------------------------------------------- IconButton.vue (44-02)
+
+const ICON_BUTTON = 'components/IconButton/IconButton.vue';
+const iconButton = lazy(() => loadSfc(ICON_BUTTON));
+// Devices imports IconButton from 44-02 on; on the 44-01 tree the file does not exist yet.
+const iconButtonDep = () => (fs.existsSync(path.join(SRC, ICON_BUTTON)) ? iconButton().def : undefined);
+
+// Render <IconButton …> from a compiled parent template, so $attrs and listeners
+// resolve as they do in a page, then expand it one level.
+function renderIconButton(tpl) {
+  const compiled = compiler.compileToFunctions(tpl, { whitespace: 'condense' });
+  const hits = [];
+  const parent = new Vue({
+    render: compiled.render,
+    staticRenderFns: compiled.staticRenderFns,
+    components: { IconButton: iconButton().def },
+    methods: { hit(e) { hits.push(e); } },
+  });
+  const outer = withWarnings(() => parent._render());
+  assert.equal(outer.error, null, 'parent renders without error');
+  assert.ok(isComponent(outer.out, 'IconButton'), 'parent renders an IconButton');
+  const r = expand(outer.out, parent);
+  assert.equal(r.error, null, 'IconButton renders without error');
+  assert.deepEqual(r.warnings, [], 'IconButton renders without Vue warnings');
+  return { vnode: r.vnode, vm: r.vm, outer: outer.out, hits };
+}
+
+const tagged = (n) => (n.children || []).filter((c) => c.tag);
+
+check('IconButton renders the UI-D07 markup with the label as tip, aria-label and text', () => {
+  const { vnode } = renderIconButton('<IconButton icon="fa fa-pencil" label="Edit" data-cy="x" @click="hit" />');
+  assert.equal(vnode.tag, 'span', 'root is a span');
+  assert.deepEqual(classList(vnode), ['icon-button']);
+  assert.equal(attrsOf(vnode).title, 'Edit', 'wrapper title');
+  assert.equal(attrsOf(vnode)['data-cy'], undefined, 'data-cy not on the wrapper');
+  const kids = tagged(vnode);
+  assert.equal(kids.length, 1, 'one child');
+  const btn = kids[0];
+  assert.equal(btn.tag, 'b-button');
+  const a = attrsOf(btn);
+  assert.equal(a['aria-label'], 'Edit');
+  assert.equal(a.size, 'sm');
+  assert.equal(a.variant, 'default');
+  assert.equal(a.disabled, false);
+  assert.equal(a['data-cy'], 'x', 'data-cy lands on the button');
+  const inner = tagged(btn);
+  assert.equal(inner.length, 2, 'glyph and text');
+  assert.equal(inner[0].tag, 'i');
+  assert.deepEqual(classList(inner[0]), ['fa', 'fa-pencil']);
+  assert.equal(attrsOf(inner[0])['aria-hidden'], 'true');
+  assert.equal(inner[1].tag, 'span');
+  assert.deepEqual(classList(inner[1]), ['icon-button__text', 'd-none', 'd-lg-inline']);
+  assert.equal(textOf(inner[1]), 'Edit');
+});
+
+check('IconButton passes variant and disabled through and emits click only while enabled', () => {
+  const on = renderIconButton('<IconButton icon="fa fa-trash" label="Revoke" variant="danger" @click="hit" />');
+  const btn = tagged(on.vnode)[0];
+  assert.equal(attrsOf(btn).variant, 'danger');
+  assert.equal(attrsOf(btn).disabled, false);
+  btn.data.on.click({ type: 'click' });
+  assert.equal(on.hits.length, 1, 'one click emitted');
+  assert.equal(on.hits[0].type, 'click', 'the event is passed on');
+  const off = renderIconButton('<IconButton icon="fa fa-eye" label="No build yet" :disabled="true" @click="hit" />');
+  const btnOff = tagged(off.vnode)[0];
+  assert.equal(attrsOf(btnOff).disabled, true);
+  assert.equal(attrsOf(off.vnode).title, 'No build yet', 'disabled button keeps its tip on the wrapper');
+  btnOff.data.on.click({ type: 'click' });
+  assert.equal(off.hits.length, 0, 'no click while disabled');
+});
+
+check('IconButton props, inheritAttrs false, no raw-HTML binding, no style block', () => {
+  const { def, source } = iconButton();
+  assert.equal(def.name, 'IconButton');
+  assert.equal(def.inheritAttrs, false);
+  assert.equal(def.props.icon.type, String);
+  assert.equal(def.props.icon.required, true);
+  assert.equal(def.props.label.type, String);
+  assert.equal(def.props.label.required, true);
+  assert.equal(def.props.variant.default, 'default');
+  assert.equal(def.props.disabled.type, Boolean);
+  assert.equal(def.props.disabled.default, false);
+  assert.equal(source.indexOf('v-html'), -1);
+  assert.equal(source.indexOf('<style'), -1);
+});
+
 // ---------------------------------------------------------------- Devices.vue
 
 const DEVICES = [
@@ -293,7 +379,9 @@ const DEVICES = [
 
 const devices = lazy(() => {
   const p = platforms();
-  return loadSfc('pages/Devices/Devices.vue', { PlatformBullet: bullet().def, basePlatform: p.basePlatform, platformInfo: p.platformInfo });
+  return loadSfc('pages/Devices/Devices.vue', {
+    PlatformBullet: bullet().def, IconButton: iconButtonDep(), basePlatform: p.basePlatform, platformInfo: p.platformInfo,
+  });
 });
 
 function renderDevices(state) {
@@ -820,6 +908,60 @@ check('grid card tile keeps an 8px gap before the alias', () => {
   const gap = allRules().filter((r) => r.media === '' && r.selectors.some((s) => /\.device-icon$/.test(s) && s !== '.device-icon'));
   const margin = value(gap.map((r) => r.body), 'margin-right');
   assert.equal(margin, '8px');
+});
+
+// ---------------------------------------------------------------- Devices: row actions (44-02)
+
+const lastCell = (row) => {
+  const tds = (row.children || []).filter((n) => n.tag === 'td');
+  return tds[tds.length - 1];
+};
+
+function iconButtonsOf(top) {
+  return componentsOf(top, 'IconButton');
+}
+
+check('the device table sits inside div.table-responsive', () => {
+  const { vnode } = renderFleet({ viewMode: 'list' });
+  const tables = nodesOf(vnode).filter((n) => n.tag === 'table');
+  assert.equal(tables.length, 1, 'one table');
+  const wraps = byClass(vnode, 'table-responsive');
+  assert.equal(wraps.length, 1, 'one .table-responsive');
+  assert.equal(wraps[0].tag, 'div');
+  assert.ok((wraps[0].children || []).includes(tables[0]), 'the table is the wrapper child');
+});
+
+check('each row ends in td.actions-cell whose Edit IconButton opens DeviceDetail', () => {
+  const { vm, vnode } = renderFleet({ viewMode: 'list' });
+  const pushed = [];
+  vm.$router = { push: (to) => pushed.push(to) };
+  const rows = byCy(vnode, 'device-row');
+  assert.equal(rows.length, FLEET.length);
+  rows.forEach((row) => {
+    const dev = aliasOfRow(row);
+    const cell = lastCell(row);
+    assert.ok(classList(cell).includes('actions-cell'), dev.alias + ' last cell is .actions-cell');
+    const edit = iconButtonsOf(cell).filter((n) => cyOf(n) === 'row-detail');
+    assert.equal(edit.length, 1, dev.alias + ' one row-detail IconButton');
+    assert.equal(edit[0].componentOptions.propsData.icon, 'fa fa-pencil');
+    assert.equal(edit[0].componentOptions.propsData.label, 'Edit');
+    pushed.length = 0;
+    edit[0].componentOptions.listeners.click();
+    assert.deepEqual(pushed, [{ name: 'DeviceDetail', params: { udid: dev.udid } }], dev.alias + ' push');
+  });
+});
+
+check('compiled CSS: one-line actions cell and 32px icon buttons 4px apart', () => {
+  const cell = decls('.actions-cell');
+  assert.equal(value(cell, 'white-space'), 'nowrap');
+  assert.equal(value(cell, 'width'), '1%');
+  const btn = decls('.icon-button .btn');
+  const want = { display: 'inline-flex', 'align-items': 'center', 'justify-content': 'center',
+    'min-width': '32px', 'min-height': '32px', 'white-space': 'nowrap' };
+  Object.keys(want).forEach((p) => assert.equal(value(btn, p), want[p], '.icon-button .btn ' + p));
+  assert.equal(value(decls('.icon-button__text'), 'margin-left'), '4px');
+  const gap = allRules().filter((r) => r.media === '' && r.selectors.some((s) => /^\.icon-button:not\(:last-child\)$/.test(s)));
+  assert.equal(value(gap.map((r) => r.body), 'margin-right'), '4px', 'gap between icon buttons');
 });
 
 process.exit(failures ? 1 : 0);
