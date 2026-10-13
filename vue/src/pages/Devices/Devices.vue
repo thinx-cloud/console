@@ -191,7 +191,7 @@
               ><i class="fa fa-warning" aria-hidden="true"></i></span>
             </span>
           </p>
-          <p class="mb-2 text-muted small">{{ device.lastupdate | fromNow }}</p>
+          <p class="mb-2 small">{{ device.lastupdate | fromNow }}</p>
           <div class="d-flex align-items-center flex-nowrap">
             <div class="abc-checkbox d-inline-block mr-2">
               <input

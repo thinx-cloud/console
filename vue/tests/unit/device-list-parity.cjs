@@ -974,6 +974,15 @@ check('empty states: no devices vs no filter match, both views, never text-muted
   });
 });
 
+check('grid: the last-seen line uses the body colour, not text-muted (UI review)', () => {
+  const { vnode } = renderFleet({ viewMode: 'grid' });
+  byCy(vnode, 'device-card').forEach((card) => {
+    const lines = nodesOf(card).filter((n) => n.tag === 'p' && textOf(n) === 'a moment ago');
+    assert.equal(lines.length, 1, 'one last-seen line');
+    assert.ok(!classList(lines[0]).includes('text-muted'), 'last seen is text-muted');
+  });
+});
+
 check('one device renders one row and one card with the same layout', () => {
   const one = [fleet()[0]];
   const list = renderDevices({ items: one, viewMode: 'list' });
