@@ -1472,7 +1472,8 @@ check('G3 compiled theme: key-name-feedback in #FF8A8A, hidden when empty; key-n
   const fb = expectDecls('.key-name-feedback', { margin: '4px 0 0', 'font-size': '.875rem', 'font-weight': '400' });
   assert.match(value(fb, 'color') || '', /^#ff8a8a$/i, '.key-name-feedback colour');
   expectDecls('.key-name-feedback:empty', { display: 'none' });
-  expectDecls('.key-name-help', { margin: '4px 0 0', color: 'inherit', 'font-size': '.875rem' });
+  // UI-REVIEW finding 4: the help line is the Label role (400), like the feedback line above it.
+  expectDecls('.key-name-help', { margin: '4px 0 0', color: 'inherit', 'font-size': '.875rem', 'font-weight': '400' });
 });
 
 // ---------------------------------------------------------------- run

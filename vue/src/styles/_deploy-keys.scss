@@ -84,9 +84,11 @@
   display: none;
 }
 
-// Rename help line in body colour, not form-text's muted grey (UI-K09).
+// Rename help line in body colour, not form-text's muted grey (UI-K09), at the Label
+// weight 400 like the feedback line above it (the body is 300).
 .key-name-help {
   margin: 4px 0 0;
   color: inherit;
   font-size: .875rem;
+  font-weight: 400;
 }
