@@ -1,0 +1,96 @@
+// Phase 46 Settings pages (UI-SPEC UI-T01..UI-T26): Transformers, Environment Globals and
+// the Transformer Assignment card. 46-03 and 46-04 append their own rules to this file.
+
+// Bulk toolbar: its own right-aligned row above the table (UI-T01). It holds one button,
+// so it needs no gap.
+.bulk-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+// Glyph-to-text gap inside a button with a glyph and visible text, at the Label weight (UI-T01).
+.button-text {
+  margin-left: 4px;
+  font-weight: 400;
+}
+
+// Add button row, replacing the <p> wrapper (UI-T02).
+.settings-add {
+  margin-bottom: 16px;
+}
+
+// Transformer name: ellipsised on a block inside the cell, full name in the title (UI-T05).
+// dir="auto" plus isolation keep a right-to-left name from reordering its neighbours.
+.transformer-name {
+  display: block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  unicode-bidi: isolate;
+}
+
+@include media-breakpoint-up(md) {
+  .transformer-name {
+    max-width: 240px;
+  }
+}
+
+// Dialog layout (UI-T26): the form's blocks 8px apart; a field holds its label, its
+// control and its feedback/help lines, which keep their own 4px top margin.
+.dialog-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dialog-stack > * {
+  margin: 0;
+}
+
+.dialog-label {
+  display: block;
+  margin: 0 0 4px;
+}
+
+// Feedback and help lines 4px under their field (UI-T04). #FF8A8A measures 6.48:1 on the
+// modal; the feedback line takes no space while it is empty.
+.dialog-feedback {
+  margin: 4px 0 0;
+  color: #FF8A8A;
+  font-size: .875rem;
+  font-weight: 400;
+}
+
+.dialog-feedback:empty {
+  display: none;
+}
+
+.dialog-help {
+  margin: 4px 0 0;
+  color: inherit;
+  font-size: .875rem;
+  font-weight: 400;
+}
+
+// Typed-confirm delete dialog (UI-T08): the names list scrolls inside 160px and wraps
+// long names; the word to type is monospace; the usage glyph is the caution colour.
+.typed-confirm__names {
+  max-height: 160px;
+  overflow-y: auto;
+  padding-left: 16px;
+  overflow-wrap: anywhere;
+}
+
+.typed-confirm__word {
+  font-family: $font-family-monospace;
+  font-size: .875rem;
+  font-weight: 400;
+}
+
+.typed-confirm__usage .fa-warning {
+  color: #F0AD4E;
+  margin-right: 4px;
+}

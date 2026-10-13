@@ -7,9 +7,9 @@
       Settings - <span class="fw-semi-bold">Transformers</span>
     </h1>
 
-    <p>
-      <b-button variant="success" @click="$bvModal.show('create-transformer-modal')">Add Transformer</b-button>
-    </p>
+    <div class="settings-add">
+      <b-button variant="success" data-cy="transformer-add" @click="openCreate"><i class="fa fa-plus" aria-hidden="true"></i><span class="button-text">Add Transformer</span></b-button>
+    </div>
 
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
     <b-alert v-if="loadFailed" variant="danger" show data-cy="transformers-load-error">Could not load transformers. Refresh to retry.</b-alert>
@@ -64,12 +64,12 @@
       </template>
     </b-modal>
 
-    <!-- Create Modal -->
-    <b-modal id="create-transformer-modal" title="Add Transformer" :ok-disabled="creating" @ok="create" ok-title="Create">
-      <b-alert :show="!!error" variant="danger" class="mb-3">{{ error }}</b-alert>
-      <b-form-group label="Alias" label-for="transformer-alias">
-        <b-form-input id="transformer-alias" v-model="form.alias" placeholder="e.g. Battery Parser" required />
+    <!-- Create dialog (UI-T11, D-14): its own feedback line; the page alert stays behind it. -->
+    <b-modal id="create-transformer-modal" title="Add Transformer" :ok-title="creating ? 'Creating…' : 'Create Transformer'" ok-variant="success" cancel-title="Close without adding" cancel-variant="default" :ok-disabled="creating" @ok="create">
+      <b-form-group label="Name" label-for="transformer-name">
+        <b-form-input id="transformer-name" v-model="form.alias" placeholder="e.g. Battery Parser" aria-describedby="transformer-create-feedback" data-cy="transformer-create-input" />
       </b-form-group>
+      <p id="transformer-create-feedback" class="dialog-feedback" aria-live="polite" data-cy="transformer-create-feedback">{{ createError }}</p>
     </b-modal>
   </div>
 </template>
@@ -89,6 +89,7 @@ export default {
       error: null,
       form: { alias: '' },
       creating: false,
+      createError: null,
       selectedUtids: [],
       deletingUtids: [],
       deleteTargets: [],
@@ -147,28 +148,39 @@ export default {
     editTransformer(utid) {
       this.$router.push({ name: 'TransformerEditor', params: { utid } });
     },
+    openCreate() {
+      if (!this.creating) this.createError = null;
+      this.$bvModal.show('create-transformer-modal');
+    },
+    // Create (UI-T11): the dialog stays open and says why; one click sends one request.
+    // The name is stored in the `alias` data key (D-14 changes the visible text only).
     async create(bvModalEvt) {
       bvModalEvt.preventDefault();
-      this.error = null;
-      if (!this.form.alias.trim()) return;
-      const duplicate = this.items.find(t => t.alias === this.form.alias.trim());
-      if (duplicate) {
-        this.error = 'A transformer with this alias already exists.';
+      if (this.creating) return;
+      const name = this.form.alias.trim();
+      if (!name) {
+        this.createError = 'Enter a transformer name.';
         return;
       }
-      if (this.creating) return;
-      this.creating = true;
-      try {
-      const result = await this.createItem(this.form.alias.trim());
-      if (result.success) {
-        this.form.alias = '';
-        this.$bvModal.hide('create-transformer-modal');
-        await this.loadData();
-      } else {
-        this.error = result.message || 'Failed to create transformer.';
+      if (this.items.some(t => typeof t.alias === 'string' && t.alias.trim() === name)) {
+        this.createError = 'A transformer with this name already exists.';
+        return;
       }
-      } catch (e) { this.error = 'Could not create transformer.'; }
-      finally { this.creating = false; }
+      this.creating = true;
+      this.createError = null;
+      try {
+        let result = null;
+        try { result = await this.createItem(name); } catch (e) { result = null; }
+        if (result && result.success) {
+          this.form.alias = '';
+          this.$bvModal.hide('create-transformer-modal');
+          // Phase 35 IN-02: the write succeeded but the store could not re-read it.
+          if (result.refreshed === false) await this.loadData();
+          else this.applyItems(this.getItems());
+        } else {
+          this.createError = 'Could not create the transformer. Try again.';
+        }
+      } finally { this.creating = false; }
     },
     // One dialog for the row trash and the bulk trash (D-05). The typed word and the
     // error from an earlier opening are cleared every time (D-07).

@@ -111,6 +111,12 @@ $platform-colors: (
   margin-left: 4px;
 }
 
+// TRANS-03 white wrench: the class sits on the glyph, so only the glyph is forced white,
+// whatever colour a theme gives .btn-default text.
+.icon-button .icon-white {
+  color: #FFFFFF;
+}
+
 // Device table Actions cell: shrinks to its buttons and never wraps (UI-D16).
 .actions-cell {
   white-space: nowrap;
