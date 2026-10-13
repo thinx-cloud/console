@@ -32,7 +32,7 @@
             <td class="actions-cell">
               <IconButton :icon="isShown(item) ? 'fa fa-eye-slash' : 'fa fa-eye'" :label="isShown(item) ? 'Hide key' : 'Show key'" :aria-expanded="String(isShown(item))" :aria-controls="'key-text-' + item.id" :disabled="isDeleting(item) || !hasPubkey(item)" data-cy="key-show" @click="toggleKey(item)" />
               <IconButton icon="fa fa-copy" label="Copy key" :disabled="isDeleting(item) || !hasPubkey(item)" data-cy="key-copy" @click="copyToClipboard(item.pubkey)" />
-              <IconButton icon="fa fa-pencil" label="Rename" :disabled="isDeleting(item)" data-cy="key-rename" @click="openRename(item)" />
+              <IconButton :ref="'rename-' + item.id" icon="fa fa-pencil" label="Rename" :disabled="isDeleting(item)" data-cy="key-rename" @click="openRename(item)" />
               <IconButton :icon="isDeleting(item) ? 'fa fa-spin fa-circle-o-notch' : 'fa fa-trash'" :label="isDeleting(item) ? 'Deleting…' : 'Delete'" variant="danger" :disabled="isDeleting(item)" data-cy="key-delete" @click="deleteRow(item)" />
             </td>
           </tr>
@@ -52,7 +52,7 @@
         <b-button variant="outline-secondary" size="sm" @click="copyToClipboard(createdPubkey)">Copy to clipboard</b-button>
       </b-form-group>
     </b-modal>
-    <b-modal id="rsakey-rename-modal" title="Rename deploy key" @shown="onRenameShown" @hide="onRenameHide">
+    <b-modal id="rsakey-rename-modal" title="Rename deploy key" @shown="onRenameShown" @hide="onRenameHide" @hidden="onRenameHidden">
       <b-form id="rsakey-rename-form" @submit.prevent="saveRename">
         <label for="rename-key-name">Key name</label>
         <b-form-input id="rename-key-name" ref="renameInput" v-model="renameName" maxlength="120" :disabled="renaming" :aria-invalid="String(!!renameReason)" aria-describedby="rename-key-name-feedback rename-key-name-help" data-cy="rename-key-input" />
@@ -78,7 +78,7 @@ const GONE_MANY = 'These deploy keys no longer exist. The list has been refreshe
 export default {
   name: 'Rsakeys',
   components: { IconButton },
-  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createServerReason: null, createdPubkey: '', shownName: '', deletingIds: [], confirming: false, shownIds: [], bulkDeleting: false, renameTarget: null, renameName: '', renaming: false, renameServerReason: null, renameError: null }; },
+  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createServerReason: null, createdPubkey: '', shownName: '', deletingIds: [], confirming: false, shownIds: [], bulkDeleting: false, renameTarget: null, renameName: '', renaming: false, renameServerReason: null, renameError: null, renameFocusId: null }; },
   computed: {
     bulkLabel() {
       if (this.bulkDeleting) return 'Deleting…';
@@ -243,6 +243,17 @@ export default {
     onRenameHide(evt) {
       if (this.renaming) evt.preventDefault();
     },
+    // UI-REVIEW fix 3: once the dialog has closed, focus goes back to the renamed row's
+    // Rename button. Reloads keep the table rendered (loadData), so the row is still there.
+    onRenameHidden() {
+      const id = this.renameFocusId;
+      this.renameFocusId = null;
+      if (id === null) return;
+      const refs = this.$refs['rename-' + id];
+      const button = Array.isArray(refs) ? refs[0] : refs;
+      const el = button && button.$el && typeof button.$el.querySelector === 'function' ? button.$el.querySelector('button') : null;
+      if (el && typeof el.focus === 'function') el.focus();
+    },
     focusRenameInput() {
       const input = this.$refs.renameInput;
       if (input && typeof input.focus === 'function') input.focus();
@@ -265,6 +276,7 @@ export default {
       } catch (e) { result = null; }
       this.renaming = false;
       if (result && result.success) {
+        this.renameFocusId = item.id; // onRenameHidden returns focus to this row's Rename button
         this.$bvModal.hide('rsakey-rename-modal');
         this.$toasted.show('Deploy key renamed', { type: 'success', duration: 2000 });
         await this.loadData();
@@ -300,8 +312,10 @@ export default {
     },
     // A failed load clears everything behind one non-dismissible alert (UI-K12); a
     // successful one prunes the selection and the open keys to listed ids (UI-K13).
+    // Only the first load shows Loading… (`loading` starts true); a reload after a rename,
+    // delete or generate refreshes the rows in place and keeps the toolbar and the focus
+    // target (UI-REVIEW fix 3).
     async loadData() {
-      this.loading = true;
       try {
         await this.fetchItems();
         const items = this.getItems();

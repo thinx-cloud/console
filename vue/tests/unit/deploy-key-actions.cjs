@@ -1425,6 +1425,49 @@ checkAsync('K12 Save name and Generate stay disabled while a server-refused name
   assert.ok(!attrsOf(generateParts(rerender(c.vm)).button).disabled, 'editing the name enables Generate');
 });
 
+// 45-UI-REVIEW fix 3: only the first load swaps the table for Loading…; a reload after a
+// rename, delete or generate refreshes the rows in place, the toolbar stays, and focus goes
+// back to the renamed row's Rename button once the dialog has closed.
+checkAsync('K13 reloads refresh in place; focus returns to the renamed row\'s Rename button (UI review fix 3)', async () => {
+  assert.equal(page().def.data().loading, true, 'the first load starts in the Loading state');
+  const items = keyItems();
+  const pending = deferred();
+  const vm = loader({ items, loading: false }, () => pending.promise, items);
+  const run = vm.loadData();
+  assert.equal(vm.loading, false, 'a reload does not enter the Loading state');
+  const during = rerender(vm);
+  assert.equal(byTag(during, 'table').length, 1, 'the table stays during a reload');
+  assert.equal(toolbarsOf(during).length, 1, 'the toolbar stays during a reload');
+  assert.ok(!/Loading/.test(textOf(during)), 'no Loading text during a reload');
+  pending.resolve(items);
+  await run;
+  assert.equal(vm.loading, false);
+  const first = loader({ items: [], loading: true }, async () => items, items);
+  await first.loadData();
+  assert.equal(first.loading, false, 'the first load ends the Loading state');
+
+  const h = renameHarness();
+  const focused = [];
+  h.vm.$refs = { ['rename-' + h.item.id]: [{ $el: { querySelector: (sel) => (sel === 'button' ? { focus: () => focused.push(h.item.id) } : null) } }] };
+  h.vm.renameName = 'New name';
+  const p = h.vm.saveRename();
+  h.control.renameItem.resolve({ success: true, response: { name: 'New name' } });
+  await p;
+  assert.deepEqual(focused, [], 'nothing is focused before the dialog has closed');
+  h.vm.onRenameHidden();
+  assert.deepEqual(focused, [h.item.id], 'the Rename button of the renamed row gets focus');
+  h.vm.onRenameHidden();
+  assert.deepEqual(focused, [h.item.id], 'only once');
+  const none = renameHarness();
+  none.vm.$refs = {};
+  none.vm.onRenameHidden(); // closed without a rename and no ref: nothing to do, no throw
+
+  const { vnode } = renderKeys({ items });
+  const modal = nodesOf(vnode).find((n) => n.tag === 'b-modal' && attrsOf(n).id === 'rsakey-rename-modal');
+  assert.equal(typeof (modal.data.on || {}).hidden, 'function', '@hidden is wired');
+  assert.ok(page().template.includes(':ref="\'rename-\' + item.id"'), 'each Rename button has a per-key ref');
+});
+
 check('G3 compiled theme: key-name-feedback in #FF8A8A, hidden when empty; key-name-help in body colour', () => {
   const fb = expectDecls('.key-name-feedback', { margin: '4px 0 0', 'font-size': '.875rem', 'font-weight': '400' });
   assert.match(value(fb, 'color') || '', /^#ff8a8a$/i, '.key-name-feedback colour');
