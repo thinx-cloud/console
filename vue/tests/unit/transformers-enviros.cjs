@@ -1923,6 +1923,195 @@ checkAsync('H4 TransformerEditor leaves at once without changes and asks through
   }
 });
 
+// ---------------------------------------------------------------- I: assignment card states (46-04 task 2)
+
+const SAVED = 'Transformers saved.';
+const SAVE_FAILED = 'Could not save the transformers. Try again.';
+const cardOf = (vnode) => one(byCy(vnode, 'card-transformers'), 'card-transformers');
+const groupOf = (card) => one(byTag(card, 'b-form-checkbox-group'), 'checkbox group');
+const saveButtonOf = (card) => one(byCy(card, 'transformers-save'), 'transformers-save');
+const handlerOf = (n, evt) => {
+  const h = (n.data && n.data.on && n.data.on[evt]) || null;
+  assert.ok(h, 'element has a ' + evt + ' handler');
+  return Array.isArray(h) ? (...a) => h.forEach((fn) => fn(...a)) : h;
+};
+
+// A Device Detail vm whose updateDevice is controllable and whose loadDevice re-reads the
+// stored assignment into the checkboxes, as the real one does after a save.
+function saveHarness(state = {}) {
+  const vm = deviceHarness(DEVICE, state);
+  const calls = { updateDevice: [], loadDevice: 0 };
+  const control = { updateDevice: null };
+  vm.updateDevice = (x) => {
+    calls.updateDevice.push(JSON.parse(JSON.stringify(x)));
+    control.updateDevice = deferred();
+    return control.updateDevice.promise;
+  };
+  vm.loadDevice = async () => {
+    calls.loadDevice++;
+    const last = calls.updateDevice[calls.updateDevice.length - 1];
+    vm.device = Object.assign({}, vm.device, { transformers: last.changes.transformers });
+    vm.editForm.transformers = [...vm.device.transformers];
+  };
+  return { vm, calls, control };
+}
+
+check('I1 the card heads with h4.card-title and a role=status Unsaved changes note that follows the dirty state', () => {
+  const vm = deviceHarness();
+  let card = cardOf(rerender(vm));
+  assert.equal(attrsOf(card).title, undefined, 'the card has no title prop');
+  const head = (card.children || []).filter((n) => n.tag)[0];
+  assert.ok(head && head.tag === 'div' && classList(head).includes('transformer-card-head'), 'the body starts with div.transformer-card-head');
+  const title = one(byTag(head, 'h4'), 'h4');
+  assert.ok(classList(title).includes('card-title'), 'h4.card-title');
+  assert.equal(textOf(title), 'Transformer Assignment');
+  let note = one(byCy(head, 'transformers-dirty'), 'transformers-dirty');
+  assert.equal(note.tag, 'span');
+  assert.ok(classList(note).includes('unsaved-note'), 'span.unsaved-note');
+  assert.equal(attrsOf(note).role, 'status');
+  assert.equal(textOf(note), '', 'clean: the note is empty');
+  vm.editForm.transformers = ['utid-battery', 'utid-temp'];
+  card = cardOf(rerender(vm));
+  note = one(byCy(card, 'transformers-dirty'), 'transformers-dirty');
+  assert.equal(textOf(note), 'Unsaved changes', 'dirty: the note says so');
+});
+
+check('I2 the action row holds Save (success), Create & Assign (default) and Manage Transformers (warning) with no left margin', () => {
+  const vm = deviceHarness();
+  let card = cardOf(rerender(vm));
+  const row = one(byClass(card, 'transformer-card-actions'), 'transformer-card-actions');
+  assert.equal(row.tag, 'div');
+  const buttons = byTag(row, 'b-button');
+  assert.deepEqual(buttons.map((b) => textOf(b)), ['Save Transformers', 'Create & Assign', 'Manage Transformers']);
+  const [save, create, manage] = buttons;
+  assert.deepEqual({ variant: attrsOf(save).variant, size: attrsOf(save).size, cy: cyOf(save) }, { variant: 'success', size: 'sm', cy: 'transformers-save' });
+  assert.equal(attrsOf(save).disabled, true, 'Save is disabled while nothing changed');
+  assert.equal(attrsOf(create).variant, 'default');
+  assert.ok(!attrsOf(create).disabled, 'Create & Assign is enabled while idle');
+  assert.deepEqual({ variant: attrsOf(manage).variant, to: attrsOf(manage).to, cy: cyOf(manage) },
+    { variant: 'warning', to: '/app/transformers', cy: 'manage-transformers' });
+  assert.deepEqual(byClass(card, 'ml-2'), [], 'no left-margin utility inside the card');
+  vm.editForm.transformers = [];
+  card = cardOf(rerender(vm));
+  assert.ok(!attrsOf(saveButtonOf(card)).disabled, 'Save is enabled once something changed');
+  vm.transformersSaving = true;
+  card = cardOf(rerender(vm));
+  const [save2, create2] = byTag(one(byClass(card, 'transformer-card-actions'), 'row'), 'b-button');
+  assert.equal(attrsOf(save2).disabled, true, 'Save is disabled while saving');
+  assert.equal(attrsOf(create2).disabled, true, 'Create & Assign is disabled while saving');
+});
+
+checkAsync('I3 two rapid saves send one updateDevice; while it runs Save shows a spinner and Saving and the checkboxes lock', async () => {
+  const h = saveHarness();
+  h.vm.editForm.transformers = ['utid-temp'];
+  const first = h.vm.saveTransformers();
+  const second = h.vm.saveTransformers();
+  await tick();
+  assert.deepEqual(h.calls.updateDevice, [{ udid: DEVICE.udid, changes: { transformers: ['utid-temp'] } }], 'one request with the ticks');
+  assert.equal(h.vm.transformersSaving, true, 'saving while the request runs');
+  const card = cardOf(rerender(h.vm));
+  const save = saveButtonOf(card);
+  const glyph = one(byTag(save, 'i'), 'spinner glyph');
+  ['fa', 'fa-spin', 'fa-circle-o-notch'].forEach((c) => assert.ok(classList(glyph).includes(c), 'glyph has ' + c));
+  assert.equal(attrsOf(glyph)['aria-hidden'], 'true');
+  const label = one(byClass(save, 'button-text'), 'span.button-text');
+  assert.equal(label.tag, 'span');
+  assert.equal(textOf(label), 'Saving' + ELLIPSIS);
+  assert.equal(attrsOf(save).disabled, true);
+  assert.equal(attrsOf(groupOf(card)).disabled, true, 'the checkbox group is disabled while saving');
+  h.control.updateDevice.resolve({ success: true });
+  await first; await second;
+  assert.equal(h.calls.updateDevice.length, 1, 'still one request');
+  assert.equal(h.vm.transformersSaving, false);
+  const idle = saveButtonOf(cardOf(rerender(h.vm)));
+  assert.equal(byTag(idle, 'i').length, 0, 'no glyph once idle');
+  assert.equal(textOf(idle), 'Save Transformers');
+});
+
+checkAsync('I4 success shows Transformers saved. in the card between the checkboxes and the actions, and survives the reload', async () => {
+  const h = saveHarness({ message: 'page message', error: 'page error' });
+  h.vm.editForm.transformers = ['utid-temp'];
+  const run = h.vm.saveTransformers();
+  await tick();
+  h.control.updateDevice.resolve({ success: true });
+  await run;
+  assert.equal(h.calls.loadDevice, 1, 'one reload');
+  assert.equal(h.vm.transformersMessage, SAVED, 'the message survives the reload');
+  assert.ok(!h.vm.transformersError);
+  assert.equal(h.vm.transformersDirty, false, 'clean after the reload');
+  assert.equal(h.vm.message, 'page message', 'the page message is untouched');
+  assert.equal(h.vm.error, 'page error', 'the page error is untouched');
+  const card = cardOf(rerender(h.vm));
+  const alert = one(byCy(card, 'transformers-saved'), 'transformers-saved');
+  assert.equal(alert.tag, 'b-alert');
+  assert.equal(attrsOf(alert).variant, 'success');
+  assert.equal(attrsOf(alert).show, true, 'the success alert is shown');
+  assert.ok('dismissible' in attrsOf(alert), 'dismissible');
+  assert.ok(classList(alert).includes('transformer-card-alert'));
+  assert.equal(textOf(alert), SAVED);
+  assert.equal(attrsOf(one(byCy(card, 'transformers-error'), 'transformers-error')).show, false, 'the error alert is hidden');
+  const order = nodesOf(card);
+  const at = (n) => order.indexOf(n);
+  assert.ok(at(groupOf(card)) < at(alert), 'after the checkbox group');
+  assert.ok(at(alert) < at(one(byClass(card, 'transformer-card-actions'), 'row')), 'before the action row');
+});
+
+checkAsync('I5 a failed save keeps the ticks and the dirty note and shows the card error; the page alerts stay as they were', async () => {
+  for (const outcome of ['answer', 'throw']) {
+    const h = saveHarness({ message: 'page message', error: 'page error' });
+    h.vm.editForm.transformers = ['utid-temp'];
+    const run = h.vm.saveTransformers();
+    await tick();
+    if (outcome === 'answer') h.control.updateDevice.resolve({ success: false, message: 'server said no' });
+    else h.control.updateDevice.reject(new Error('offline'));
+    await run;
+    assert.deepEqual([...h.vm.editForm.transformers], ['utid-temp'], outcome + ': the ticks are kept');
+    assert.equal(h.vm.transformersDirty, true, outcome + ': still dirty');
+    assert.equal(h.calls.loadDevice, 0, outcome + ': no reload');
+    assert.equal(h.vm.transformersError, SAVE_FAILED, outcome + ': the card error');
+    assert.ok(!h.vm.transformersMessage, outcome + ': no success message');
+    assert.equal(h.vm.transformersSaving, false, outcome + ': saving cleared');
+    assert.equal(h.vm.message, 'page message', outcome + ': page message untouched');
+    assert.equal(h.vm.error, 'page error', outcome + ': page error untouched');
+    const card = cardOf(rerender(h.vm));
+    const alert = one(byCy(card, 'transformers-error'), 'transformers-error');
+    assert.equal(alert.tag, 'b-alert');
+    assert.equal(attrsOf(alert).variant, 'danger');
+    assert.equal(attrsOf(alert).show, true);
+    assert.ok(classList(alert).includes('transformer-card-alert'));
+    assert.equal(textOf(alert), SAVE_FAILED);
+    assert.equal(textOf(one(byCy(card, 'transformers-dirty'), 'note')), 'Unsaved changes');
+  }
+});
+
+check('I6 a user tick clears both card messages', () => {
+  const vm = deviceHarness(DEVICE, { transformersMessage: SAVED, transformersError: SAVE_FAILED });
+  const group = groupOf(cardOf(rerender(vm)));
+  handlerOf(group, 'change')(['utid-temp']);
+  assert.ok(!vm.transformersMessage, 'success message cleared');
+  assert.ok(!vm.transformersError, 'error cleared');
+});
+
+check('I7 the create dialog says Close without creating; the empty line is body text with mb-0', () => {
+  const vm = deviceHarness({ udid: 'udid-empty', alias: 'empty', transformers: [], environment: {} }, { getTransformers: () => [] });
+  const vnode = rerender(vm);
+  const modal = one(nodesOf(vnode).filter((n) => n.tag === 'b-modal' && attrsOf(n).id === 'device-transformer-modal'), 'device-transformer-modal');
+  assert.equal(attrsOf(modal)['cancel-title'], 'Close without creating');
+  assert.equal(attrsOf(modal)['cancel-variant'], 'default');
+  assert.equal(attrsOf(modal)['ok-title'], 'Create & Assign', 'OK title unchanged');
+  const empty = one(byCy(cardOf(vnode), 'transformers-empty'), 'transformers-empty');
+  assert.deepEqual(classList(empty), ['mb-0'], 'only mb-0');
+  assert.equal(textOf(empty), 'No transformers yet. Use Create & Assign to add one.');
+});
+
+check('I8 compiled theme: the card head, the unsaved note, the action row and the card alert', () => {
+  expectDecls('.transformer-card-head', { display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'baseline', 'column-gap': '8px' });
+  const note = expectDecls('.unsaved-note', { 'font-size': '.875rem', 'font-weight': '400' });
+  assert.equal((value(note, 'color') || '').toLowerCase(), '#f0ad4e', '.unsaved-note color');
+  expectDecls('.transformer-card-actions', { display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center', gap: '8px' });
+  expectDecls('.transformer-card-alert', { 'margin-bottom': '8px' });
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop

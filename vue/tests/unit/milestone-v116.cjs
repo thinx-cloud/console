@@ -391,6 +391,7 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   assert.deepEqual(tPage.vm.editForm.transformers, ['t1', 't3'], 'ticking checkboxes updates editForm.transformers');
   let tSaved = null;
   await device.methods.saveTransformers.call({ device: { udid: 'udid-t' }, editForm: tPage.vm.editForm,
+    transformersSaving: false, transformersMessage: null, transformersError: null,
     updateDevice: async x => { tSaved = x; return { success: true }; }, loadDevice: async () => {} });
   assert.deepEqual(tSaved, { udid: 'udid-t', changes: { transformers: ['t1', 't3'] } }, 'Save Transformers sends the checkbox state');
   const cardButton = (page, card, label) => page.under(card, n => n.tag === 'b-button' && page.textOf(n) === label)[0];
@@ -405,7 +406,10 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
     assert.equal(attrsOf(manage).variant, 'warning', 'Manage Transformers is a filled orange (warning) button, not a link');
     assert.equal(attrsOf(manage).to, '/app/transformers', 'Manage Transformers routes to /app/transformers');
     assert.equal(attrsOf(manage)['data-cy'], 'manage-transformers', 'Manage Transformers has data-cy manage-transformers');
-    assert.ok(/\bml-2\b/.test((manage.data && manage.data.staticClass) || ''), 'Manage Transformers keeps its left margin');
+    // 46-04 UI-T15: the card buttons sit in .transformer-card-actions (gap 8px) instead of carrying ml-2.
+    const actions = page.under(card, n => /\btransformer-card-actions\b/.test((n.data && n.data.staticClass) || ''));
+    assert.equal(actions.length, 1, 'the card has one .transformer-card-actions row');
+    assert.equal(page.under(actions[0], n => n === manage).length, 1, 'Manage Transformers is inside .transformer-card-actions');
   };
   checkCardButtons(tPage, tCard);
   const ePage = await renderDeviceDetail([], { udid: 'udid-t', alias: 'tango-01', environment: {} }, []);
