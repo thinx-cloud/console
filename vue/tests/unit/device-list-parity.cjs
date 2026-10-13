@@ -246,6 +246,18 @@ check('platformInfo returns { key, label, build } and never throws', () => {
   });
 });
 
+// A JSON object whose own toString is not a function makes String() and parseInt() throw
+// (44-SECURITY N-1). Only strings (and numbers for the icon) are read.
+const WEIRD = () => JSON.parse('{"toString":1}');
+
+check('basePlatform and platformInfo treat non-strings, including {toString:1}, as unknown', () => {
+  const { basePlatform, platformInfo } = platforms();
+  [WEIRD(), 42, true, {}, [], ['arduino']].forEach((raw) => {
+    assert.equal(basePlatform(raw), 'unknown', JSON.stringify(raw));
+    assert.deepEqual(platformInfo(raw), { key: 'unknown', label: 'unknown', build: true }, JSON.stringify(raw));
+  });
+});
+
 // ---------------------------------------------------------------- PlatformBullet.vue
 
 const bullet = lazy(() => {
@@ -1335,6 +1347,39 @@ check('Devices.vue: no control-character escape or regex, no raw HTML, tip defin
   assert.equal(source.split(API_KEY_TIP).length - 1, 1, 'API-key tip defined once');
   assert.doesNotMatch(source, /check in|check-in/i, 'no check-in claim in Devices.vue');
   assert.ok(source.split('fa fa-heartbeat').length - 1 >= 2, 'heartbeat in table and grid');
+});
+
+check('status and icon helpers accept strings (icon: numbers too) and never throw on {toString:1}', () => {
+  const { vm } = renderStatus('list');
+  [WEIRD(), 42, true, {}, ['#e']].forEach((s) => {
+    const label = JSON.stringify(s);
+    assert.equal(vm.cleanStatus(s), '', label);
+    assert.equal(vm.statusText(s), 'Registered', label);
+    assert.equal(vm.statusTitle(s), null, label);
+    assert.equal(vm.statusHasError(s), false, label);
+    assert.equal(vm.statusHasWarning(s), false, label);
+  });
+  [WEIRD(), {}, [7], true].forEach((i) => assert.equal(vm.symbolSrc(i), 'sym:b_medium_01.png', JSON.stringify(i)));
+  assert.equal(vm.symbolSrc(7), 'sym:b_medium_07.png');
+  assert.equal(vm.symbolSrc('12'), 'sym:b_medium_12.png');
+});
+
+check('Devices renders, filters and sorts a device whose platform, status and icon are {toString:1}', () => {
+  const weird = { udid: 'w1', alias: 'Whiskey', mac: 'WW', keyhash: 'k', platform: WEIRD(), status: WEIRD(), icon: WEIRD() };
+  ['list', 'grid'].forEach((viewMode) => {
+    const { vm } = renderDevices({ items: fleet().concat([weird]), viewMode });
+    ['platform', 'alias', 'lastupdate'].forEach((sortBy) => {
+      vm.sortBy = sortBy;
+      assert.equal(vm.filteredItems.length, FLEET.length + 1, viewMode + ' ' + sortBy);
+    });
+    vm.platformFilter = 'unknown';
+    assert.ok(vm.filteredItems.some((d) => d.udid === 'w1'), viewMode + ' under the unknown pill');
+    assert.ok(vm.platformPills.some((p) => p.key === 'unknown'), viewMode + ' unknown pill');
+    vm.searchText = 'whis';
+    const again = withWarnings(() => vm._render());
+    assert.equal(again.error, null, viewMode + ' renders without error');
+    assert.equal(byCy(again.out, viewMode === 'list' ? 'device-row' : 'device-card').length, 1, viewMode + ' one match');
+  });
 });
 
 const loose = (sel) => sel.replace(/\s*([>+~])\s*/g, '$1').replace(/\s+/g, ' ').trim();

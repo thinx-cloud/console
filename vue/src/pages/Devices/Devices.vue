@@ -358,16 +358,18 @@ export default {
     }),
     isSelected_(udid) { return this.selectedUdids.includes(udid); },
     platformOf(device) { return platformInfo(device.platform); },
-    // b_medium_NN.png for icons 1..73, otherwise 01.
+    // b_medium_NN.png for icons 1..73, otherwise 01. Only a number or a string is read:
+    // parseInt would throw on an object whose toString is not a function (44-SECURITY N-1).
     symbolSrc(icon) {
-      const n = parseInt(icon, 10);
+      const n = typeof icon === 'number' || typeof icon === 'string' ? parseInt(icon, 10) : NaN;
       const nn = Number.isInteger(n) && n >= 1 && n <= 73 ? String(n).padStart(2, '0') : '01';
       return DEVICE_SYMBOLS('./b_medium_' + nn + '.png');
     },
     // Device-supplied status without control characters (code below 32 or 127). A charCode
     // scan, not a regex: Codacy flags control-character regexes (quick 261012-r9z).
+    // Only a string is read; any other type is empty (44-SECURITY N-1).
     cleanStatus(status) {
-      const raw = String(status == null ? '' : status);
+      const raw = typeof status === 'string' ? status : '';
       let out = '';
       for (let i = 0; i < raw.length; i++) {
         const code = raw.charCodeAt(i);

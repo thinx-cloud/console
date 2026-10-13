@@ -22,8 +22,10 @@ export const PLATFORMS = {
 
 // Base platform key of a raw platform string such as "arduino:esp8266".
 // Anything that is not a known key (empty, null, "unknown_platform", ...) is "unknown".
+// Only strings are read: any other type (null, a number, an object whose toString is
+// not a function) is unknown, so device data can never make this throw (44-SECURITY N-1).
 export function basePlatform(raw) {
-  const key = String(raw == null ? '' : raw).split(':')[0].trim().toLowerCase();
+  const key = (typeof raw === 'string' ? raw : '').split(':')[0].trim().toLowerCase();
   return Object.prototype.hasOwnProperty.call(PLATFORMS, key) ? key : 'unknown';
 }
 
