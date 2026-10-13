@@ -1641,6 +1641,124 @@ checkAsync('F5 a name holding markup renders as text in the row, the edit dialog
   assert.ok(!/v-html|innerHTML/.test(enviroPage().template), 'no raw-HTML binding in the template');
 });
 
+// ---------------------------------------------------------------- G: add, styles, copy (46-03 task 3)
+
+const addModalOf = (vnode) => one(nodesOf(vnode).filter((n) => n.tag === 'b-modal' && attrsOf(n).id === 'create-enviro-modal'), 'create-enviro-modal');
+const DUPLICATE_KEY = 'A variable with this key already exists. Use Edit value to change it.';
+const ADD_FAILED = 'Could not add the variable. Try again.';
+
+check('G1 Add Variable is a green button with a plus glyph and visible text, alone in div.settings-add', () => {
+  const h = enviroHarness({ addError: 'an earlier add error' });
+  const vnode = rerender(h.vm);
+  const top = rootChildren(vnode);
+  const rows = top.filter((n) => classList(n).includes('settings-add'));
+  assert.equal(rows.length, 1, 'one div.settings-add at the top level');
+  assert.equal(rows[0].tag, 'div');
+  const inside = (rows[0].children || []).filter((n) => n.tag || (n.text && n.text.trim()));
+  assert.equal(inside.length, 1, 'the add row holds the button and nothing else');
+  const btn = one(byCy(rows[0], 'enviro-add'), 'enviro-add');
+  assert.equal(inside[0], btn);
+  assert.equal(btn.tag, 'b-button');
+  assert.equal(attrsOf(btn).variant, 'success');
+  const kids = (btn.children || []).filter((n) => n.tag);
+  assert.deepEqual(kids.map((n) => n.tag), ['i', 'span'], 'glyph then text');
+  assert.deepEqual(classList(kids[0]).sort(), ['fa', 'fa-plus']);
+  assert.equal(attrsOf(kids[0])['aria-hidden'], 'true');
+  assert.ok(classList(kids[1]).includes('button-text'), 'span.button-text');
+  assert.equal(textOf(kids[1]), 'Add Variable');
+  assert.ok(!top.some((n) => n.tag === 'p' && byCy(n, 'enviro-add').length), 'no <p> wrapper');
+  click(btn);
+  assert.deepEqual(h.calls.show, ['create-enviro-modal'], 'opens the add dialog');
+  assert.ok(!h.vm.addError, 'an earlier add error is cleared on open');
+});
+
+check('G2 the add dialog keeps its title and labels, has verb + noun buttons and its own feedback line', () => {
+  const { vnode } = renderEnviros();
+  const modal = addModalOf(vnode);
+  const a = attrsOf(modal);
+  assert.deepEqual(
+    { title: a.title, ok: a['ok-title'], okVariant: a['ok-variant'], cancel: a['cancel-title'], cancelVariant: a['cancel-variant'], okDisabled: a['ok-disabled'] },
+    { title: 'Add Environment Variable', ok: 'Add variable', okVariant: 'success', cancel: 'Close without adding', cancelVariant: 'default', okDisabled: false });
+  assert.equal(attrsOf(addModalOf(renderEnviros({ adding: true }).vnode))['ok-disabled'], true, 'OK disabled while adding');
+  const kids = (modal.children || []).filter((n) => n.tag);
+  assert.deepEqual(kids.map((n) => n.tag), ['b-form-group', 'b-form-group', 'p'], 'Key, Value, then the feedback line');
+  assert.deepEqual(kids.slice(0, 2).map((g) => attrsOf(g).label), ['Key', 'Value']);
+  const feedback = kids[2];
+  assert.equal(attrsOf(feedback).id, 'enviro-add-feedback');
+  assert.ok(classList(feedback).includes('dialog-feedback'), 'p.dialog-feedback');
+  assert.equal(attrsOf(feedback)['aria-live'], 'polite');
+  assert.equal(cyOf(feedback), 'enviro-add-feedback');
+  assert.equal(textOf(feedback), '', 'silent until there is something to say');
+  assert.equal(byTag(modal, 'b-alert').length, 0, 'no alert inside the dialog');
+});
+
+checkAsync('G3 add refuses an empty or listed key, sends once, keeps the dialog on failure and never overwrites silently', async () => {
+  const pageError = 'an earlier action error';
+  const h = enviroHarness({ error: pageError });
+  for (const [key, value] of [['', 'v'], ['K', '   '], ['   ', '   ']]) {
+    h.vm.form = { key, value };
+    const e = okEvent();
+    await h.vm.create(e);
+    assert.equal(e.prevented, 1, 'the dialog stays');
+  }
+  assert.deepEqual(h.calls.createItem, [], 'an empty key or value sends nothing');
+  h.vm.form = { key: '  WIFI ', value: SECRET };
+  const duplicate = h.vm.create(okEvent());
+  await tick();
+  assert.deepEqual(h.calls.createItem, [], 'a listed key sends nothing');
+  await duplicate;
+  assert.equal(h.vm.addError, DUPLICATE_KEY);
+  assert.equal(textOf(one(byCy(rerender(h.vm), 'enviro-add-feedback'), 'feedback')), DUPLICATE_KEY);
+  for (const outcome of ['answer', 'throw']) {
+    h.vm.form = { key: ' NEW_KEY ', value: ' ' + SECRET + ' ' };
+    const first = h.vm.create(okEvent());
+    const second = h.vm.create(okEvent());
+    await tick();
+    assert.deepEqual(h.calls.createItem, [{ key: 'NEW_KEY', value: SECRET }], outcome + ': two rapid calls send one trimmed createItem');
+    assert.equal(h.vm.adding, true, outcome + ': adding while the request runs');
+    if (outcome === 'answer') h.control.createItem.resolve({ success: false });
+    else h.control.createItem.reject(new Error('offline'));
+    await first; await second;
+    assert.equal(h.vm.addError, ADD_FAILED);
+    assert.deepEqual(h.calls.hide, [], outcome + ': the dialog stays open');
+    assert.equal(h.vm.adding, false);
+    h.calls.createItem = [];
+  }
+  h.control.storeItems = enviroItems(ENVIROS.concat(['NEW_KEY']));
+  h.vm.form = { key: 'NEW_KEY', value: 'v' };
+  const run = h.vm.create(okEvent());
+  await tick();
+  h.control.createItem.resolve({ success: true, response: 'NEW_KEY' });
+  await run;
+  assert.deepEqual(h.calls.hide, ['create-enviro-modal'], 'success closes the dialog');
+  assert.deepEqual(JSON.parse(JSON.stringify(h.vm.form)), { key: '', value: '' }, 'the form is reset');
+  assert.ok(!h.vm.addError, 'no add error after success');
+  assert.deepEqual(h.vm.items.map((i) => i.label), ENVIROS.concat(['NEW_KEY']), 'the store list is shown');
+  assert.equal(h.calls.loadData, 0, 'no second fetch after a refreshed write');
+  assert.equal(h.vm.error, pageError, 'add never writes the page error');
+  assert.deepEqual(h.calls.toast, [], 'add shows no toast');
+});
+
+check('G4 compiled theme: the key cell and the read-only key in the edit dialog are monospace', () => {
+  const key = expectDecls('.enviro-key', {
+    display: 'block', 'max-width': '160px', overflow: 'hidden', 'text-overflow': 'ellipsis',
+    'white-space': 'nowrap', 'font-size': '.875rem', 'font-weight': '400',
+  });
+  assert.match(value(key, 'font-family') || '', /monospace/, '.enviro-key monospace');
+  const md = allRules().filter((r) => /min-width:\s*768px/.test(r.media) && r.selectors.some((x) => loose(x) === '.enviro-key'));
+  assert.equal(value(md.map((r) => r.body), 'max-width'), '240px', '.enviro-key from 768px');
+  const edit = expectDecls('.enviro-edit-key', { margin: '0', 'font-size': '.875rem', 'font-weight': '400', 'overflow-wrap': 'anywhere' });
+  assert.match(value(edit, 'font-family') || '', /monospace/, '.enviro-edit-key monospace');
+});
+
+check('G5 Enviros.vue holds no forbidden string, no raw-HTML binding and no console call', () => {
+  const source = read('pages/Enviros/Enviros.vue');
+  const forbidden = ['<List', 'Delete (', 'ok-title="Add"', 'text-muted', 'Failed to', "cancelTitle: 'Cancel'", '>Cancel<', '>Save<',
+    'v-html', 'innerHTML'];
+  assert.deepEqual(forbidden.filter((x) => source.includes(x)), [], 'forbidden strings in Enviros.vue');
+  assert.ok(!/console[.](log|info|warn|error|debug|trace)/.test(source), 'no console call');
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
