@@ -188,6 +188,7 @@ import { mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
 import { parseEnvironmentJSON } from '@/utils/envJson';
 import { buildStatusVariant } from '@/utils/buildLog';
+import { confirmLeave } from '@/utils/confirmLeave';
 
 export default {
   name: "DeviceDetail",
@@ -208,6 +209,9 @@ export default {
       transformerForm: { alias: '', body: 'var transformer = function(status, device) { return status; };' },
       transformerSaving: false,
       transformerError: null,
+      // Set while the unsaved-changes confirm is open, so a second leave attempt
+      // (a double click on a link) is refused instead of opening a second dialog.
+      leavePrompting: false,
       buildHistory: [],
       transferForm: { to: '', mig_sources: false, mig_apikeys: false },
       // Environment editor. envDraft is the textarea's raw text; it only reaches
@@ -260,9 +264,28 @@ export default {
       const missing = [...new Set(assigned)].filter(utid => utid && !known.has(utid));
       return [...this.transformerOptions, ...missing.map(utid => ({ value: utid, text: '(missing) ' + utid }))];
     },
+    // The ticks differ from the stored assignment (POL-03, D-09). Compared as sets: order and
+    // duplicates do not count, and a device without a transformers array has none assigned.
+    transformersDirty() {
+      if (!this.device) return false;
+      const ticked = new Set(this.editForm.transformers || []);
+      const stored = new Set(Array.isArray(this.device.transformers) ? this.device.transformers : []);
+      if (ticked.size !== stored.size) return true;
+      return [...ticked].some(utid => !stored.has(utid));
+    },
   },
   created() {
     this.loadDevice();
+  },
+  // Every route leave (Manage Transformers, sidebar, breadcrumb, Back) asks first while the
+  // assignment has unsaved ticks (37 IN-02, D-10). There is no page-unload prompt (D-12).
+  async beforeRouteLeave(to, from, next) {
+    if (!this.transformersDirty) { next(); return; }
+    if (this.leavePrompting) { next(false); return; }
+    this.leavePrompting = true;
+    const leaving = await confirmLeave(this);
+    this.leavePrompting = false;
+    if (leaving) next(); else next(false);
   },
   methods: {
     buildStatusVariant,

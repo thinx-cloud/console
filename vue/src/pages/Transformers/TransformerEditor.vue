@@ -35,6 +35,7 @@ import 'codemirror/lib/codemirror.css';
 import 'codemirror/mode/javascript/javascript.js';
 import 'codemirror/theme/material.css';
 import { mapGetters, mapActions } from 'vuex';
+import { confirmLeave } from '@/utils/confirmLeave';
 
 export default {
   name: "TransformerEditor",
@@ -46,6 +47,7 @@ export default {
       // Save stays disabled otherwise, so a failed load cannot blank it.
       loaded: false,
       hasChanges: false,
+      leavePrompting: false,
       saving: false,
       error: null,
       editorOptions: {
@@ -60,16 +62,14 @@ export default {
   created() {
     this.loadTransformer();
   },
-  beforeRouteLeave(to, from, next) {
-    if (this.hasChanges) {
-      this.$bvModal.msgBoxConfirm('You have unsaved changes. Leave anyway?', {
-        title: 'Unsaved Changes',
-        okVariant: 'warning',
-        okTitle: 'Leave',
-      }).then(confirmed => { next(confirmed ? undefined : false); });
-    } else {
-      next();
-    }
+  // The shared unsaved-changes confirm (D-10, UI-T17); one dialog per leave attempt.
+  async beforeRouteLeave(to, from, next) {
+    if (!this.hasChanges) { next(); return; }
+    if (this.leavePrompting) { next(false); return; }
+    this.leavePrompting = true;
+    const leaving = await confirmLeave(this);
+    this.leavePrompting = false;
+    if (leaving) next(); else next(false);
   },
   methods: {
     ...mapGetters({ getByUtid: 'transformers/getByUtid' }),
