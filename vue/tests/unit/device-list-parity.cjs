@@ -224,6 +224,8 @@ check('basePlatform maps known values onto their key and the rest onto unknown',
     ['arduino:esp8266', 'arduino'], ['PlatformIO', 'platformio'], [' nodemcu ', 'nodemcu'],
     ['', 'unknown'], [null, 'unknown'], [undefined, 'unknown'], ['unknown', 'unknown'],
     ['unknown_platform', 'unknown'], ['foo', 'unknown'], ['esp-idf:foo', 'unknown'],
+    // The backend's MicroPython plugin reports "python" (44 WR-01).
+    ['python', 'micropython'], ['Python', 'micropython'], ['python:esp32', 'micropython'],
   ];
   cases.forEach(([raw, key]) => assert.equal(basePlatform(raw), key, JSON.stringify(raw)));
 });
@@ -279,6 +281,12 @@ check('PlatformBullet renders one span "platform-bullet platform-arduino" with "
   assert.equal(textOf(v), 'Arduino');
   assert.equal(nodesOf(v).filter((n) => n.tag).length, 1, 'exactly one element');
   assert.equal(attrsOf(v).title, undefined, 'no title attribute');
+});
+
+check('PlatformBullet renders the Micropython bullet for the backend value python', () => {
+  const v = renderBullet('python');
+  assert.deepEqual(classList(v).sort(), ['platform-bullet', 'platform-micropython']);
+  assert.equal(textOf(v), 'Micropython');
 });
 
 check('PlatformBullet renders unknown for unknown_platform, empty and null, never the input', () => {
@@ -828,6 +836,17 @@ check('platform pills: with no items, and while loading, only All renders', () =
   assert.deepEqual(pillsOf(loading.vnode).map((p) => cyOf(p)), ['platform-pill-All']);
   assert.ok(textOf(loading.vnode).includes('Loading...'), 'Loading... shows');
   assert.ok(!nodesOf(loading.vnode).some((n) => n.tag === 'table' || cyOf(n) === 'device-card'), 'no table or grid while loading');
+});
+
+check('python and micropython devices share one Micropython pill and filter together', () => {
+  const items = [
+    { udid: 'p1', alias: 'Py', platform: 'python', keyhash: 'k' },
+    { udid: 'p2', alias: 'Mpy', platform: 'micropython', keyhash: 'k' },
+  ];
+  const { vm, vnode } = renderDevices({ items, viewMode: 'list' });
+  assert.deepEqual(pillsOf(vnode).map((p) => cyOf(p)), ['platform-pill-All', 'platform-pill-micropython']);
+  vm.platformFilter = 'micropython';
+  assert.deepEqual(vm.filteredItems.map((d) => d.udid).sort(), ['p1', 'p2']);
 });
 
 check('clicking the Arduino pill keeps arduino and arduino:esp8266 devices only', () => {

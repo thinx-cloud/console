@@ -20,12 +20,17 @@ export const PLATFORMS = {
   unknown: { label: 'unknown', build: true },
 };
 
+// Backend platform values that name a known platform differently. The API's MicroPython
+// plugin (lib/thinx/plugins/python) reports "python" (44 WR-01).
+const ALIASES = { python: 'micropython' };
+
 // Base platform key of a raw platform string such as "arduino:esp8266".
 // Anything that is not a known key (empty, null, "unknown_platform", ...) is "unknown".
 // Only strings are read: any other type (null, a number, an object whose toString is
 // not a function) is unknown, so device data can never make this throw (44-SECURITY N-1).
 export function basePlatform(raw) {
-  const key = (typeof raw === 'string' ? raw : '').split(':')[0].trim().toLowerCase();
+  let key = (typeof raw === 'string' ? raw : '').split(':')[0].trim().toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(ALIASES, key)) key = ALIASES[key];
   return Object.prototype.hasOwnProperty.call(PLATFORMS, key) ? key : 'unknown';
 }
 
