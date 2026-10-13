@@ -1,10 +1,12 @@
 // Unit test for the Deploy Keys page (phase 45, KEY-04..06, POL-04, D-16).
 //
 // Plain-node checks for src/pages/Rsakeys/Rsakeys.vue: the per-key table groups,
-// the Phase 44 IconButton row actions (Show key, Copy key, Delete), the confirmed
-// single-shot row and bulk delete, the readable non-wrapping columns with the
-// fingerprint, the single load error, and the deploy-key rules compiled from
-// src/styles/theme.scss (UI-SPEC UI-K01..UI-K15).
+// the Phase 44 IconButton row actions (Show key, Copy key, Rename, Delete), the
+// confirmed single-shot row and bulk delete, the readable non-wrapping columns with
+// the fingerprint, the single load error, the rename dialog and the name feedback,
+// and the deploy-key rules compiled from src/styles/theme.scss (UI-SPEC
+// UI-K01..UI-K15). Also the client name check (src/utils/keyNames.js), the PATCH
+// helper in src/core/api.js through the CSRF client and the renameItem store action.
 //
 // SFC templates are compiled with vue-template-compiler (whitespace: 'condense',
 // as vue-cli does) and rendered with vue.runtime.common; bootstrap-vue elements
@@ -80,6 +82,28 @@ function loadSfc(rel, deps = {}) {
   def.staticRenderFns = compiled.staticRenderFns;
   return { def, source, template };
 }
+
+// Evaluate a plain ES module from src/ and return its named exports (copied from
+// device-list-parity.cjs). `transform` edits the source first, e.g. to drop a
+// trailing `export default {…}` line.
+function loadModule(rel, transform = (s) => s) {
+  const names = [];
+  const code = transform(read(rel))
+    .replace(/^import .*;?$/gm, '')
+    .replace(/export (const|let|function) (\w+)/g, (m, kind, name) => { names.push(name); return kind + ' ' + name; });
+  return new Function(code + '\nreturn { ' + names.join(', ') + ' };')();
+}
+
+// core/api.js: the Api class with its two cookies.js imports injected.
+function loadApi(deps) {
+  const code = read('core/api.js')
+    .replace(/^import .*;?$/gm, '')
+    .replace(/export default class /, 'return class ');
+  return new Function('getCsrfToken', 'fetchWithCsrf', code)(deps.getCsrfToken, deps.fetchWithCsrf);
+}
+
+// A store module's default export.
+const loadStore = (rel) => new Function(read(rel).replace(/^import .*;?$/gm, '').replace(/export default /, 'return '))();
 
 function withWarnings(fn) {
   const warnings = [];
@@ -204,8 +228,18 @@ const keyItems = () => KEYS.map((k) => Object.assign({}, k));
 
 // ---------------------------------------------------------------- components
 
+const keyNames = lazy(() => loadModule('utils/keyNames.js'));
+
+// The page's keyNames imports, or none while the module is missing (the K checks report that).
+function keyNameDeps() {
+  try {
+    const k = keyNames();
+    return { validateKeyName: k.validateKeyName, keyNameMessage: k.keyNameMessage };
+  } catch (e) { return {}; }
+}
+
 const iconButton = lazy(() => loadSfc('components/IconButton/IconButton.vue'));
-const page = lazy(() => loadSfc('pages/Rsakeys/Rsakeys.vue', { IconButton: iconButton().def }));
+const page = lazy(() => loadSfc('pages/Rsakeys/Rsakeys.vue', Object.assign({ IconButton: iconButton().def }, keyNameDeps())));
 
 function renderKeys(state = {}) {
   const r = renderPage(page().def, Object.assign({ items: keyItems() }, state));
@@ -363,6 +397,7 @@ const iconButtonsOf = (top) => componentsOf(top, 'IconButton');
 const actionOf = (row, cy) => iconButtonsOf(row).filter((n) => cyOf(n) === cy)[0];
 const groupOf = (vnode, item) => byCy(vnode, 'deploy-key-group').find((g) => textOf(byCy(g, 'deploy-key-row')[0]).includes(item.name));
 const directText = (n) => (n.children || []).filter((c) => !c.tag).map((c) => c.text).join('');
+const ROW_ACTIONS = ['key-show', 'key-copy', 'key-rename', 'key-delete'];
 
 check('B1 header: sr-only Select, then Name, Generated, Public key, Actions; deploy-keys-table with an sr-only caption', () => {
   const { vnode } = renderKeys();
@@ -426,12 +461,12 @@ check('B3 Generated and Public key cells are text-nowrap; bad dates and fingerpr
   });
 });
 
-check('B4 actions: Show key, Copy key, Delete in that order, Show wired to its key text', () => {
+check('B4 actions: Show key, Copy key, Rename, Delete in that order, Show wired to its key text', () => {
   const { vnode } = renderKeys();
   KEYS.forEach((item) => {
     const cell = cellsOf(rowOf(vnode, item))[4];
     const buttons = iconButtonsOf(cell);
-    assert.deepEqual(buttons.map(cyOf), ['key-show', 'key-copy', 'key-delete']);
+    assert.deepEqual(buttons.map(cyOf), ['key-show', 'key-copy', 'key-rename', 'key-delete']);
     const show = buttons[0];
     assert.equal(propsOf(show).icon, 'fa fa-eye');
     assert.equal(propsOf(show).label, 'Show key');
@@ -484,7 +519,7 @@ check('B5 Show key toggles a detail row with the key text inline; several can be
   assert.equal(byCy(rerender(vm), 'key-text').length, 0, 'the click handler toggles too');
 });
 
-check('B6 an empty or non-string pubkey disables Show and Copy; a deleting key disables all three', () => {
+check('B6 an empty or non-string pubkey disables Show and Copy; a deleting key disables all four', () => {
   ['', null, 42].forEach((bad) => {
     const items = keyItems();
     items[0].pubkey = bad;
@@ -495,13 +530,14 @@ check('B6 an empty or non-string pubkey disables Show and Copy; a deleting key d
     assert.equal(propsOf(actionOf(row, 'key-show')).label, 'Show key', 'label unchanged');
     assert.equal(propsOf(actionOf(row, 'key-copy')).label, 'Copy key', 'label unchanged');
     assert.ok(!propsOf(actionOf(row, 'key-delete')).disabled, 'Delete stays enabled');
+    assert.ok(!propsOf(actionOf(row, 'key-rename')).disabled, 'Rename stays enabled');
   });
   const items = keyItems();
   const { vnode } = renderKeys({ items, deletingIds: [items[1].id] });
   const busy = rowOf(vnode, items[1]);
-  ['key-show', 'key-copy', 'key-delete'].forEach((cy) => assert.equal(propsOf(actionOf(busy, cy)).disabled, true, cy + ' disabled while deleting'));
+  ROW_ACTIONS.forEach((cy) => assert.equal(propsOf(actionOf(busy, cy)).disabled, true, cy + ' disabled while deleting'));
   const idle = rowOf(vnode, items[0]);
-  ['key-show', 'key-copy', 'key-delete'].forEach((cy) => assert.ok(!propsOf(actionOf(idle, cy)).disabled, cy + ' enabled on the other row'));
+  ROW_ACTIONS.forEach((cy) => assert.ok(!propsOf(actionOf(idle, cy)).disabled, cy + ' enabled on the other row'));
 });
 
 // navigator is a global getter in recent Node; replace it for one check.
@@ -611,6 +647,7 @@ const rootChildren = (vnode) => (vnode.children || []).filter((n) => n.tag);
 const toolbarsOf = (vnode) => byClass(vnode, 'key-toolbar');
 const bulkOf = (vnode) => byCy(vnode, 'key-bulk-delete');
 const formsOf = (vnode) => nodesOf(vnode).filter((n) => n.tag === 'b-form');
+const createFormsOf = (vnode) => formsOf(vnode).filter((n) => classList(n).includes('key-create-form'));
 const MARGIN_UTILITY = /^m[trblxy]?-(\d|auto)$/;
 
 check('C1 the bulk toolbar sits between the intro and the table; its label follows the selection', () => {
@@ -651,10 +688,10 @@ check('C1 the bulk toolbar sits between the intro and the table; its label follo
 
 check('C2 the Generate form is b-form.key-create-form with one submit button and no margin utilities', () => {
   const { vnode } = renderKeys({ selectedIds: [KEYS[0].id] });
-  const forms = formsOf(vnode);
-  assert.equal(forms.length, 1, 'one b-form on the page');
+  const forms = createFormsOf(vnode);
+  assert.equal(forms.length, 1, 'one Generate form on the page');
   const form = forms[0];
-  assert.ok(classList(form).includes('key-create-form'), 'form class: ' + classList(form).join(' '));
+  assert.equal(attrsOf(form).id, undefined, 'the Generate form is not the rename form');
   const buttons = nodesOf(form).filter((n) => n.tag === 'b-button');
   assert.equal(buttons.length, 1, 'one button in the form');
   assert.equal(attrsOf(buttons[0]).type, 'submit');
@@ -696,7 +733,7 @@ checkAsync('C3 deleteSelected: one dialog, Keep key / Keep keys, rows disabled w
   const vnode = rerender(h.vm);
   [a, b].forEach((item) => {
     const row = rowOf(vnode, item);
-    ['key-show', 'key-copy', 'key-delete'].forEach((cy) => assert.equal(propsOf(actionOf(row, cy)).disabled, true, item.name + ' ' + cy));
+    ROW_ACTIONS.forEach((cy) => assert.equal(propsOf(actionOf(row, cy)).disabled, true, item.name + ' ' + cy));
     assert.equal(attrsOf(nodesOf(row).filter((n) => n.tag === 'b-form-checkbox')[0]).disabled, true, item.name + ' checkbox');
   });
   assert.equal(textOf(bulkOf(vnode)[0]), 'Deleting' + ELLIPSIS);
@@ -753,7 +790,7 @@ checkAsync('C4 a failed load clears rows, selection and open keys and shows exac
   assert.equal(byTag(vnode, 'table').length, 0, 'no table');
   assert.equal(toolbarsOf(vnode).length, 0, 'no toolbar');
   assert.ok(!/No deploy keys yet/.test(textOf(vnode)), 'no empty-row text');
-  assert.equal(formsOf(vnode).length, 1, 'the Generate form stays');
+  assert.equal(createFormsOf(vnode).length, 1, 'the Generate form stays');
 });
 
 checkAsync('C5 a successful load clears the failure and prunes selection and open keys to listed ids', async () => {
@@ -788,6 +825,345 @@ check('C7 compiled theme: key-create-form and key-toolbar flex rows with 8px / 4
   expectDecls('.key-toolbar', {
     display: 'flex', 'justify-content': 'flex-end', 'align-items': 'center', gap: '4px', 'margin-bottom': '8px',
   });
+});
+
+// ---------------------------------------------------------------- K: rename (45-04 task 1)
+
+const ch = (c) => String.fromCharCode(c);
+
+// The contract shared with the server: the same cases as NAME_CASES in
+// spec/node/DeployKeyNames.test.js (D-05, D-06).
+const NAME_CASES = [
+  ['Firmware ' + String.fromCodePoint(0x1F680), null], ['Ünïcödé', null], ['مفتاح', null], ['Firmware Repository', null], ['x'.repeat(120), null],
+  ['', 'empty'], ['   ', 'empty'], [{}, 'empty'], [[], 'empty'], [42, 'empty'], [null, 'empty'], [undefined, 'empty'],
+  ['x'.repeat(121), 'too_long'],
+  [ch(0x09), 'control_chars'], ['a' + ch(0x09) + 'b', 'control_chars'], ['a' + ch(0x7f) + 'b', 'control_chars'],
+  ['a' + ch(0x85) + 'b', 'control_chars'], ['Firmware' + ch(0x0a), 'control_chars'],
+  ['a' + ch(0x2028) + 'b', 'line_separator'], ['a' + ch(0x2029) + 'b', 'line_separator'], [ch(0x2028), 'line_separator'],
+  ['a' + ch(0x202e) + 'b', 'bidi'], ['a' + ch(0x202a) + 'b', 'bidi'], ['a' + ch(0x2066) + 'b', 'bidi'],
+  ['a' + ch(0x2069) + 'b', 'bidi'], ['a' + ch(0x200e) + 'b', 'bidi'], ['a' + ch(0x200f) + 'b', 'bidi'],
+];
+
+// UI-SPEC Copywriting Contract, name validation row.
+const SENTENCES = {
+  empty: 'Enter a name for the key.',
+  too_long: 'The name is longer than 120 characters.',
+  control_chars: 'The name contains a control character, such as a tab or a line break.',
+  line_separator: 'The name contains a hidden line or paragraph separator.',
+  bidi: 'The name contains a hidden direction-override character.',
+};
+const GENERIC_NAME = 'This name is not allowed. Choose a different name.';
+const RENAME_ERROR = 'Could not rename the deploy key. Try again.';
+
+check('K1 validateKeyName mirrors the server cases; keyNameMessage gives the UI-SPEC sentences', () => {
+  const { validateKeyName, keyNameMessage, KEY_NAME_MAX } = keyNames();
+  assert.equal(KEY_NAME_MAX, 120);
+  for (const [name, reason] of NAME_CASES) {
+    const expected = reason === null ? { ok: true } : { ok: false, reason };
+    assert.deepEqual(validateKeyName(name), expected, JSON.stringify(name === undefined ? 'undefined' : name));
+  }
+  const BIDI = [0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069];
+  for (let c = 0; c <= 0xffff; c++) {
+    let expected = { ok: true };
+    if (c < 0x20 || c === 0x7f || (c >= 0x80 && c <= 0x9f)) expected = { ok: false, reason: 'control_chars' };
+    else if (c === 0x2028 || c === 0x2029) expected = { ok: false, reason: 'line_separator' };
+    else if (BIDI.includes(c)) expected = { ok: false, reason: 'bidi' };
+    assert.deepEqual(validateKeyName('a' + ch(c) + 'b'), expected, 'code unit 0x' + c.toString(16).padStart(4, '0'));
+  }
+  // The first offending unit decides; the scan runs before trimming.
+  assert.deepEqual(validateKeyName(ch(0x202e) + 'a' + ch(0x09)), { ok: false, reason: 'bidi' });
+  assert.deepEqual(validateKeyName('  ' + 'x'.repeat(120) + '  '), { ok: true });
+  Object.keys(SENTENCES).forEach((reason) => assert.equal(keyNameMessage(reason), SENTENCES[reason], reason));
+  ['nope', undefined, null, '__proto__', 'toString'].forEach((reason) => assert.equal(keyNameMessage(reason), GENERIC_NAME, String(reason)));
+});
+
+function restoreGlobal(name, desc) {
+  if (desc) Object.defineProperty(globalThis, name, desc); else delete globalThis[name];
+}
+
+const okResponse = (text) => ({ ok: true, status: 200, text: async () => text });
+
+checkAsync('K2 $patch sends PATCH through fetchWithCsrf, which adds the X-XSRF-TOKEN header', async () => {
+  const calls = [];
+  const Api = loadApi({
+    getCsrfToken: () => 'sync-token',
+    fetchWithCsrf: async (...args) => { calls.push(args); return okResponse('{"success":true,"response":{"name":"n"}}'); },
+  });
+  const api = new Api('https://api.example');
+  assert.equal(typeof api.$patch, 'function', 'Api has $patch');
+  const body = JSON.stringify({ filename: 'f', name: 'n' });
+  const result = await api.$patch('/rsakey', body);
+  assert.equal(calls.length, 1, 'one fetchWithCsrf call');
+  const [base, url, options] = calls[0];
+  assert.equal(base, 'https://api.example/api/v2');
+  assert.equal(url, 'https://api.example/api/v2/rsakey');
+  assert.equal(options.method, 'PATCH');
+  assert.equal(options.credentials, 'include');
+  assert.equal(options.body, body);
+  assert.deepEqual(result, { success: true, response: { name: 'n' } });
+
+  // The real cookies.js client: the token from the XSRF-TOKEN cookie goes out as the header.
+  const cookies = loadModule('utils/cookies.js', (s) => s.replace(/^export default .*$/m, ''));
+  const sent = [];
+  const prevFetch = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+  const prevDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  Object.defineProperty(globalThis, 'fetch', {
+    value: async (u, init) => { sent.push([u, init]); return okResponse('{"success":true,"response":{}}'); },
+    configurable: true, writable: true,
+  });
+  Object.defineProperty(globalThis, 'document', { value: { cookie: 'other=1; XSRF-TOKEN=tok%2Fabc' }, configurable: true, writable: true });
+  try {
+    const RealApi = loadApi({ getCsrfToken: cookies.getCsrfToken, fetchWithCsrf: cookies.fetchWithCsrf });
+    await new RealApi('https://api.example').$patch('/rsakey', body);
+  } finally {
+    restoreGlobal('fetch', prevFetch);
+    restoreGlobal('document', prevDocument);
+  }
+  assert.equal(sent.length, 1, 'one request and no prime: the cookie already holds a token');
+  assert.equal(sent[0][0], 'https://api.example/api/v2/rsakey');
+  assert.equal(sent[0][1].method, 'PATCH');
+  assert.equal(sent[0][1].credentials, 'include');
+  assert.equal(sent[0][1].headers['X-XSRF-TOKEN'], 'tok/abc', 'the XSRF header carries the cookie value');
+  assert.equal(sent[0][1].body, body);
+});
+
+checkAsync('K3 renameItem sends one PATCH /rsakey with {filename, name} and returns the result unchanged', async () => {
+  const store = loadStore('store/rsakeys.js');
+  assert.equal(typeof store.actions.renameItem, 'function', 'the store has renameItem');
+  for (const answer of [{ success: false, response: 'invalid_key_name', reason: 'bidi' }, { success: true, response: { name: 'n' } }]) {
+    const calls = [];
+    const refuse = () => { throw new Error('only $patch may be called'); };
+    const $api = { $patch: async (p, b) => { calls.push([p, b]); return answer; }, $get: refuse, $put: refuse, $post: refuse, $delete: refuse };
+    let dispatched = 0;
+    let committed = 0;
+    const ctx = { dispatch: () => { dispatched++; }, commit: () => { committed++; } };
+    const out = await store.actions.renameItem.call({ $api }, ctx, { filename: 'f', name: 'n' });
+    assert.deepEqual(calls, [['/rsakey', '{"filename":"f","name":"n"}']], 'one PATCH with the JSON body');
+    assert.equal(out, answer, 'the API result comes back unchanged');
+    assert.equal(dispatched + committed, 0, 'no refresh inside the action');
+  }
+});
+
+check('K4 Rename sits between Copy key and Delete: fa fa-pencil, Rename, default variant, disabled while deleting', () => {
+  const items = keyItems();
+  const { vm, vnode } = renderKeys({ items, deletingIds: [items[1].id] });
+  const idle = cellsOf(rowOf(vnode, items[0]))[4];
+  assert.deepEqual(iconButtonsOf(idle).map(cyOf), ROW_ACTIONS);
+  const rename = actionOf(idle, 'key-rename');
+  assert.equal(propsOf(rename).icon, 'fa fa-pencil');
+  assert.equal(propsOf(rename).label, 'Rename');
+  assert.equal(propsOf(rename).variant, undefined, 'Rename uses the default variant');
+  assert.ok(!propsOf(rename).disabled, 'idle Rename is enabled');
+  assert.equal(propsOf(actionOf(rowOf(vnode, items[1]), 'key-rename')).disabled, true, 'Rename is disabled while its key is deleting');
+  const opened = [];
+  vm.openRename = (item) => opened.push(item.id);
+  rename.componentOptions.listeners.click();
+  assert.deepEqual(opened, [items[0].id], 'the click opens the rename dialog for its key');
+  assert.equal(page().source.split('data-cy="key-rename"').length - 1, 1, 'one key-rename hook in the template');
+});
+
+check('K5 openRename prefills the name, clears earlier feedback and shows the rename modal', () => {
+  const { vm } = renderKeys();
+  const shown = [];
+  vm.$bvModal = { show: (id) => shown.push(id), hide: () => {} };
+  Object.assign(vm, { renameServerReason: 'bidi', renameError: RENAME_ERROR });
+  const item = vm.items[0];
+  vm.openRename(item);
+  assert.equal(vm.renameTarget, item);
+  assert.equal(vm.renameName, item.name);
+  assert.equal(vm.renameServerReason, null);
+  assert.equal(vm.renameError, null);
+  assert.equal(vm.renameFeedback, '', 'a valid prefilled name shows no sentence');
+  assert.deepEqual(shown, ['rsakey-rename-modal']);
+});
+
+// A page vm with the rename dialog open on the first key; renameItem, the modal, the
+// toast and loadData are replaced by recorders. hide() runs onRenameHide like BModal.
+function renameHarness() {
+  const { vm } = renderKeys();
+  const calls = { renameItem: [], hide: [], prevented: [], toasts: [], loadData: 0 };
+  const control = { renameItem: null };
+  vm.$bvModal = {
+    show: () => {},
+    hide: (id) => {
+      let prevented = false;
+      vm.onRenameHide({ preventDefault: () => { prevented = true; } });
+      calls.hide.push(id);
+      calls.prevented.push(prevented);
+    },
+  };
+  vm.$toasted = { show: (text, opts) => calls.toasts.push([text, opts]) };
+  vm.renameItem = (args) => {
+    calls.renameItem.push(args);
+    control.renameItem = deferred();
+    return control.renameItem.promise;
+  };
+  vm.loadData = async () => { calls.loadData++; };
+  const item = vm.items[0];
+  vm.openRename(item);
+  return { vm, calls, control, item };
+}
+
+checkAsync('K6 saveRename checks the trimmed name first, skips an unchanged name and sends one request', async () => {
+  const { vm, calls, control, item } = renameHarness();
+  vm.renameName = 'a' + ch(0x202e) + 'b';
+  await vm.saveRename();
+  assert.equal(calls.renameItem.length, 0, 'a bidi name sends nothing');
+  assert.equal(vm.renameFeedback, SENTENCES.bidi);
+  vm.renameName = '   ';
+  await vm.saveRename();
+  assert.equal(calls.renameItem.length, 0, 'a whitespace-only name sends nothing');
+  assert.equal(vm.renameFeedback, SENTENCES.empty);
+  assert.equal(calls.hide.length, 0, 'an invalid name keeps the dialog open');
+  vm.renameName = '  ' + item.name + ' ';
+  await vm.saveRename();
+  assert.equal(calls.renameItem.length, 0, 'an unchanged name sends nothing');
+  assert.deepEqual(calls.hide, ['rsakey-rename-modal'], 'an unchanged name closes the dialog');
+  vm.renameName = '  New name ';
+  const run = vm.saveRename();
+  assert.equal(vm.renaming, true, 'renaming while the request runs');
+  assert.deepEqual(calls.renameItem, [{ filename: item.filename, name: 'New name' }], 'one request with the trimmed name');
+  await vm.saveRename();
+  assert.equal(calls.renameItem.length, 1, 'a second save while pending sends nothing');
+  assert.equal(vm.renaming, true, 'still renaming');
+  control.renameItem.resolve({ success: true });
+  await run;
+  assert.equal(vm.renaming, false, 'released once settled');
+});
+
+const renameInputOf = (vnode) => nodesOf(vnode).find((n) => n.tag === 'b-form-input' && attrsOf(n).id === 'rename-key-name');
+
+checkAsync('K7 rename outcomes: success closes, toasts and reloads; server reasons and failures keep the dialog', async () => {
+  const ok = renameHarness();
+  ok.vm.renameName = 'New name';
+  const p = ok.vm.saveRename();
+  ok.control.renameItem.resolve({ success: true, response: { name: 'New name' } });
+  await p;
+  assert.deepEqual(ok.calls.hide, ['rsakey-rename-modal'], 'success closes the dialog');
+  assert.deepEqual(ok.calls.prevented, [false], 'the close is not blocked once the request settled');
+  assert.deepEqual(ok.calls.toasts, [['Deploy key renamed', { type: 'success', duration: 2000 }]]);
+  assert.equal(ok.calls.loadData, 1, 'success reloads the list');
+  assert.equal(ok.vm.renaming, false);
+
+  const outcomes = [
+    ['bidi reason', (c) => c.resolve({ success: false, response: 'invalid_key_name', reason: 'bidi' }), SENTENCES.bidi, 'true'],
+    ['too_long reason', (c) => c.resolve({ success: false, response: 'invalid_key_name', reason: 'too_long' }), SENTENCES.too_long, 'true'],
+    ['missing reason', (c) => c.resolve({ success: false, response: 'invalid_key_name' }), GENERIC_NAME, 'true'],
+    ['unknown reason', (c) => c.resolve({ success: false, response: 'invalid_key_name', reason: 'nope' }), GENERIC_NAME, 'true'],
+    ['key_not_found', (c) => c.resolve({ success: false, response: 'key_not_found' }), RENAME_ERROR, 'false'],
+    ['empty body', (c) => c.resolve({ success: false, status: 500, response: null }), RENAME_ERROR, 'false'],
+    ['thrown', (c) => c.reject(new Error('offline')), RENAME_ERROR, 'false'],
+  ];
+  for (const [label, settle, sentence, invalid] of outcomes) {
+    const h = renameHarness();
+    h.vm.renameName = 'New name';
+    const run = h.vm.saveRename();
+    settle(h.control.renameItem);
+    await run;
+    assert.equal(h.calls.hide.length, 0, label + ' keeps the dialog open');
+    assert.equal(h.calls.toasts.length, 0, label + ' shows no toast');
+    assert.equal(h.calls.loadData, 0, label + ' does not reload');
+    assert.equal(h.vm.renaming, false, label + ' releases the dialog');
+    assert.equal(h.vm.renameFeedback, sentence, label);
+    const vnode = rerender(h.vm);
+    assert.equal(textOf(byCy(vnode, 'rename-key-feedback')[0]), sentence, label + ' feedback line');
+    const input = renameInputOf(vnode);
+    assert.equal(attrsOf(input)['aria-invalid'], invalid, label + ' aria-invalid');
+    assert.equal(attrsOf(input).disabled, false, label + ' re-enables the field');
+    h.vm.renameName = 'Another name';
+    await tick();
+    assert.equal(h.vm.renameFeedback, '', label + ': editing the name clears the sentence');
+  }
+});
+
+check('K8 onRenameHide blocks Esc, backdrop and header close only while renaming', () => {
+  const { vm } = renderKeys();
+  let prevented = 0;
+  const evt = { preventDefault: () => { prevented++; } };
+  vm.renaming = false;
+  vm.onRenameHide(evt);
+  assert.equal(prevented, 0, 'an idle dialog closes');
+  vm.renaming = true;
+  vm.onRenameHide(evt);
+  assert.equal(prevented, 1, 'a pending rename holds the dialog open');
+});
+
+check('K9 rename modal markup: title, form, input, feedback, help and the Keep current name / Save name footer', () => {
+  const items = keyItems();
+  const { vm, vnode } = renderKeys({ items, renameTarget: items[0], renameName: items[0].name });
+  const modals = nodesOf(vnode).filter((n) => n.tag === 'b-modal' && attrsOf(n).id === 'rsakey-rename-modal');
+  assert.equal(modals.length, 1, 'one rename modal');
+  const modal = modals[0];
+  assert.equal(attrsOf(modal).title, 'Rename deploy key');
+  const on = modal.data.on || {};
+  assert.equal(typeof on.hide, 'function', '@hide is wired');
+  assert.equal(typeof on.shown, 'function', '@shown is wired');
+  const forms = nodesOf(modal).filter((n) => n.tag === 'b-form');
+  assert.equal(forms.length, 1, 'one form in the modal');
+  assert.equal(attrsOf(forms[0]).id, 'rsakey-rename-form');
+  assert.equal(typeof (forms[0].data.on || {}).submit, 'function', 'the form submits');
+  const labels = byTag(forms[0], 'label');
+  assert.equal(labels.length, 1, 'one label');
+  assert.equal(attrsOf(labels[0]).for, 'rename-key-name');
+  assert.equal(textOf(labels[0]), 'Key name');
+  const input = renameInputOf(forms[0]);
+  assert.ok(input, 'the rename input is inside the form');
+  const a = attrsOf(input);
+  assert.equal(String(a.maxlength), '120');
+  assert.equal(a['data-cy'], 'rename-key-input');
+  assert.equal(a['aria-describedby'], 'rename-key-name-feedback rename-key-name-help');
+  assert.equal(a.disabled, false);
+  assert.equal(a['aria-invalid'], 'false');
+  const feedback = byCy(forms[0], 'rename-key-feedback');
+  assert.equal(feedback.length, 1, 'one feedback line');
+  assert.equal(feedback[0].tag, 'p');
+  assert.equal(attrsOf(feedback[0]).id, 'rename-key-name-feedback');
+  assert.ok(classList(feedback[0]).includes('key-name-feedback'));
+  assert.equal(attrsOf(feedback[0])['aria-live'], 'polite');
+  assert.equal(textOf(feedback[0]), '', 'no sentence for a valid name');
+  const help = nodesOf(forms[0]).filter((n) => attrsOf(n).id === 'rename-key-name-help');
+  assert.equal(help.length, 1, 'one help line');
+  assert.equal(help[0].tag, 'p');
+  assert.ok(classList(help[0]).includes('key-name-help'));
+  assert.equal(textOf(help[0]), 'Up to 120 characters. The key itself does not change.');
+
+  const footer = (top) => {
+    const m = nodesOf(top).find((n) => n.tag === 'b-modal' && attrsOf(n).id === 'rsakey-rename-modal');
+    const buttons = nodesOf(m).filter((n) => n.tag === 'b-button');
+    assert.deepEqual(buttons.map(cyOf), ['rename-key-cancel', 'rename-key-save'], 'footer buttons in order');
+    return { cancel: buttons[0], save: buttons[1], input: renameInputOf(m), feedback: byCy(m, 'rename-key-feedback')[0] };
+  };
+  const idle = footer(vnode);
+  assert.equal(textOf(idle.cancel), 'Keep current name');
+  assert.equal(attrsOf(idle.cancel).variant, 'default');
+  assert.equal(attrsOf(idle.cancel).disabled, false);
+  assert.equal(textOf(idle.save), 'Save name');
+  assert.equal(attrsOf(idle.save).variant, 'success');
+  assert.equal(attrsOf(idle.save).type, 'submit');
+  assert.equal(attrsOf(idle.save).form, 'rsakey-rename-form');
+  assert.equal(attrsOf(idle.save).disabled, false);
+  const hidden = [];
+  vm.$bvModal = { hide: (id) => hidden.push(id) };
+  idle.cancel.data.on.click();
+  assert.deepEqual(hidden, ['rsakey-rename-modal'], 'Keep current name closes the dialog');
+
+  const busy = footer(renderKeys({ items, renameTarget: items[0], renameName: 'New name', renaming: true }).vnode);
+  assert.equal(textOf(busy.save), 'Saving' + ELLIPSIS);
+  assert.equal(attrsOf(busy.save).disabled, true, 'Save name is disabled while saving');
+  assert.equal(attrsOf(busy.cancel).disabled, true, 'Keep current name is disabled while saving');
+  assert.equal(attrsOf(busy.input).disabled, true, 'the field is disabled while saving');
+
+  const bad = footer(renderKeys({ items, renameTarget: items[0], renameName: 'a' + ch(0x202e) + 'b' }).vnode);
+  assert.equal(attrsOf(bad.save).disabled, true, 'Save name is disabled while the client check fails');
+  assert.equal(attrsOf(bad.input)['aria-invalid'], 'true');
+  assert.equal(textOf(bad.feedback), SENTENCES.bidi);
+  const cleared = footer(renderKeys({ items, renameTarget: items[0], renameName: '' }).vnode);
+  assert.equal(textOf(cleared.feedback), SENTENCES.empty, 'a cleared name asks for one');
+  assert.equal(attrsOf(cleared.save).disabled, true);
+
+  const template = page().template;
+  ['>Cancel<', '>Save<'].forEach((s) => assert.ok(!template.includes(s), 'no generic button text ' + s));
+  assert.ok(!template.includes('v-html'), 'no raw-HTML binding');
 });
 
 // ---------------------------------------------------------------- run
