@@ -43,6 +43,17 @@ export default {
         }
         return state.items;
       },
+      // Phase 46 (UI-T09): the same GET /device, but a failure is reported, so a page can
+      // tell "no device uses it" from "the list could not be loaded". fetchItems keeps its
+      // non-throwing behaviour for Devices.vue, DeviceDetail.vue and Visits.vue.
+      async loadDevices({ state, commit }) {
+        const result = await this.$api.$get('/device');
+        if (!result || !result.success || !Array.isArray(result.response)) {
+          throw new Error('Could not load devices.');
+        }
+        commit('saveDevices', { items: result.response });
+        return state.items;
+      },
       async revokeDevices({ dispatch }, udids) {
         const result = await this.$api.$delete('/device', JSON.stringify({ udids }));
         if (result.success) await dispatch('fetchItems');

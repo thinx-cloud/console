@@ -12,44 +12,55 @@
     </p>
 
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
+    <b-alert v-if="loadFailed" variant="danger" show data-cy="transformers-load-error">Could not load transformers. Refresh to retry.</b-alert>
 
     <p>Status transformers are JavaScript functions that process and transform device status data before display.</p>
 
-    <div v-if="loading">Loading...</div>
-    <table v-else class="table table-striped">
-      <thead>
-        <tr>
-          <th>Alias</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in items" :key="item.utid" data-cy="transformer-row">
-          <td>{{ displayName(item) }}</td>
-          <td class="actions-cell">
-            <IconButton icon="fa fa-wrench icon-white" label="Edit" :disabled="isDeleting(item)" data-cy="transformer-edit" @click="editTransformer(item.utid)" />
-            <IconButton :icon="isDeleting(item) ? 'fa fa-spin fa-circle-o-notch' : 'fa fa-trash'" :label="isDeleting(item) ? 'Deleting…' : 'Delete'" variant="danger" :disabled="isDeleting(item)" data-cy="transformer-delete" @click="openDelete([item])" />
-          </td>
-        </tr>
-        <tr v-if="!items.length">
-          <td colspan="2" class="text-muted">No transformers yet.</td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-if="!loading && !loadFailed && items.length" class="bulk-toolbar" role="toolbar" aria-label="Selected transformers">
+      <b-button size="sm" variant="danger" data-cy="transformer-bulk-delete" :disabled="!selectedUtids.length || bulkDeleting || deleting" @click="openBulkDelete">
+        <i class="fa fa-trash" aria-hidden="true"></i><span class="button-text">{{ bulkLabel }}</span>
+      </b-button>
+    </div>
+    <div v-if="loading" role="status">Loading…</div>
+    <div v-else-if="!loadFailed" class="table-responsive">
+      <table class="table table-striped transformers-table">
+        <caption class="sr-only">Transformers</caption>
+        <thead>
+          <tr><th><span class="sr-only">Select</span></th><th>Name</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in items" :key="item.utid" data-cy="transformer-row">
+            <td><b-form-checkbox v-model="selectedUtids" :value="item.utid" :aria-label="'Select ' + displayName(item)" :disabled="isDeleting(item)" data-cy="transformer-select" /></td>
+            <td><span class="transformer-name" dir="auto" :title="displayName(item)" data-cy="transformer-name">{{ displayName(item) }}</span></td>
+            <td class="actions-cell">
+              <IconButton icon="fa fa-wrench icon-white" label="Edit" :disabled="isDeleting(item)" data-cy="transformer-edit" @click="editTransformer(item.utid)" />
+              <IconButton :icon="isDeleting(item) ? 'fa fa-spin fa-circle-o-notch' : 'fa fa-trash'" :label="isDeleting(item) ? 'Deleting…' : 'Delete'" variant="danger" :disabled="isDeleting(item)" data-cy="transformer-delete" @click="openDelete([item])" />
+            </td>
+          </tr>
+          <tr v-if="!items.length">
+            <td colspan="3">No transformers yet. Add one with Add Transformer.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-    <!-- Typed-confirm delete (TRANS-04, D-05, D-07, UI-T08, UI-T10). Names are text only. -->
+    <!-- Typed-confirm delete (TRANS-04, D-05..D-07, UI-T08..UI-T10). Names are text only. -->
     <b-modal id="transformer-delete-modal" title="Confirm Delete" body-class="text-break" @shown="focusConfirmInput" @hide="onDeleteHide">
       <b-form id="transformer-delete-form" class="dialog-stack" @submit.prevent="submitDelete">
         <p data-cy="transformer-delete-question">{{ deleteQuestion }}</p>
+        <ul v-if="deleteMany" class="typed-confirm__names" data-cy="transformer-delete-names">
+          <li v-for="target in deleteTargets" :key="target.utid" dir="auto">{{ target.name }}</li>
+        </ul>
+        <p class="typed-confirm__usage" data-cy="transformer-delete-usage"><i class="fa fa-warning" aria-hidden="true"></i> {{ usageText }}</p>
         <div class="dialog-field">
-          <label for="transformer-delete-confirm" class="dialog-label">Type <span class="typed-confirm__word">confirm</span> to delete it.</label>
+          <label for="transformer-delete-confirm" class="dialog-label">Type <span class="typed-confirm__word">confirm</span> to delete {{ deleteMany ? 'them' : 'it' }}.</label>
           <b-form-input id="transformer-delete-confirm" ref="confirmInput" v-model="confirmText" autocomplete="off" autocapitalize="off" spellcheck="false" :disabled="deleting" aria-describedby="transformer-delete-error" data-cy="transformer-delete-input" />
           <p id="transformer-delete-error" class="dialog-feedback" aria-live="polite" data-cy="transformer-delete-error">{{ deleteError }}</p>
         </div>
       </b-form>
       <template #modal-footer>
-        <b-button variant="default" :disabled="deleting" data-cy="transformer-delete-keep" @click="$bvModal.hide('transformer-delete-modal')">Keep transformer</b-button>
-        <b-button variant="danger" type="submit" form="transformer-delete-form" :disabled="!confirmMatches || deleting" data-cy="transformer-delete-submit">{{ deleting ? 'Deleting…' : 'Delete transformer' }}</b-button>
+        <b-button variant="default" :disabled="deleting" data-cy="transformer-delete-keep" @click="$bvModal.hide('transformer-delete-modal')">{{ deleteMany ? 'Keep transformers' : 'Keep transformer' }}</b-button>
+        <b-button variant="danger" type="submit" form="transformer-delete-form" :disabled="!confirmMatches || deleting" data-cy="transformer-delete-submit">{{ deleting ? 'Deleting…' : (deleteMany ? 'Delete transformers' : 'Delete transformer') }}</b-button>
       </template>
     </b-modal>
 
@@ -66,6 +77,7 @@
 <script>
 import { mapGetters, mapActions } from 'vuex';
 import IconButton from '@/components/IconButton/IconButton';
+import { countDevicesUsing, usageSentence } from '@/utils/transformerUsage';
 
 export default {
   name: "Transformers",
@@ -83,6 +95,11 @@ export default {
       confirmText: '',
       deleting: false,
       deleteError: null,
+      deleteFromBulk: false,
+      bulkDeleting: false,
+      loadFailed: false,
+      devices: [],
+      devicesLoaded: false,
     };
   },
   computed: {
@@ -90,17 +107,38 @@ export default {
     confirmMatches() {
       return this.confirmText.trim() === 'confirm';
     },
+    deleteMany() {
+      return this.deleteTargets.length > 1;
+    },
     deleteQuestion() {
+      if (this.deleteMany) return 'Delete these ' + this.deleteTargets.length + ' transformers? This cannot be undone.';
       const target = this.deleteTargets[0];
       return 'Delete the transformer "' + (target ? target.name : '') + '"? This cannot be undone.';
+    },
+    // D-06: counted from the device list loaded with the page; null when that load failed.
+    usageCount() {
+      if (!this.devicesLoaded) return null;
+      return countDevicesUsing(this.devices, this.deleteTargets.map(target => target.utid));
+    },
+    usageText() {
+      return usageSentence(this.usageCount, this.deleteMany);
+    },
+    // Selected transformers that are still listed, in table order.
+    selectedItems() {
+      return this.items.filter(item => this.selectedUtids.includes(item.utid));
+    },
+    bulkLabel() {
+      if (this.bulkDeleting) return 'Deleting…';
+      const count = this.selectedItems.length;
+      return count ? 'Delete selected (' + count + ')' : 'Delete selected';
     },
   },
   created() {
     this.$watch(() => this.$route.params, () => { this.loadData(); }, { immediate: true });
   },
   methods: {
-    ...mapGetters({ getItems: 'transformers/getItems' }),
-    ...mapActions({ fetchItems: 'transformers/fetchItems', createItem: 'transformers/createItem', deleteItems: 'transformers/deleteItems' }),
+    ...mapGetters({ getItems: 'transformers/getItems', getDevices: 'devices/getItems' }),
+    ...mapActions({ fetchItems: 'transformers/fetchItems', createItem: 'transformers/createItem', deleteItems: 'transformers/deleteItems', loadDevices: 'devices/loadDevices' }),
     // The stored alias when it is a non-blank string, else the utid (UI-T05).
     displayName(item) {
       return typeof item.alias === 'string' && item.alias.trim() ? item.alias : item.utid;
@@ -134,12 +172,19 @@ export default {
     },
     // One dialog for the row trash and the bulk trash (D-05). The typed word and the
     // error from an earlier opening are cleared every time (D-07).
-    openDelete(targets) {
-      if (this.deleting) return;
+    openDelete(targets, fromBulk = false) {
+      if (this.deleting || !targets.length) return;
       this.deleteTargets = targets.map(item => ({ utid: item.utid, name: this.displayName(item) }));
+      this.deleteFromBulk = !!fromBulk;
       this.confirmText = '';
       this.deleteError = null;
       this.$bvModal.show('transformer-delete-modal');
+    },
+    // The bulk trash (UI-T07): the selected transformers that still exist and are not
+    // already being deleted, in table order.
+    openBulkDelete() {
+      if (this.bulkDeleting || this.deleting) return;
+      this.openDelete(this.selectedItems.filter(item => !this.isDeleting(item)), true);
     },
     focusConfirmInput() {
       const input = this.$refs.confirmInput;
@@ -155,7 +200,9 @@ export default {
       if (!this.confirmMatches || this.deleting) return;
       const utids = this.deleteTargets.map(target => target.utid);
       if (!utids.length) return;
+      const many = utids.length > 1;
       this.deleting = true;
+      this.bulkDeleting = this.deleteFromBulk;
       this.deleteError = null;
       this.deletingUtids = this.deletingUtids.concat(utids.filter(utid => !this.deletingUtids.includes(utid)));
       try {
@@ -168,21 +215,46 @@ export default {
           this.selectedUtids = this.selectedUtids.filter(utid => !utids.includes(utid));
           // Phase 35 IN-02: the write succeeded but the store could not re-read it.
           if (result.refreshed === false) await this.loadData();
-          else this.items = this.getItems();
+          else this.applyItems(this.getItems());
         } else {
           this.deleting = false;
-          this.deleteError = 'Could not delete the transformer. Try again.';
+          this.deleteError = many ? 'Could not delete the transformers. Try again.' : 'Could not delete the transformer. Try again.';
         }
       } finally {
         this.deleting = false;
+        this.bulkDeleting = false;
         this.deletingUtids = this.deletingUtids.filter(utid => !utids.includes(utid));
       }
     },
+    // A listed set of transformers: the rows, and the selection pruned to them (UI-T12).
+    applyItems(items) {
+      const list = Array.isArray(items) ? items : [];
+      const listed = list.map(item => item.utid);
+      this.items = list;
+      this.selectedUtids = this.selectedUtids.filter(utid => listed.includes(utid));
+    },
+    // Transformers and devices load side by side (UI-T09, UI-T12). A failed transformer
+    // load clears the rows behind one non-dismissible alert and leaves the action error
+    // alone; a failed device load only makes the usage sentence generic. Only the first
+    // load shows Loading… (`loading` starts true), so later loads refresh in place.
     async loadData() {
-      this.loading = true;
-      try { await this.fetchItems(); this.items = this.getItems(); }
-      catch (e) { this.error = 'Could not load transformers.'; }
-      finally { this.loading = false; }
+      const [list, devices] = await Promise.allSettled([this.fetchItems(), this.loadDevices()]);
+      if (list.status === 'fulfilled') {
+        this.applyItems(this.getItems());
+        this.loadFailed = false;
+      } else {
+        this.items = [];
+        this.selectedUtids = [];
+        this.loadFailed = true;
+      }
+      if (devices.status === 'fulfilled') {
+        const known = this.getDevices();
+        this.devices = Array.isArray(known) ? known : [];
+        this.devicesLoaded = true;
+      } else {
+        this.devicesLoaded = false;
+      }
+      this.loading = false;
     },
   },
 };
