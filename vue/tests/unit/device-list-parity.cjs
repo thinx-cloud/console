@@ -572,4 +572,253 @@ check('store/repositories.js is unchanged since the phase start (cfff199)', () =
   assert.equal(out, '');
 });
 
+// ---------------------------------------------------------------- Devices: icon tiles, filter, sort, empty states
+
+const CATEGORY_NAMES = ['grey-mint', 'yellow-crusta', 'red-intense', 'purple-studio', 'blue', 'green', 'green-dark'];
+
+// [alias, platform, icon, expected symbol]; 'mongoose' has no icon key at all.
+const FLEET = [
+  ['Alpha', 'arduino:esp8266', 7, '07'],
+  ['Bravo', 'arduino', '12', '12'],
+  ['Charlie', 'PlatformIO', 73, '73'],
+  ['Delta', 'sigfox', 0, '01'],
+  ['Echo', 'nodemcu:esp32', 74, '01'],
+  ['Foxtrot', 'unknown_platform', 'x', '01'],
+  ['Golf', undefined, null, '01'],
+  ['Hotel', 'mongoose', undefined, '01'],
+].map(([alias, platform, icon, nn], i) => {
+  const d = { udid: 'u' + i, alias, mac: 'M' + i, keyhash: 'k' + i, category: CATEGORY_NAMES[i % CATEGORY_NAMES.length],
+    lastupdate: new Date(Date.UTC(2026, 9, 1 + i)).toISOString(), expectSymbol: nn };
+  if (platform !== undefined) d.platform = platform;
+  if (icon !== undefined || alias !== 'Hotel') d.icon = icon;
+  return d;
+});
+const fleet = () => FLEET.map((d) => Object.assign({}, d));
+
+function renderFleet(state) {
+  return renderDevices(Object.assign({ items: fleet() }, state));
+}
+
+const aliasOfRow = (row) => FLEET.find((d) => textOf(row).includes(d.alias));
+
+check('Devices.vue holds no category colour name, category map, lookup, pill hook or category read', () => {
+  const { source } = devices();
+  CATEGORY_NAMES.concat(['CATEGORY_COLORS', 'categoryColor', 'category-pill', 'Platform:', 'device.category', 'filterCategory'])
+    .forEach((s) => assert.equal(source.indexOf(s), -1, 'still present: ' + s));
+  assert.doesNotMatch(source, /\.category\b|\[['"]category['"]\]/, 'reads a category field');
+});
+
+check('rendered Devices (both views) shows no category in any class, attribute or text', () => {
+  ['list', 'grid'].forEach((viewMode) => {
+    const { vm, vnode } = renderFleet({ viewMode });
+    const blob = [deepText(vnode, vm)]
+      .concat(nodesOf(vnode).map((n) => classList(n).join(' ') + ' ' + JSON.stringify(attrsOf(n)) + ' ' + JSON.stringify((n.data && n.data.style) || '')))
+      .join(' ');
+    ['grey-mint', 'yellow-crusta', 'red-intense', 'purple-studio', 'green-dark'].forEach((c) => assert.ok(!blob.includes(c), viewMode + ': ' + c));
+    assert.ok(!/\bPlatform:/.test(blob), viewMode + ': Platform: label');
+  });
+});
+
+check('table head: checkbox, sr-only Icon, Alias, Platform, Firmware, Status, Last Seen, Actions', () => {
+  const { vnode } = renderFleet({ viewMode: 'list' });
+  const thead = nodesOf(vnode).find((n) => n.tag === 'thead');
+  const ths = nodesOf(thead).filter((n) => n.tag === 'th');
+  assert.equal(ths.length, 8, '8 columns');
+  assert.ok(nodesOf(ths[0]).some((n) => n.tag === 'input'), 'first column is the checkbox');
+  const iconHead = nodesOf(ths[1]).filter((n) => n.tag);
+  assert.equal(iconHead.length, 2, 'icon header holds only one span');
+  assert.equal(iconHead[1].tag, 'span');
+  assert.deepEqual(classList(iconHead[1]), ['sr-only']);
+  assert.equal(textOf(ths[1]), 'Icon');
+  assert.deepEqual(ths.slice(2).map((th) => textOf(th)), ['Alias', 'Platform', 'Firmware', 'Status', 'Last Seen', 'Actions']);
+});
+
+function checkTile(tile, dev, small) {
+  const info = platforms().platformInfo(dev.platform);
+  const cls = classList(tile);
+  assert.equal(tile.tag, 'span', dev.alias + ' tile is a span');
+  assert.ok(cls.includes('device-icon'), dev.alias + ' device-icon');
+  assert.equal(cls.includes('device-icon--sm'), small, dev.alias + ' device-icon--sm');
+  assert.ok(cls.includes('platform-' + info.key), dev.alias + ' platform-' + info.key + ' in ' + cls.join(' '));
+  assert.equal(cls.filter((c) => /^platform-/.test(c)).length, 1, dev.alias + ' one platform class');
+  assert.equal(attrsOf(tile).title, info.label, dev.alias + ' tile title');
+  const imgs = nodesOf(tile).filter((n) => n.tag === 'img');
+  assert.equal(imgs.length, 1, dev.alias + ' one symbol');
+  assert.deepEqual(classList(imgs[0]), ['device-icon-symbol']);
+  assert.equal(attrsOf(imgs[0]).alt, info.label + ' device icon', dev.alias + ' alt');
+  assert.equal(attrsOf(imgs[0]).src, 'sym:b_medium_' + dev.expectSymbol + '.png', dev.alias + ' symbol for icon ' + JSON.stringify(dev.icon));
+  assert.ok(!nodesOf(tile).some((n) => n.tag === 'a' || n.tag === 'router-link'), dev.alias + ' tile is not a link');
+}
+
+check('table rows: second cell is the 32px platform tile with the Legacy symbol', () => {
+  const { vnode } = renderFleet({ viewMode: 'list' });
+  const rows = byCy(vnode, 'device-row');
+  assert.equal(rows.length, FLEET.length);
+  rows.forEach((row) => {
+    const dev = aliasOfRow(row);
+    assert.ok(dev, 'row alias');
+    const tds = (row.children || []).filter((n) => n.tag === 'td');
+    assert.equal(tds.length, 8, dev.alias + ' 8 cells');
+    const tiles = (tds[1].children || []).filter((n) => n.tag);
+    assert.equal(tiles.length, 1, dev.alias + ' icon cell holds one tile');
+    checkTile(tiles[0], dev, true);
+  });
+});
+
+check('grid cards: header row of 48px tile then the alias, one line holding only the bullet', () => {
+  const { vm, vnode } = renderFleet({ viewMode: 'grid' });
+  const cards = byCy(vnode, 'device-card');
+  assert.equal(cards.length, FLEET.length);
+  cards.forEach((card) => {
+    const slots = card.data.scopedSlots || {};
+    assert.equal(typeof slots.header, 'function', 'card has a header slot');
+    const header = [].concat(slots.header({})).filter((n) => n && n.tag);
+    assert.equal(header.length, 1, 'header has one wrapper');
+    const wrap = header[0];
+    assert.ok(classList(wrap).includes('d-flex') && classList(wrap).includes('align-items-center'), 'header wrapper is d-flex align-items-center');
+    const parts = (wrap.children || []).filter((n) => n.tag);
+    assert.equal(parts.length, 2, 'header holds the tile and the alias');
+    assert.equal(parts[1].tag, 'strong');
+    const dev = FLEET.find((d) => textOf(parts[1]) === d.alias);
+    assert.ok(dev, 'alias in strong');
+    checkTile(parts[0], dev, false);
+    const bullets = componentsOf(card, 'PlatformBullet');
+    assert.equal(bullets.length, 1, dev.alias + ' one bullet per card');
+    const line = (card.children || []).find((n) => n.tag === 'p' && (n.children || []).some((c) => isComponent(c, 'PlatformBullet')));
+    assert.ok(line, dev.alias + ' bullet line');
+    assert.equal((line.children || []).filter((c) => c.tag).length, 1, dev.alias + ' bullet line holds only the bullet');
+    assert.equal(textOf(line), '', dev.alias + ' bullet line has no other text');
+    assert.equal(textOf(expand(bullets[0], vm).vnode), platforms().platformInfo(dev.platform).label);
+    assert.ok(!nodesOf(card).some((n) => n.tag === 'strong' && /Platform/.test(textOf(n))), 'no bold platform label');
+  });
+});
+
+function pillsOf(vnode) {
+  const groups = nodesOf(vnode).filter((n) => attrsOf(n).role === 'group' && attrsOf(n)['aria-label'] === 'Filter by platform');
+  assert.equal(groups.length, 1, 'one "Filter by platform" group');
+  return nodesOf(groups[0]).filter((n) => n.tag === 'b-button');
+}
+
+check('platform pills: All, then present platforms by label with unknown last, aria-pressed and variant', () => {
+  const { vnode } = renderFleet({ viewMode: 'list' });
+  const pills = pillsOf(vnode);
+  assert.deepEqual(pills.map((p) => cyOf(p)), ['platform-pill-All', 'platform-pill-arduino', 'platform-pill-mongoose',
+    'platform-pill-nodemcu', 'platform-pill-platformio', 'platform-pill-sigfox', 'platform-pill-unknown']);
+  assert.deepEqual(pills.map((p) => textOf(p)), ['All', 'Arduino', 'MongooseOS', 'NodeMCU', 'Platform.io', 'Sigfox', 'unknown']);
+  pills.forEach((p, i) => {
+    assert.equal(attrsOf(p).size, 'sm');
+    assert.equal(attrsOf(p).variant, i === 0 ? 'light' : 'outline-light', cyOf(p) + ' variant');
+    assert.equal(attrsOf(p)['aria-pressed'], i === 0 ? 'true' : 'false', cyOf(p) + ' aria-pressed');
+    assert.equal(typeof (p.data.on && p.data.on.click), 'function', cyOf(p) + ' click handler');
+  });
+});
+
+check('platform pills: with no items, and while loading, only All renders', () => {
+  assert.deepEqual(pillsOf(renderDevices({ items: [] }).vnode).map((p) => cyOf(p)), ['platform-pill-All']);
+  const loading = renderDevices({ items: [], loading: true });
+  assert.deepEqual(pillsOf(loading.vnode).map((p) => cyOf(p)), ['platform-pill-All']);
+  assert.ok(textOf(loading.vnode).includes('Loading...'), 'Loading... shows');
+  assert.ok(!nodesOf(loading.vnode).some((n) => n.tag === 'table' || cyOf(n) === 'device-card'), 'no table or grid while loading');
+});
+
+check('clicking the Arduino pill keeps arduino and arduino:esp8266 devices only', () => {
+  const first = renderFleet({ viewMode: 'list' });
+  const pill = pillsOf(first.vnode).find((p) => cyOf(p) === 'platform-pill-arduino');
+  pill.data.on.click();
+  const again = withWarnings(() => first.vm._render());
+  assert.equal(again.error, null);
+  const rows = byCy(again.out, 'device-row');
+  assert.deepEqual(rows.map((r) => aliasOfRow(r).alias).sort(), ['Alpha', 'Bravo']);
+  const active = pillsOf(again.out).filter((p) => attrsOf(p)['aria-pressed'] === 'true').map((p) => cyOf(p));
+  assert.deepEqual(active, ['platform-pill-arduino']);
+  assert.equal(attrsOf(pillsOf(again.out).find((p) => cyOf(p) === 'platform-pill-arduino')).variant, 'light');
+});
+
+check('a reload without the selected platform falls back to All', () => {
+  const { vm } = renderFleet({ viewMode: 'list' });
+  vm.filterPlatform = 'arduino';
+  assert.equal(vm.filteredItems.length, 2);
+  vm.items = fleet().filter((d) => platforms().basePlatform(d.platform) !== 'arduino');
+  assert.equal(vm.activePlatform, 'All');
+  assert.equal(vm.filteredItems.length, FLEET.length - 2, 'unfiltered');
+  const again = withWarnings(() => vm._render());
+  const active = pillsOf(again.out).filter((p) => attrsOf(p)['aria-pressed'] === 'true').map((p) => cyOf(p));
+  assert.deepEqual(active, ['platform-pill-All']);
+});
+
+check('sort Platform orders by base platform, then alias; Last Update and Alias unchanged', () => {
+  const { vm } = renderFleet({ viewMode: 'list' });
+  const { basePlatform } = platforms();
+  vm.sortBy = 'platform';
+  assert.deepEqual(vm.filteredItems.map((d) => d.alias),
+    ['Alpha', 'Bravo', 'Hotel', 'Echo', 'Charlie', 'Delta', 'Foxtrot', 'Golf']);
+  assert.deepEqual(vm.filteredItems.map((d) => basePlatform(d.platform)),
+    ['arduino', 'arduino', 'mongoose', 'nodemcu', 'platformio', 'sigfox', 'unknown', 'unknown']);
+  const swapped = fleet().reverse();
+  vm.items = swapped;
+  assert.deepEqual(vm.filteredItems.slice(0, 2).map((d) => d.alias), ['Alpha', 'Bravo'], 'alias breaks the tie');
+  vm.items = fleet();
+  vm.sortBy = 'alias';
+  assert.deepEqual(vm.filteredItems.map((d) => d.alias), FLEET.map((d) => d.alias).sort());
+  vm.sortBy = 'lastupdate';
+  assert.deepEqual(vm.filteredItems.map((d) => d.alias), FLEET.map((d) => d.alias).reverse());
+});
+
+function emptyText(vnode, viewMode) {
+  if (viewMode === 'list') {
+    const tbody = nodesOf(vnode).find((n) => n.tag === 'tbody');
+    const tds = nodesOf(tbody).filter((n) => n.tag === 'td');
+    assert.equal(tds.length, 1, 'one empty cell');
+    assert.equal(attrsOf(tds[0]).colspan, '8', 'colspan 8');
+    assert.ok(!classList(tds[0]).includes('text-muted'), 'not text-muted');
+    return textOf(tds[0]);
+  }
+  const cards = byCy(vnode, 'device-card');
+  assert.equal(cards.length, 0);
+  const holders = nodesOf(vnode).filter((n) => n.tag === 'p' && /No devices/.test(textOf(n)));
+  assert.equal(holders.length, 1, 'one empty-state line');
+  assert.ok(!classList(holders[0]).includes('text-muted'), 'not text-muted');
+  return textOf(holders[0]);
+}
+
+check('empty states: no devices vs no filter match, both views, never text-muted', () => {
+  ['list', 'grid'].forEach((viewMode) => {
+    assert.equal(emptyText(renderDevices({ items: [], viewMode }).vnode, viewMode), 'No devices registered yet.', viewMode);
+    assert.equal(emptyText(renderFleet({ viewMode, searchText: 'no-such-device' }).vnode, viewMode), 'No devices match the current filter.', viewMode);
+  });
+});
+
+check('one device renders one row and one card with the same layout', () => {
+  const one = [fleet()[0]];
+  const list = renderDevices({ items: one, viewMode: 'list' });
+  assert.equal(byCy(list.vnode, 'device-row').length, 1);
+  const grid = renderDevices({ items: one, viewMode: 'grid' });
+  assert.equal(byCy(grid.vnode, 'device-card').length, 1);
+});
+
+check('compiled tile geometry: 48px tile with a 40px symbol, 32px/24px small variant', () => {
+  const tile = decls('.device-icon');
+  const want = { display: 'inline-flex', 'align-items': 'center', 'justify-content': 'center', flex: '0 0 auto',
+    width: '48px', height: '48px', 'border-radius': '8px' };
+  Object.keys(want).forEach((p) => assert.equal(value(tile, p), want[p], '.device-icon ' + p));
+  const sym = decls('.device-icon-symbol');
+  assert.equal(value(sym, 'width'), '40px');
+  assert.equal(value(sym, 'height'), '40px');
+  assert.equal(value(sym, 'border-radius'), '4px');
+  assert.ok(sameColour(parseColour(value(sym, 'background-color')), parseColour('#F9F9F9')), 'symbol background');
+  const sm = decls('.device-icon--sm');
+  assert.equal(value(sm, 'width'), '32px');
+  assert.equal(value(sm, 'height'), '32px');
+  const smSym = decls('.device-icon--sm .device-icon-symbol');
+  assert.equal(value(smSym, 'width'), '24px');
+  assert.equal(value(smSym, 'height'), '24px');
+  assert.equal(read('styles/_platforms.scss').indexOf('zoom'), -1, 'Legacy zoom not ported');
+});
+
+check('grid card tile keeps an 8px gap before the alias', () => {
+  const gap = allRules().filter((r) => r.media === '' && r.selectors.some((s) => /\.device-icon$/.test(s) && s !== '.device-icon'));
+  const margin = value(gap.map((r) => r.body), 'margin-right');
+  assert.equal(margin, '8px');
+});
+
 process.exit(failures ? 1 : 0);
