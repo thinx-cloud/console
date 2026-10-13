@@ -47,60 +47,62 @@
       </div>
     </div>
     <div v-if="loading">Loading...</div>
-    <table v-else-if="viewMode === 'list'" class="table table-striped">
-      <thead>
-        <tr>
-          <th>
-            <div class="abc-checkbox">
-              <input type="checkbox" id="checkboxAll" :checked="isAllSelected" @change="checkAll" />
-              <label for="checkboxAll" />
-            </div>
-          </th>
-          <th><span class="sr-only">Icon</span></th>
-          <th>Alias</th>
-          <th>Platform</th>
-          <th>Firmware</th>
-          <th>Status</th>
-          <th>Last Seen</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(device, index) in filteredItems" :key="device.udid" data-cy="device-row">
-          <td>
-            <div class="abc-checkbox">
-              <input
-                type="checkbox"
-                :id="'checkbox-' + index"
-                :checked="isSelected_(device.udid)"
-                @change="toggleDevice(device.udid)"
-              />
-              <label :for="'checkbox-' + index" />
-            </div>
-          </td>
-          <td>
-            <span
-              class="device-icon device-icon--sm"
-              :class="'platform-' + platformOf(device).key"
-              :title="platformOf(device).label"
-            ><img class="device-icon-symbol" :src="symbolSrc(device.icon)" :alt="platformOf(device).label + ' device icon'"></span>
-          </td>
-          <td>{{ device.alias }}</td>
-          <td><PlatformBullet :platform="device.platform" /></td>
-          <td>{{ device.firmware }}</td>
-          <td>{{ device.status }}</td>
-          <td>{{ device.lastupdate | fromNow }}</td>
-          <td>
-            <b-button size="sm" variant="primary" data-cy="row-detail" @click="viewDevice(device.udid)" class="mr-1">Detail</b-button>
-            <b-button size="sm" variant="secondary" data-cy="row-build" @click="buildDevice(device)" class="mr-1">Build</b-button>
-            <b-button size="sm" variant="danger" data-cy="row-revoke" @click="revokeRow(device.udid)" class="ml-1">Revoke</b-button>
-          </td>
-        </tr>
-        <tr v-if="!filteredItems.length">
-          <td colspan="8">{{ emptyMessage }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-else-if="viewMode === 'list'" class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>
+              <div class="abc-checkbox">
+                <input type="checkbox" id="checkboxAll" :checked="isAllSelected" @change="checkAll" />
+                <label for="checkboxAll" />
+              </div>
+            </th>
+            <th><span class="sr-only">Icon</span></th>
+            <th>Alias</th>
+            <th>Platform</th>
+            <th>Firmware</th>
+            <th>Status</th>
+            <th>Last Seen</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(device, index) in filteredItems" :key="device.udid" data-cy="device-row">
+            <td>
+              <div class="abc-checkbox">
+                <input
+                  type="checkbox"
+                  :id="'checkbox-' + index"
+                  :checked="isSelected_(device.udid)"
+                  @change="toggleDevice(device.udid)"
+                />
+                <label :for="'checkbox-' + index" />
+              </div>
+            </td>
+            <td>
+              <span
+                class="device-icon device-icon--sm"
+                :class="'platform-' + platformOf(device).key"
+                :title="platformOf(device).label"
+              ><img class="device-icon-symbol" :src="symbolSrc(device.icon)" :alt="platformOf(device).label + ' device icon'"></span>
+            </td>
+            <td>{{ device.alias }}</td>
+            <td><PlatformBullet :platform="device.platform" /></td>
+            <td>{{ device.firmware }}</td>
+            <td>{{ device.status }}</td>
+            <td>{{ device.lastupdate | fromNow }}</td>
+            <td class="actions-cell">
+              <b-button size="sm" variant="secondary" data-cy="row-build" @click="buildDevice(device)" class="mr-1">Build</b-button>
+              <IconButton icon="fa fa-pencil" label="Edit" data-cy="row-detail" @click="viewDevice(device.udid)" />
+              <b-button size="sm" variant="danger" data-cy="row-revoke" @click="revokeRow(device.udid)" class="ml-1">Revoke</b-button>
+            </td>
+          </tr>
+          <tr v-if="!filteredItems.length">
+            <td colspan="8">{{ emptyMessage }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     <b-row v-else-if="viewMode === 'grid'">
       <b-col
         v-for="device in filteredItems"
@@ -171,6 +173,7 @@
 import { mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
 import PlatformBullet from '@/components/PlatformBullet/PlatformBullet';
+import IconButton from '@/components/IconButton/IconButton';
 import { basePlatform, platformInfo } from '@/utils/platforms';
 
 // Legacy device symbols b_medium_01.png .. b_medium_73.png (DEV-01, UI-D10).
@@ -178,7 +181,7 @@ const DEVICE_SYMBOLS = require.context('@/assets/thinx/ioticons', false, /^\.\/b
 
 export default {
   name: "Devices",
-  components: { PlatformBullet },
+  components: { PlatformBullet, IconButton },
   filters: {
     fromNow(val) {
       if (!val) return '—';
