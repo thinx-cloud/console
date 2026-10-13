@@ -1111,13 +1111,13 @@ checkAsync('buildDevice sends one request while in flight and releases it on suc
 // UI review: a rejected load used to leave Loading... up for good with no message.
 const LOAD_ERROR = 'Could not load devices. Refresh to retry.';
 
-function stubLoad(vm, { items = [], reject = false } = {}) {
+function stubLoad(vm, { items = [], reject = false, builds = [], rejectBuilds = false } = {}) {
   vm.fetchItems = () => (reject ? Promise.reject(new Error('network')) : Promise.resolve(items));
   vm.fetchEnviros = () => Promise.resolve([]);
-  vm.fetchBuildLog = () => Promise.resolve([]);
+  vm.fetchBuildLog = () => (rejectBuilds ? Promise.reject(new Error('network')) : Promise.resolve(builds));
   vm.getItems = () => items;
   vm.getEnviros = () => [];
-  vm.getBuildItems = () => [];
+  vm.getBuildItems = () => builds;
 }
 
 checkAsync('loadData: a rejected load clears Loading... and shows a visible error, not text-muted', async () => {
@@ -1148,6 +1148,54 @@ checkAsync('loadData: a successful load stores the devices, clears Loading... an
   vm.error = 'Build failed.';
   await vm.loadData();
   assert.equal(vm.error, 'Build failed.', 'other errors stay until dismissed');
+});
+
+// WR-02: last_build_id only moves on builds that produced an artifact. View log opens the
+// newest build of the device from the build log list (newest first, as GET /logs/build
+// returns it and as Legacy's deviceBuilds[udid][0] did), failed builds included.
+const BUILDS = [
+  { build_id: 'bf1', udid: 'a1', status: 'FAILED' },
+  { build_id: '', udid: 'a3', status: 'UNKNOWN' },
+  { build_id: 'bf3', udid: 'a3', status: 'FAILED' },
+  { build_id: 'b-old', udid: 'a1', status: 'OK' },
+  { build_id: 'bx', udid: 'zz', status: 'OK' },
+];
+
+check('View log opens the newest build of the device, failed ones included, else last_build_id', () => {
+  ['list', 'grid'].forEach((viewMode) => {
+    const { vm, vnode } = renderActions({ viewMode, builds: BUILDS.map((b) => Object.assign({}, b)) });
+    const want = { a1: 'bf1', a2: 'b2', a3: 'bf3', a4: null, a5: null, a6: null };
+    const prefix = viewMode === 'list' ? 'row' : 'card';
+    const holders = viewMode === 'list' ? byCy(vnode, 'device-row') : byCy(vnode, 'device-card');
+    assert.equal(holders.length, ACTION_DEVICES.length);
+    holders.forEach((top) => {
+      const dev = ACTION_DEVICES.find((d) => deepText(top, vm).includes(d.alias));
+      const log = iconButtonsOf(top).filter((n) => cyOf(n) === prefix + '-log')[0];
+      const lp = propsOf(log);
+      const id = want[dev.udid];
+      assert.equal(lp.label, id ? 'View log' : 'No build yet', viewMode + ' ' + dev.alias + ' label');
+      assert.equal(!!lp.disabled, !id, viewMode + ' ' + dev.alias + ' disabled');
+      const opened = [];
+      vm.$refs.buildLogDialog = { open: (b) => opened.push(b) };
+      log.componentOptions.listeners.click();
+      assert.deepEqual(opened, id ? [{ build_id: id }] : [], viewMode + ' ' + dev.alias + ' opens');
+    });
+  });
+});
+
+checkAsync('loadData stores the build list; a failed build list still loads the devices', async () => {
+  const { vm } = renderDevices({ items: [], viewMode: 'list' });
+  stubLoad(vm, { items: ACTION_DEVICES.map((d) => Object.assign({}, d)), builds: BUILDS });
+  await vm.loadData();
+  assert.equal(vm.builds.length, BUILDS.length);
+  assert.equal(vm.latestBuildId(vm.items.find((d) => d.udid === 'a3')), 'bf3');
+  const second = renderDevices({ items: [], viewMode: 'list' }).vm;
+  stubLoad(second, { items: ACTION_DEVICES.map((d) => Object.assign({}, d)), rejectBuilds: true });
+  await second.loadData();
+  assert.equal(second.error, null, 'no error for a failed build list');
+  assert.equal(second.items.length, ACTION_DEVICES.length);
+  assert.deepEqual(second.builds, []);
+  assert.equal(second.latestBuildId(second.items.find((d) => d.udid === 'a1')), 'b1', 'falls back to last_build_id');
 });
 
 checkAsync('buildDevice sends nothing for a disabled state', async () => {

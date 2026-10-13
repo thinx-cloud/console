@@ -298,6 +298,8 @@ export default {
       searchText: '',
       // udids whose build request is in flight (UI-D17).
       buildingUdids: [],
+      // GET /logs/build first page (buildlog store), newest first; View log reads it (WR-02).
+      builds: [],
       apiKeyTip: API_KEY_TIP,
     };
   },
@@ -350,7 +352,7 @@ export default {
     this.$watch(() => this.$route.params, () => { this.loadData(); }, { immediate: true });
   },
   methods: {
-    ...mapGetters({ getItems: 'devices/getItems', getEnviros: 'enviros/getItems' }),
+    ...mapGetters({ getItems: 'devices/getItems', getEnviros: 'enviros/getItems', getBuildItems: 'buildlog/getItems' }),
     ...mapActions({
       fetchItems: 'devices/fetchItems',
       revokeDevices: 'devices/revokeDevices',
@@ -358,6 +360,7 @@ export default {
       pushConfiguration: 'devices/pushConfiguration',
       buildFirmware: 'devices/buildFirmware',
       fetchEnviros: 'enviros/fetchItems',
+      fetchBuildLog: 'buildlog/fetchBuildLog',
     }),
     isSelected_(udid) { return this.selectedUdids.includes(udid); },
     platformOf(device) { return platformInfo(device.platform); },
@@ -431,12 +434,23 @@ export default {
       if (result && result.success) this.message = 'Build triggered.';
       else this.error = (result && result.message) || 'Build failed.';
     },
+    // Newest build of the device, failed ones included: the first entry for its udid in the
+    // build list (GET /logs/build answers newest first, as Legacy's deviceBuilds[udid][0]).
+    // last_build_id only moves on builds that produced an artifact, so it is the fallback for
+    // a device whose builds are older than the loaded page (44 WR-02).
+    latestBuildId(device) {
+      const valid = (id) => typeof id === 'string' && id.trim() !== '';
+      const own = this.builds.find(b => b && b.udid === device.udid && valid(b.build_id));
+      if (own) return own.build_id;
+      return valid(device.last_build_id) ? device.last_build_id : null;
+    },
     hasBuild(device) {
-      return typeof device.last_build_id === 'string' && device.last_build_id.trim() !== '';
+      return this.latestBuildId(device) !== null;
     },
     openLastBuild(device) {
-      if (!this.hasBuild(device)) return;
-      this.$refs.buildLogDialog.open({ build_id: device.last_build_id });
+      const buildId = this.latestBuildId(device);
+      if (buildId === null) return;
+      this.$refs.buildLogDialog.open({ build_id: buildId });
     },
     async confirmRevoke() {
       const confirmed = await this.$bvModal.msgBoxConfirm(
@@ -490,10 +504,14 @@ export default {
     // A failed load shows a message in the danger alert and never leaves Loading... up (UI review).
     async loadData() {
       this.loading = true;
+      // The build list only feeds View log: its failure must not fail the device list.
+      const builds = Promise.resolve().then(() => this.fetchBuildLog()).catch(() => null);
       try {
-        await Promise.all([this.fetchItems(), this.fetchEnviros()]);
+        await Promise.all([this.fetchItems(), this.fetchEnviros(), builds]);
         this.items = this.getItems();
         this.enviros = this.getEnviros();
+        const buildItems = this.getBuildItems();
+        this.builds = Array.isArray(buildItems) ? buildItems : [];
         if (this.error === LOAD_ERROR) this.error = null;
       } catch (e) {
         this.error = LOAD_ERROR;
