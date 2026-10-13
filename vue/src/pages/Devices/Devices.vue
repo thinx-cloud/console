@@ -267,6 +267,9 @@ import { basePlatform, platformInfo } from '@/utils/platforms';
 // report with the key they send, so the tip says nothing about connectivity (44 CR-01).
 const API_KEY_TIP = 'No API Key assigned';
 
+// Danger alert text when GET /device or the environment list fails (UI review).
+const LOAD_ERROR = 'Could not load devices. Refresh to retry.';
+
 // Legacy device symbols b_medium_01.png .. b_medium_73.png (DEV-01, UI-D10).
 const DEVICE_SYMBOLS = require.context('@/assets/thinx/ioticons', false, /^\.\/b_medium_\d\d\.png$/);
 
@@ -484,13 +487,19 @@ export default {
         this.error = result.message || 'Failed to push configuration.';
       }
     },
-    loadData() {
+    // A failed load shows a message in the danger alert and never leaves Loading... up (UI review).
+    async loadData() {
       this.loading = true;
-      Promise.all([this.fetchItems(), this.fetchEnviros()]).then(() => {
+      try {
+        await Promise.all([this.fetchItems(), this.fetchEnviros()]);
         this.items = this.getItems();
         this.enviros = this.getEnviros();
+        if (this.error === LOAD_ERROR) this.error = null;
+      } catch (e) {
+        this.error = LOAD_ERROR;
+      } finally {
         this.loading = false;
-      });
+      }
     },
     async revokeRow(udid) {
       const confirmed = await this.$bvModal.msgBoxConfirm(

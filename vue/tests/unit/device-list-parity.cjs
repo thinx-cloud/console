@@ -1108,6 +1108,48 @@ checkAsync('buildDevice sends one request while in flight and releases it on suc
   }
 });
 
+// UI review: a rejected load used to leave Loading... up for good with no message.
+const LOAD_ERROR = 'Could not load devices. Refresh to retry.';
+
+function stubLoad(vm, { items = [], reject = false } = {}) {
+  vm.fetchItems = () => (reject ? Promise.reject(new Error('network')) : Promise.resolve(items));
+  vm.fetchEnviros = () => Promise.resolve([]);
+  vm.fetchBuildLog = () => Promise.resolve([]);
+  vm.getItems = () => items;
+  vm.getEnviros = () => [];
+  vm.getBuildItems = () => [];
+}
+
+checkAsync('loadData: a rejected load clears Loading... and shows a visible error, not text-muted', async () => {
+  const { vm } = renderDevices({ items: [], viewMode: 'list' });
+  stubLoad(vm, { reject: true });
+  const pending = vm.loadData();
+  assert.equal(vm.loading, true, 'loading while the request runs');
+  await pending;
+  assert.equal(vm.loading, false, 'loading cleared');
+  assert.equal(vm.error, LOAD_ERROR);
+  const r = withWarnings(() => vm._render());
+  assert.equal(r.error, null);
+  assert.ok(!textOf(r.out).includes('Loading...'), 'Loading... gone');
+  const alerts = nodesOf(r.out).filter((n) => n.tag === 'b-alert' && textOf(n) === LOAD_ERROR);
+  assert.equal(alerts.length, 1, 'one alert with the load error');
+  assert.equal(attrsOf(alerts[0]).variant, 'danger');
+  assert.ok(!classList(alerts[0]).includes('text-muted'), 'not text-muted');
+});
+
+checkAsync('loadData: a successful load stores the devices, clears Loading... and a stale load error', async () => {
+  const { vm } = renderDevices({ items: [], viewMode: 'list' });
+  stubLoad(vm, { items: fleet() });
+  vm.error = LOAD_ERROR;
+  await vm.loadData();
+  assert.equal(vm.loading, false);
+  assert.equal(vm.error, null, 'a stale load error is cleared');
+  assert.equal(vm.items.length, FLEET.length);
+  vm.error = 'Build failed.';
+  await vm.loadData();
+  assert.equal(vm.error, 'Build failed.', 'other errors stay until dismissed');
+});
+
 checkAsync('buildDevice sends nothing for a disabled state', async () => {
   const { vm } = renderActions({ viewMode: 'list', buildingUdids: ['a4'] });
   const calls = [];
