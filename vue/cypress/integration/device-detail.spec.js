@@ -59,7 +59,8 @@ describe('Device Detail feature', function() {
       // Separate chains: have.attr and have.css assertions change the subject.
       cy.get('[data-cy=card-transformers] [data-cy=manage-transformers]')
         .should('have.attr', 'href').and('include', '/app/transformers');
-      // Operator 2026-10-12: an orange background, not a transparent link (.btn-warning = #e49400).
+      // Operator 2026-10-12: an orange background, not a transparent link.
+      // $orange: #E49400 (src/styles/_variables.scss:47) → .btn-warning
       cy.get('[data-cy=card-transformers] [data-cy=manage-transformers]')
         .should('have.css', 'background-color', 'rgb(228, 148, 0)');
     });
@@ -68,10 +69,12 @@ describe('Device Detail feature', function() {
       cy.get('[data-cy=transformer-checkboxes] input[type=checkbox]').should('be.checked');
       cy.get('[data-cy=transformer-checkboxes]').contains('.custom-control-label', 'passthrough').click();
       cy.get('[data-cy=transformer-checkboxes] input[type=checkbox]').should('not.be.checked');
-      cy.get('[data-cy=card-transformers]').contains('button', 'Save Transformers').click();
-      // loadDevice re-reads the unchanged devices fixture after the save, so only the request is checked.
+      cy.get('[data-cy=transformers-dirty]').should('contain', 'Unsaved changes');
+      cy.get('[data-cy=transformers-save]').should('be.enabled').click();
       cy.wait('@updateDevice').its('request.body')
         .should('deep.equal', { changes: { udid: 'udid-z', transformers: [] } });
+      // 37 IN-03: the save result is shown inside the card, not only sent.
+      cy.contains('[data-cy=card-transformers] .alert-success', 'Transformers saved.').should('be.visible');
     });
 
     it('Should display build history section (DEVI-11)', function() {
