@@ -13,17 +13,22 @@
     <div v-if="loading" role="status">Loading…</div>
     <div v-else class="table-responsive">
       <table class="table table-striped">
-        <thead><tr><th>Select</th><th>Name</th><th>Generated</th><th>Public key</th></tr></thead>
-        <tbody>
-          <tr v-for="item in items" :key="item.id">
-            <td><b-form-checkbox v-model="selectedIds" :value="item.id" :aria-label="'Select ' + item.name" /></td>
+        <thead><tr><th>Select</th><th>Name</th><th>Generated</th><th>Public key</th><th>Actions</th></tr></thead>
+        <tbody v-for="item in items" :key="item.id" class="key-group" data-cy="deploy-key-group">
+          <tr data-cy="deploy-key-row">
+            <td><b-form-checkbox v-model="selectedIds" :value="item.id" :aria-label="'Select ' + item.name" :disabled="isDeleting(item)" /></td>
             <td>{{ item.name }}</td><td>{{ formatDate(item.date) }}</td>
             <td>
               <b-button size="sm" variant="outline-primary" @click="showKey(item)">Show key</b-button>
               <b-button size="sm" variant="outline-secondary" class="ml-2" @click="copyToClipboard(item.pubkey)">Copy key</b-button>
             </td>
+            <td class="actions-cell">
+              <IconButton :icon="isDeleting(item) ? 'fa fa-spin fa-circle-o-notch' : 'fa fa-trash'" :label="isDeleting(item) ? 'Deleting…' : 'Delete'" variant="danger" :disabled="isDeleting(item)" data-cy="key-delete" @click="deleteRow(item)" />
+            </td>
           </tr>
-          <tr v-if="!items.length"><td colspan="4" class="text-muted">{{ loadFailed ? 'Deploy keys could not be loaded. Reload the page to retry.' : 'No deploy keys yet.' }}</td></tr>
+        </tbody>
+        <tbody v-if="!items.length">
+          <tr><td colspan="5" class="text-muted">{{ loadFailed ? 'Deploy keys could not be loaded. Reload the page to retry.' : 'No deploy keys yet.' }}</td></tr>
         </tbody>
       </table>
     </div>
@@ -38,9 +43,12 @@
 </template>
 <script>
 import { mapGetters, mapActions } from 'vuex';
+import IconButton from '@/components/IconButton/IconButton';
+
 export default {
   name: 'Rsakeys',
-  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createdPubkey: '', shownName: '' }; },
+  components: { IconButton },
+  data() { return { selectedIds: [], items: [], loading: true, loadFailed: false, creating: false, error: null, keyName: '', createdPubkey: '', shownName: '', deletingIds: [], confirming: false }; },
   created() { this.loadData(); },
   methods: {
     ...mapGetters({ getItems: 'rsakeys/getItems' }),
@@ -64,7 +72,32 @@ export default {
       this.createdPubkey = item.pubkey;
       this.$bvModal.show('rsakey-result-modal');
     },
+    isDeleting(item) { return this.deletingIds.includes(item.id); },
+    // Per-row delete (UI-K10, D-11): a named confirmation with the cancel button focused;
+    // `confirming` makes every Delete a no-op while a dialog is open and `deletingIds`
+    // keeps one click one request. The name is passed as plain text, never HTML.
+    async deleteRow(item) {
+      if (this.confirming || this.isDeleting(item)) return;
+      this.confirming = true;
+      let confirmed = false;
+      try {
+        confirmed = await this.$bvModal.msgBoxConfirm(
+          'Delete the deploy key "' + item.name + '"? This cannot be undone. Repositories that use it stop building until a new key is generated and added to the Git host.',
+          { title: 'Confirm Delete', okVariant: 'danger', okTitle: 'Delete', cancelTitle: 'Keep key', autoFocusButton: 'cancel', bodyClass: 'text-break' });
+      } catch (e) { confirmed = false; }
+      finally { this.confirming = false; }
+      if (!confirmed || this.isDeleting(item)) return;
+      this.deletingIds.push(item.id);
+      this.error = null;
+      try {
+        const result = await this.deleteItems([item.filename]);
+        if (!result || !result.success) { this.error = 'Could not delete the deploy key. Try again.'; return; }
+        await this.loadData();
+      } catch (e) { this.error = 'Could not delete the deploy key. Try again.'; }
+      finally { this.deletingIds = this.deletingIds.filter(id => id !== item.id); }
+    },
     async deleteSelected() {
+      if (this.confirming) return;
       const filenames = this.selectedIds.map(id => this.items.find(item => item.id === id)).filter(Boolean).map(item => item.filename);
       if (!filenames.length) return;
       // Deletion removes the key pair on disk and cannot be undone (35 WR-06).

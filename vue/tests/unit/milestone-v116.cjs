@@ -67,7 +67,7 @@ const transformers = load('store/transformers.js');
 const keys = load('store/rsakeys.js');
 const device = load('pages/Devices/DeviceDetail.vue');
 const dialog = load('components/BuildLogDialog/BuildLogDialog.vue',{buildLogText:text});
-const keyPage = load('pages/Rsakeys/Rsakeys.vue');
+const keyPage = load('pages/Rsakeys/Rsakeys.vue', { IconButton: {} });
 load('components/Header/Header.vue'); load('components/Notifications/Notifications.vue');
 const history = load('pages/History/History.vue'); load('pages/Transformers/Transformers.vue');
 // 35 WR-01: build rows stay table rows; row click ignores inner controls and text selection.
