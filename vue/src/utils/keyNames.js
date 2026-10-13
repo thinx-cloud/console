@@ -16,8 +16,10 @@ function unitProblem(c) {
   if ((c >= 0x202A && c <= 0x202E) || (c >= 0x2066 && c <= 0x2069) || c === 0x200E || c === 0x200F || c === 0x061C) {
     return 'bidi'; // embeddings, overrides, isolates, LRM / RLM / ALM (45-REVIEW IN-01)
   }
-  if ((c >= 0x200B && c <= 0x200D) || c === 0x2060 || c === 0xFEFF) {
-    return 'invisible'; // ZWSP, ZWNJ, ZWJ, word joiner, BOM (45-REVIEW IN-01)
+  // ZWNJ U+200C and ZWJ U+200D stay allowed: emoji ZWJ sequences and Persian/Indic names
+  // need them (D-06); a name made only of them is still empty.
+  if (c === 0x200B || c === 0x2060 || c === 0xFEFF) {
+    return 'invisible'; // ZWSP, word joiner, BOM (45-REVIEW IN-01)
   }
   return null;
 }

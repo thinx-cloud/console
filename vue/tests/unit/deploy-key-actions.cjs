@@ -850,9 +850,10 @@ const NAME_CASES = [
   ['a' + ch(0x2069) + 'b', 'bidi'], ['a' + ch(0x200e) + 'b', 'bidi'], ['a' + ch(0x200f) + 'b', 'bidi'],
   // 45-REVIEW IN-01: ALM, zero-width / invisible characters, invisible-only names, lone surrogates.
   ['a' + ch(0x061c) + 'b', 'bidi'],
-  ['a' + ch(0x200b) + 'b', 'invisible'], ['a' + ch(0x200c) + 'b', 'invisible'], ['a' + ch(0x200d) + 'b', 'invisible'],
+  ['a' + ch(0x200b) + 'b', 'invisible'], ['a' + ch(0x200c) + 'b', null], ['a' + ch(0x200d) + 'b', null],
+  [ch(0x200c) + ch(0x200d), 'empty'],
   ['a' + ch(0x2060) + 'b', 'invisible'], [ch(0xfeff) + 'ab', 'invisible'], [ch(0x200b) + ch(0x2060), 'invisible'],
-  [String.fromCodePoint(0x1f469) + ch(0x200d) + String.fromCodePoint(0x1f4bb), 'invisible'],
+  [String.fromCodePoint(0x1f469) + ch(0x200d) + String.fromCodePoint(0x1f4bb), null], // emoji ZWJ sequence (D-06)
   [ch(0x00ad), 'empty'], [ch(0x00ad) + ' ' + ch(0x3164), 'empty'], [ch(0xfe0f), 'empty'], [ch(0x034f) + ch(0x115f), 'empty'],
   [String.fromCodePoint(0xe0001) + String.fromCodePoint(0xe0041), 'empty'], [String.fromCodePoint(0x1d173), 'empty'],
   ['a' + ch(0x00ad) + 'b', null], ['x' + ch(0xfe0f), null],
@@ -881,7 +882,7 @@ check('K1 validateKeyName mirrors the server cases; keyNameMessage gives the UI-
     assert.deepEqual(validateKeyName(name), expected, JSON.stringify(name === undefined ? 'undefined' : name));
   }
   const BIDI = [0x061c, 0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069];
-  const INVISIBLE = [0x200b, 0x200c, 0x200d, 0x2060, 0xfeff];
+  const INVISIBLE = [0x200b, 0x2060, 0xfeff];
   for (let c = 0; c <= 0xffff; c++) {
     let expected = { ok: true };
     if (c < 0x20 || c === 0x7f || (c >= 0x80 && c <= 0x9f)) expected = { ok: false, reason: 'control_chars' };
