@@ -322,4 +322,242 @@ check('Devices table rows render PlatformBullet with the raw platform, never the
   });
 });
 
+// ---------------------------------------------------------------- compiled theme (platform palette)
+
+const sass = require('sass');
+const { execFileSync } = require('child_process');
+
+const compiledCss = lazy(() => sass.compileString('@import "theme";\n', {
+  loadPaths: [path.join(SRC, 'styles')],
+  style: 'compressed',
+  quietDeps: true,
+  logger: sass.Logger.silent,
+}).css);
+
+// Flat list of { media, selectors, body } for every style rule (copied from login-page.cjs).
+function cssRules(text) {
+  const rules = [];
+  (function parse(chunk, media) {
+    let i = 0;
+    while (i < chunk.length) {
+      const open = chunk.indexOf('{', i);
+      if (open === -1) break;
+      const prelude = chunk.slice(i, open).replace(/^[;\s]+/, '').trim();
+      let depth = 0;
+      let end = open;
+      for (; end < chunk.length; end++) {
+        const ch = chunk[end];
+        if (ch === '"' || ch === "'") { const q = ch; end++; while (end < chunk.length && chunk[end] !== q) { if (chunk[end] === '\\') end++; end++; } continue; }
+        if (ch === '{') depth++;
+        else if (ch === '}') { depth--; if (depth === 0) break; }
+      }
+      const body = chunk.slice(open + 1, end);
+      if (/^@media/.test(prelude)) parse(body, prelude);
+      else if (prelude[0] !== '@') rules.push({ media, selectors: prelude.split(',').map((x) => x.trim()), body });
+      i = end + 1;
+    }
+  }(text, ''));
+  return rules;
+}
+
+const allRules = lazy(() => cssRules(compiledCss()));
+
+function decls(selector) {
+  return allRules().filter((r) => r.media === '' && r.selectors.includes(selector)).map((r) => r.body);
+}
+
+function value(bodies, prop) {
+  let found;
+  bodies.forEach((body) => body.split(';').forEach((d) => {
+    const at = d.indexOf(':');
+    if (at !== -1 && d.slice(0, at).trim() === prop) found = d.slice(at + 1).trim();
+  }));
+  return found;
+}
+
+// Colour helpers (copied from login-page.cjs).
+function parseColour(raw) {
+  const text = String(raw).trim().toLowerCase();
+  if (text === 'white') return { r: 255, g: 255, b: 255, a: 1 };
+  if (text === 'black') return { r: 0, g: 0, b: 0, a: 1 };
+  let m = text.match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/);
+  if (m) {
+    let hex = m[1];
+    if (hex.length === 3) hex = hex.split('').map((h) => h + h).join('');
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16),
+      a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1,
+    };
+  }
+  m = text.match(/^rgba?\(([^)]*)\)$/);
+  if (!m) return null;
+  const parts = m[1].split(',').map((x) => x.trim());
+  if (parts.length < 3 || parts.length > 4) return null;
+  const c = { r: parseFloat(parts[0]), g: parseFloat(parts[1]), b: parseFloat(parts[2]), a: parts[3] === undefined ? 1 : parseFloat(parts[3]) };
+  if ([c.r, c.g, c.b, c.a].some((n) => !Number.isFinite(n))) return null;
+  return c;
+}
+
+function luminance(c) {
+  const lin = (v) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+}
+
+function contrast(a, b) {
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+function sameColour(a, b) {
+  return !!a && !!b && Math.abs(a.r - b.r) <= 0.5 && Math.abs(a.g - b.g) <= 0.5
+    && Math.abs(a.b - b.b) <= 0.5 && Math.abs(a.a - b.a) <= 0.005;
+}
+
+const PALETTE = {
+  arduino: ['#00979D', '#000000'],
+  platformio: ['#FF9125', '#000000'],
+  nodemcu: ['#005780', '#FFFFFF'],
+  pine64: ['#333333', '#FFFFFF'],
+  micropython: ['#3C393A', '#FFFFFF'],
+  mongoose: ['#0E7CAD', '#FFFFFF'],
+  nodejs: ['#8EC64B', '#000000'],
+  sigfox: ['#6D04D6', '#FFFFFF'],
+  unknown: ['#333333', '#FFFFFF'],
+};
+
+check('sass compiles src/styles/theme.scss', () => { compiledCss(); });
+
+check('each .platform-<key> rule carries the palette colours and reaches 4.5:1', () => {
+  const ratios = [];
+  Object.keys(PALETTE).forEach((key) => {
+    const bodies = decls('.platform-' + key);
+    assert.ok(bodies.length, 'no .platform-' + key + ' rule');
+    const bg = parseColour(value(bodies, 'background-color'));
+    const fg = parseColour(value(bodies, 'color'));
+    assert.ok(sameColour(bg, parseColour(PALETTE[key][0])), key + ' background ' + value(bodies, 'background-color'));
+    assert.ok(sameColour(fg, parseColour(PALETTE[key][1])), key + ' color ' + value(bodies, 'color'));
+    const ratio = contrast(fg, bg);
+    assert.ok(ratio >= 4.5, key + ' ' + ratio.toFixed(2) + ' < 4.5');
+    ratios.push(key + ' ' + ratio.toFixed(2));
+  });
+  return ratios.join(', ');
+});
+
+check('.platform-bullet has the UI-D04 shape', () => {
+  const bodies = decls('.platform-bullet');
+  const want = {
+    display: 'inline-block', padding: '4px 8px', 'border-radius': '12px', 'font-size': '.875rem',
+    'font-weight': '400', 'line-height': '1', 'white-space': 'nowrap', 'vertical-align': 'middle',
+  };
+  Object.keys(want).forEach((prop) => assert.equal(String(value(bodies, prop)).replace(/^0\./, '.'), want[prop], prop));
+});
+
+function insetShadow(selector) {
+  const shadow = String(value(decls(selector), 'box-shadow'));
+  const m = shadow.match(/^inset 0 0 0 1px (.+)$/);
+  assert.ok(m, selector + ' box-shadow ' + shadow);
+  assert.ok(sameColour(parseColour(m[1]), { r: 255, g: 255, b: 255, a: 0.24 }), selector + ' shadow colour ' + m[1]);
+}
+
+check('.platform-bullet and .device-icon share the inset white outline', () => {
+  insetShadow('.platform-bullet');
+  insetShadow('.device-icon');
+  const shared = allRules().filter((r) => r.selectors.includes('.platform-bullet') && r.selectors.includes('.device-icon'));
+  assert.ok(shared.length, 'no shared .platform-bullet, .device-icon rule');
+});
+
+// ---------------------------------------------------------------- List.vue and Repositories.vue
+
+// Copy of the repositories store headers (store/repositories.js is not changed).
+const REPO_HEADERS = [
+  { title: 'id', prop: 'id', pos: null },
+  { title: 'alias', prop: 'alias', pos: 0 },
+  { title: 'url', prop: 'url', pos: null },
+  { title: 'branch', prop: 'branch', pos: 1 },
+  { title: 'platform', prop: 'platform', pos: 2 },
+];
+
+const list = lazy(() => loadSfc('components/List/List.vue', { Vue }));
+
+const bodyCells = (vnode) => {
+  const tbody = nodesOf(vnode).find((n) => n.tag === 'tbody');
+  const rows = (tbody.children || []).filter((n) => n.tag === 'tr');
+  return rows.map((tr) => (tr.children || []).filter((n) => n.tag === 'td').slice(1));
+};
+
+check('List.vue without a slot renders each raw cell value as before', () => {
+  const r = renderComponent(list().def, {
+    datasource: [{ id: 'r1', alias: 'a', branch: 'origin/master', platform: 'unknown_platform' }],
+    dataheaders: REPO_HEADERS,
+    showLoading: false,
+  });
+  assert.equal(r.error, null);
+  assert.deepEqual(r.warnings, []);
+  const rows = bodyCells(r.vnode);
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].map((td) => textOf(td)), ['a', 'origin/master', 'unknown_platform']);
+});
+
+const repositories = lazy(() => loadSfc('pages/Repositories/Repositories.vue', { List: list().def, PlatformBullet: bullet().def }));
+
+function renderRepositoryRow(platform) {
+  const page = renderPage(repositories().def, {
+    items: [{ id: 'r1', alias: 'repo', branch: 'origin/master', url: 'https://example.invalid/r.git', platform }],
+    headers: REPO_HEADERS,
+  }, { List: list().def, PlatformBullet: bullet().def });
+  assert.equal(page.error, null, 'Repositories renders without error');
+  assert.deepEqual(page.warnings, [], 'Repositories renders without Vue warnings');
+  const lists = componentsOf(page.vnode, 'List');
+  assert.equal(lists.length, 1, 'Repositories renders one List');
+  const listRender = expand(lists[0], page.vm);
+  assert.equal(listRender.error, null, 'List renders without error');
+  const rows = bodyCells(listRender.vnode);
+  assert.equal(rows.length, 1);
+  const cells = rows[0];
+  const bullets = componentsOf(cells[2], 'PlatformBullet');
+  assert.equal(bullets.length, 1, 'platform cell holds one PlatformBullet');
+  const b = expand(bullets[0], listRender.vm);
+  assert.equal(b.error, null);
+  return { cells, bullet: b.vnode, rowText: deepText(cells, listRender.vm) };
+}
+
+check('Repositories renders the unknown bullet and never unknown_platform', () => {
+  ['unknown_platform', 'unknown', '', null].forEach((raw) => {
+    const { bullet: v, rowText } = renderRepositoryRow(raw);
+    assert.deepEqual(classList(v).sort(), ['platform-bullet', 'platform-unknown'], String(raw));
+    assert.equal(textOf(v), 'unknown', String(raw));
+    assert.ok(!rowText.includes('unknown_platform'), 'row renders unknown_platform');
+  });
+});
+
+check('Repositories bullet markup equals the Devices bullet for arduino:esp8266', () => {
+  const { bullet: v, cells } = renderRepositoryRow('arduino:esp8266');
+  assert.deepEqual(classList(v).sort(), ['platform-arduino', 'platform-bullet']);
+  assert.equal(textOf(v), 'Arduino');
+  assert.equal(textOf(cells[0]), 'repo');
+  assert.equal(textOf(cells[1]), 'origin/master');
+  const ref = renderBullet('arduino:esp8266');
+  assert.equal(v.tag, ref.tag);
+  assert.deepEqual(classList(v), classList(ref));
+  assert.deepEqual(attrsOf(v), attrsOf(ref));
+  assert.equal(textOf(v), textOf(ref));
+});
+
+check('store/repositories.js is unchanged since the phase start (cfff199)', () => {
+  let out;
+  try {
+    execFileSync('git', ['cat-file', '-e', 'cfff199^{commit}'], { cwd: SRC, stdio: 'ignore' });
+  } catch (e) {
+    return 'skipped: cfff199 not in this checkout';
+  }
+  out = execFileSync('git', ['diff', 'cfff199', '--', 'store/repositories.js'], { cwd: SRC, encoding: 'utf8' });
+  assert.equal(out, '');
+});
+
 process.exit(failures ? 1 : 0);
