@@ -72,7 +72,7 @@ const keyNamesModule = {exports:{}};
 new Function('module', fs.readFileSync(path.join(root,'utils/keyNames.js'),'utf8').replace(/export function (\w+)/g,'module.exports.$1 = function $1').replace(/export const (\w+) =/g,'const $1 = module.exports.$1 ='))(keyNamesModule);
 const keyPage = load('pages/Rsakeys/Rsakeys.vue', { IconButton: {}, validateKeyName: keyNamesModule.exports.validateKeyName, keyNameMessage: keyNamesModule.exports.keyNameMessage, isReservedKeyName: keyNamesModule.exports.isReservedKeyName });
 load('components/Header/Header.vue'); load('components/Notifications/Notifications.vue');
-const history = load('pages/History/History.vue'); load('pages/Transformers/Transformers.vue');
+const history = load('pages/History/History.vue'); load('pages/Transformers/Transformers.vue', { IconButton: {} });
 // 35 WR-01: build rows stay table rows; row click ignores inner controls and text selection.
 {
   const historySource = fs.readFileSync(path.join(root, 'pages/History/History.vue'), 'utf8');

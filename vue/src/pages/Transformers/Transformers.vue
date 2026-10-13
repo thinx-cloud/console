@@ -24,11 +24,11 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item in items" :key="item.utid">
-          <td>{{ item.alias }}</td>
-          <td>
-            <b-button size="sm" variant="primary" @click="editTransformer(item.utid)" class="mr-2">Edit</b-button>
-            <b-button size="sm" variant="danger" @click="deleteTransformer(item.utid)">Delete</b-button>
+        <tr v-for="item in items" :key="item.utid" data-cy="transformer-row">
+          <td>{{ displayName(item) }}</td>
+          <td class="actions-cell">
+            <IconButton icon="fa fa-wrench icon-white" label="Edit" :disabled="isDeleting(item)" data-cy="transformer-edit" @click="editTransformer(item.utid)" />
+            <IconButton :icon="isDeleting(item) ? 'fa fa-spin fa-circle-o-notch' : 'fa fa-trash'" :label="isDeleting(item) ? 'Deleting…' : 'Delete'" variant="danger" :disabled="isDeleting(item)" data-cy="transformer-delete" @click="openDelete([item])" />
           </td>
         </tr>
         <tr v-if="!items.length">
@@ -36,6 +36,22 @@
         </tr>
       </tbody>
     </table>
+
+    <!-- Typed-confirm delete (TRANS-04, D-05, D-07, UI-T08, UI-T10). Names are text only. -->
+    <b-modal id="transformer-delete-modal" title="Confirm Delete" body-class="text-break" @shown="focusConfirmInput" @hide="onDeleteHide">
+      <b-form id="transformer-delete-form" class="dialog-stack" @submit.prevent="submitDelete">
+        <p data-cy="transformer-delete-question">{{ deleteQuestion }}</p>
+        <div class="dialog-field">
+          <label for="transformer-delete-confirm" class="dialog-label">Type <span class="typed-confirm__word">confirm</span> to delete it.</label>
+          <b-form-input id="transformer-delete-confirm" ref="confirmInput" v-model="confirmText" autocomplete="off" autocapitalize="off" spellcheck="false" :disabled="deleting" aria-describedby="transformer-delete-error" data-cy="transformer-delete-input" />
+          <p id="transformer-delete-error" class="dialog-feedback" aria-live="polite" data-cy="transformer-delete-error">{{ deleteError }}</p>
+        </div>
+      </b-form>
+      <template #modal-footer>
+        <b-button variant="default" :disabled="deleting" data-cy="transformer-delete-keep" @click="$bvModal.hide('transformer-delete-modal')">Keep transformer</b-button>
+        <b-button variant="danger" type="submit" form="transformer-delete-form" :disabled="!confirmMatches || deleting" data-cy="transformer-delete-submit">{{ deleting ? 'Deleting…' : 'Delete transformer' }}</b-button>
+      </template>
+    </b-modal>
 
     <!-- Create Modal -->
     <b-modal id="create-transformer-modal" title="Add Transformer" :ok-disabled="creating" @ok="create" ok-title="Create">
@@ -49,9 +65,11 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
+import IconButton from '@/components/IconButton/IconButton';
 
 export default {
   name: "Transformers",
+  components: { IconButton },
   data() {
     return {
       items: [],
@@ -59,14 +77,35 @@ export default {
       error: null,
       form: { alias: '' },
       creating: false,
+      selectedUtids: [],
+      deletingUtids: [],
+      deleteTargets: [],
+      confirmText: '',
+      deleting: false,
+      deleteError: null,
     };
+  },
+  computed: {
+    // D-07: exactly the word confirm, surrounding spaces ignored, case-sensitive.
+    confirmMatches() {
+      return this.confirmText.trim() === 'confirm';
+    },
+    deleteQuestion() {
+      const target = this.deleteTargets[0];
+      return 'Delete the transformer "' + (target ? target.name : '') + '"? This cannot be undone.';
+    },
   },
   created() {
     this.$watch(() => this.$route.params, () => { this.loadData(); }, { immediate: true });
   },
   methods: {
     ...mapGetters({ getItems: 'transformers/getItems' }),
-    ...mapActions({ fetchItems: 'transformers/fetchItems', createItem: 'transformers/createItem', deleteItem: 'transformers/deleteItem' }),
+    ...mapActions({ fetchItems: 'transformers/fetchItems', createItem: 'transformers/createItem', deleteItems: 'transformers/deleteItems' }),
+    // The stored alias when it is a non-blank string, else the utid (UI-T05).
+    displayName(item) {
+      return typeof item.alias === 'string' && item.alias.trim() ? item.alias : item.utid;
+    },
+    isDeleting(item) { return this.deletingUtids.includes(item.utid); },
     editTransformer(utid) {
       this.$router.push({ name: 'TransformerEditor', params: { utid } });
     },
@@ -93,14 +132,51 @@ export default {
       } catch (e) { this.error = 'Could not create transformer.'; }
       finally { this.creating = false; }
     },
-    async deleteTransformer(utid) {
-      const confirmed = await this.$bvModal.msgBoxConfirm('Delete this transformer?', { title: 'Confirm Delete', okVariant: 'danger', okTitle: 'Delete' });
-      if (!confirmed) return;
+    // One dialog for the row trash and the bulk trash (D-05). The typed word and the
+    // error from an earlier opening are cleared every time (D-07).
+    openDelete(targets) {
+      if (this.deleting) return;
+      this.deleteTargets = targets.map(item => ({ utid: item.utid, name: this.displayName(item) }));
+      this.confirmText = '';
+      this.deleteError = null;
+      this.$bvModal.show('transformer-delete-modal');
+    },
+    focusConfirmInput() {
+      const input = this.$refs.confirmInput;
+      if (input && typeof input.focus === 'function') input.focus();
+    },
+    // Esc, the backdrop and the header close do nothing while the request runs (UI-T10).
+    onDeleteHide(evt) {
+      if (this.deleting) evt.preventDefault();
+    },
+    // Enter and a disabled button both land here: nothing is sent unless the word
+    // matches, and a second submit while one runs is ignored (one write, D-08).
+    async submitDelete() {
+      if (!this.confirmMatches || this.deleting) return;
+      const utids = this.deleteTargets.map(target => target.utid);
+      if (!utids.length) return;
+      this.deleting = true;
+      this.deleteError = null;
+      this.deletingUtids = this.deletingUtids.concat(utids.filter(utid => !this.deletingUtids.includes(utid)));
       try {
-      const result = await this.deleteItem(utid);
-      if (!result.success) this.error = result.message || 'Failed to delete transformer.';
-      else await this.loadData();
-      } catch (e) { this.error = 'Could not delete transformer.'; }
+        let result = null;
+        try { result = await this.deleteItems(utids); } catch (e) { result = null; }
+        if (result && result.success) {
+          // Cleared first: the hide guard would otherwise block the close.
+          this.deleting = false;
+          this.$bvModal.hide('transformer-delete-modal');
+          this.selectedUtids = this.selectedUtids.filter(utid => !utids.includes(utid));
+          // Phase 35 IN-02: the write succeeded but the store could not re-read it.
+          if (result.refreshed === false) await this.loadData();
+          else this.items = this.getItems();
+        } else {
+          this.deleting = false;
+          this.deleteError = 'Could not delete the transformer. Try again.';
+        }
+      } finally {
+        this.deleting = false;
+        this.deletingUtids = this.deletingUtids.filter(utid => !utids.includes(utid));
+      }
     },
     async loadData() {
       this.loading = true;

@@ -38,7 +38,13 @@ export default {
         // The console reads info.transformers. A top-level write is invisible
         // on reload. Use an info patch; the users/edit handler merges info fields.
         const result = await this.$api.$post('/profile', JSON.stringify({ info: { transformers } }));
-        if (result.success) await dispatch('fetchItems');
+        if (result && result.success) {
+          // Phase 35 IN-02: the write has succeeded, so a failed re-read must not turn it
+          // into a reported failure (a retry would write again). Callers see
+          // refreshed: false and refresh the page separately.
+          try { await dispatch('fetchItems'); }
+          catch (e) { return Object.assign({}, result, { refreshed: false }); }
+        }
         return result;
       },
       async createItem({ state, dispatch }, payload) {
@@ -55,7 +61,7 @@ export default {
         // Refuse writes that would blank a transformer: an empty alias, or a
         // body that is not a string (an editor that never loaded).
         if (typeof alias !== 'string' || !alias.trim()) {
-          return { success: false, message: 'Transformer alias is required.' };
+          return { success: false, message: 'Transformer name is required.' };
         }
         if (typeof body !== 'string') {
           return { success: false, message: 'Transformer body is missing.' };
@@ -72,11 +78,16 @@ export default {
         );
         return dispatch('saveTransformers', transformers);
       },
-      async deleteItem({ state, dispatch }, utid) {
+      // Phase 46 D-08: one or several transformers in one write. The profile is read
+      // again first, so transformers created elsewhere since the page loaded are kept,
+      // and only the given utids are removed. When none of them exists any more there
+      // is nothing to write and the delete has already happened.
+      async deleteItems({ state, dispatch }, utids) {
+        const targets = Array.isArray(utids) ? utids : [];
         await dispatch('fetchItems');
-        const transformers = state.items
-          .filter(t => t.utid !== utid)
-          .map(t => ({ utid: t.utid, alias: t.alias, body: t.body }));
+        const kept = state.items.filter(t => !targets.includes(t.utid));
+        if (kept.length === state.items.length) return { success: true };
+        const transformers = kept.map(t => ({ utid: t.utid, alias: t.alias, body: t.body }));
         return dispatch('saveTransformers', transformers);
       },
     },
