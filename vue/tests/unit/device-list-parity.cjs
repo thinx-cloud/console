@@ -122,6 +122,7 @@ function renderPage(def, state = {}, components = {}) {
     computed: def.computed,
     methods: def.methods,
     filters: def.filters,
+    watch: def.watch,
     components: Object.assign({}, def.components, components),
   });
   vm.$route = { params: {} };
@@ -872,6 +873,62 @@ check('a reload without the selected platform falls back to All', () => {
   const again = withWarnings(() => vm._render());
   const active = pillsOf(again.out).filter((p) => attrsOf(p)['aria-pressed'] === 'true').map((p) => cyOf(p));
   assert.deepEqual(active, ['platform-pill-All']);
+});
+
+// UI review / IN-04: bulk Revoke, Transfer and Push Config act only on visible devices.
+checkAsync('selection: search drops hidden selections for good, a pill switch clears it', async () => {
+  const { vm } = renderFleet({ viewMode: 'list' });
+  vm.selectedUdids = ['u0', 'u1', 'u2'];
+  await Vue.nextTick();
+  assert.deepEqual(vm.selectedUdids, ['u0', 'u1', 'u2'], 'all visible, all kept');
+  vm.searchText = 'alp';
+  await Vue.nextTick();
+  assert.deepEqual(vm.selectedUdids, ['u0'], 'search keeps only visible selections');
+  assert.equal(vm.selectedCount, 1);
+  vm.searchText = '';
+  await Vue.nextTick();
+  assert.deepEqual(vm.selectedUdids, ['u0'], 'clearing the search does not bring hidden selections back');
+  vm.selectedUdids = ['u0', 'u2'];
+  vm.platformFilter = 'arduino';
+  await Vue.nextTick();
+  assert.deepEqual(vm.selectedUdids, [], 'a pill switch clears the selection');
+  vm.toggleDevice('u0');
+  vm.platformFilter = 'All';
+  await Vue.nextTick();
+  assert.deepEqual(vm.selectedUdids, [], 'switching back to All clears it too');
+});
+
+checkAsync('selection: bulk Revoke, Transfer and Push Config send only visible devices', async () => {
+  const { vm } = renderFleet({ viewMode: 'list' });
+  const sent = [];
+  vm.$bvModal = { msgBoxConfirm: () => Promise.resolve(true), hide() {}, show() {} };
+  vm.revokeDevices = (udids) => { sent.push(['revoke', udids]); return Promise.resolve({ success: false }); };
+  vm.transferDevices = (p) => { sent.push(['transfer', p.udids]); return Promise.resolve({ success: false }); };
+  vm.pushConfiguration = (p) => { sent.push(['push', p.udids]); return Promise.resolve({ success: false }); };
+  vm.selectedUdids = ['u0', 'u2', 'u5'];
+  vm.searchText = 'a';
+  await Vue.nextTick();
+  const visible = vm.filteredItems.map((d) => d.udid);
+  const want = ['u0', 'u2', 'u5'].filter((u) => visible.includes(u));
+  assert.ok(want.length < 3, 'the search hides at least one selected device');
+  vm.transferForm.to = 'owner@example.invalid';
+  await vm.confirmRevoke();
+  await vm.transfer({ preventDefault() {} });
+  await vm.pushConfig({ preventDefault() {} });
+  assert.deepEqual(sent, [['revoke', want], ['transfer', want], ['push', want]]);
+});
+
+checkAsync('a reload without the selected platform resets the filter to All, and it stays All', async () => {
+  const { vm } = renderFleet({ viewMode: 'list' });
+  vm.platformFilter = 'arduino';
+  await Vue.nextTick();
+  vm.items = fleet().filter((d) => platforms().basePlatform(d.platform) !== 'arduino');
+  await Vue.nextTick();
+  assert.equal(vm.platformFilter, 'All', 'the filter itself falls back');
+  vm.items = fleet();
+  await Vue.nextTick();
+  assert.equal(vm.activePlatform, 'All', 'arduino devices are back but the filter stays All');
+  assert.equal(vm.filteredItems.length, FLEET.length);
 });
 
 check('sort Platform orders by base platform, then alias; Last Update and Alias unchanged', () => {

@@ -348,6 +348,24 @@ export default {
       return result;
     },
   },
+  watch: {
+    // A pill switch starts a fresh selection (44 IN-04).
+    platformFilter() {
+      this.selectedUdids = [];
+    },
+    // Bulk Revoke, Transfer and Push Config act only on visible devices: whatever the
+    // platform filter, the search or a reload hides is dropped from the selection (UI review).
+    filteredItems(list) {
+      const visible = new Set(list.map(d => d.udid));
+      const kept = this.selectedUdids.filter(udid => visible.has(udid));
+      if (kept.length !== this.selectedUdids.length) this.selectedUdids = kept;
+    },
+    // Once a reload no longer holds the selected platform the filter is All, and stays All
+    // when such devices come back (44 IN-04).
+    activePlatform(key) {
+      if (key === 'All' && this.platformFilter !== 'All') this.platformFilter = 'All';
+    },
+  },
   created() {
     this.$watch(() => this.$route.params, () => { this.loadData(); }, { immediate: true });
   },
