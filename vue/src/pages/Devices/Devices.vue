@@ -29,16 +29,18 @@
       <b-button size="sm" data-cy="view-grid" :variant="viewMode === 'grid' ? 'primary' : 'outline-secondary'" @click="viewMode = 'grid'" class="mr-1">
         <span>&#9635;</span>
       </b-button>
-      <b-button
-        v-for="cat in ['All', 'yellow-crusta', 'red-intense', 'purple-studio', 'blue', 'green', 'green-dark', 'grey-mint']"
-        :key="cat"
-        :data-cy="'category-pill-' + cat"
-        size="sm"
-        :variant="filterCategory === cat ? 'primary' : 'outline-secondary'"
-        :style="filterCategory !== cat && cat !== 'All' ? { borderColor: categoryColor(cat), color: categoryColor(cat) } : {}"
-        @click="filterCategory = cat"
-        class="mr-1"
-      >{{ cat }}</b-button>
+      <div role="group" aria-label="Filter by platform" class="d-inline-flex flex-wrap">
+        <b-button
+          v-for="pill in platformPills"
+          :key="pill.key"
+          :data-cy="'platform-pill-' + pill.key"
+          size="sm"
+          :variant="activePlatform === pill.key ? 'light' : 'outline-light'"
+          :aria-pressed="String(activePlatform === pill.key)"
+          @click="platformFilter = pill.key"
+          class="mr-1"
+        >{{ pill.label }}</b-button>
+      </div>
       <div class="ml-auto d-flex align-items-center">
         <b-form-select data-cy="device-sort" v-model="sortBy" :options="[{ value: 'lastupdate', text: 'Last Update' }, { value: 'platform', text: 'Platform' }, { value: 'alias', text: 'Alias' }]" size="sm" style="width:140px" class="mr-2" />
         <b-form-input data-cy="device-search" v-model="searchText" placeholder="Search alias or MAC..." size="sm" style="width:200px" />
@@ -54,6 +56,7 @@
               <label for="checkboxAll" />
             </div>
           </th>
+          <th><span class="sr-only">Icon</span></th>
           <th>Alias</th>
           <th>Platform</th>
           <th>Firmware</th>
@@ -75,6 +78,13 @@
               <label :for="'checkbox-' + index" />
             </div>
           </td>
+          <td>
+            <span
+              class="device-icon device-icon--sm"
+              :class="'platform-' + platformOf(device).key"
+              :title="platformOf(device).label"
+            ><img class="device-icon-symbol" :src="symbolSrc(device.icon)" :alt="platformOf(device).label + ' device icon'"></span>
+          </td>
           <td>{{ device.alias }}</td>
           <td><PlatformBullet :platform="device.platform" /></td>
           <td>{{ device.firmware }}</td>
@@ -87,7 +97,7 @@
           </td>
         </tr>
         <tr v-if="!filteredItems.length">
-          <td colspan="7" class="text-muted">No devices registered yet.</td>
+          <td colspan="8">{{ emptyMessage }}</td>
         </tr>
       </tbody>
     </table>
@@ -100,13 +110,16 @@
       >
         <b-card class="h-100" data-cy="device-card">
           <template #header>
-            <span
-              class="badge mr-2"
-              :style="{ backgroundColor: categoryColor(device.category), color: '#fff' }"
-            >{{ device.category }}</span>
-            <strong>{{ device.alias }}</strong>
+            <div class="device-card-heading d-flex align-items-center">
+              <span
+                class="device-icon"
+                :class="'platform-' + platformOf(device).key"
+                :title="platformOf(device).label"
+              ><img class="device-icon-symbol" :src="symbolSrc(device.icon)" :alt="platformOf(device).label + ' device icon'"></span>
+              <strong>{{ device.alias }}</strong>
+            </div>
           </template>
-          <p class="mb-1"><strong>Platform:</strong> {{ device.platform }}</p>
+          <p class="mb-1"><PlatformBullet :platform="device.platform" /></p>
           <p class="mb-1 text-muted small">{{ device.firmware }}</p>
           <p class="mb-2 text-muted small">{{ device.lastupdate | fromNow }}</p>
           <div class="abc-checkbox d-inline-block mr-2">
@@ -123,7 +136,7 @@
         </b-card>
       </b-col>
       <b-col v-if="!filteredItems.length" cols="12">
-        <p class="text-muted">No devices match the current filter.</p>
+        <p>{{ emptyMessage }}</p>
       </b-col>
     </b-row>
 
@@ -158,16 +171,10 @@
 import { mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
 import PlatformBullet from '@/components/PlatformBullet/PlatformBullet';
+import { basePlatform, platformInfo } from '@/utils/platforms';
 
-const CATEGORY_COLORS = {
-  'yellow-crusta': '#f3c200',
-  'red-intense':   '#e35b5a',
-  'purple-studio': '#8E44AD',
-  'blue':          '#3598dc',
-  'green':         '#32c5d2',
-  'green-dark':    '#4DB3A2',
-  'grey-mint':     '#525e64',
-};
+// Legacy device symbols b_medium_01.png .. b_medium_73.png (DEV-01, UI-D10).
+const DEVICE_SYMBOLS = require.context('@/assets/thinx/ioticons', false, /^\.\/b_medium_\d\d\.png$/);
 
 export default {
   name: "Devices",
@@ -189,7 +196,7 @@ export default {
       transferForm: { to: '', mig_sources: false, mig_apikeys: false },
       pushForm: { selectedEnviros: [], reset_devices: false },
       viewMode: 'list',
-      filterCategory: 'All',
+      platformFilter: 'All',
       sortBy: 'lastupdate',
       searchText: '',
     };
@@ -198,10 +205,30 @@ export default {
     isSelected() { return this.selectedUdids.length > 0; },
     selectedCount() { return this.selectedUdids.length; },
     isAllSelected() { return this.filteredItems.length > 0 && this.filteredItems.every(d => this.selectedUdids.includes(d.udid)); },
+    // Pills: All, then each base platform present in the loaded list, by label, unknown last.
+    platformPills() {
+      const keys = [...new Set(this.items.map(d => basePlatform(d.platform)))];
+      const pills = keys.map(key => ({ key, label: platformInfo(key).label }));
+      pills.sort((a, b) => {
+        if (a.key === 'unknown') return 1;
+        if (b.key === 'unknown') return -1;
+        return a.label.toLowerCase().localeCompare(b.label.toLowerCase());
+      });
+      return [{ key: 'All', label: 'All' }, ...pills];
+    },
+    // The selected platform, or All once a reload no longer contains it.
+    activePlatform() {
+      const key = this.platformFilter;
+      if (key === 'All' || !this.items.some(d => basePlatform(d.platform) === key)) return 'All';
+      return key;
+    },
+    emptyMessage() {
+      return this.items.length ? 'No devices match the current filter.' : 'No devices registered yet.';
+    },
     filteredItems() {
       let result = this.items;
-      if (this.filterCategory && this.filterCategory !== 'All') {
-        result = result.filter(d => d.category === this.filterCategory);
+      if (this.activePlatform !== 'All') {
+        result = result.filter(d => basePlatform(d.platform) === this.activePlatform);
       }
       if (this.searchText) {
         const q = this.searchText.toLowerCase();
@@ -212,7 +239,7 @@ export default {
       }
       result = [...result].sort((a, b) => {
         if (this.sortBy === 'lastupdate') return new Date(b.lastupdate || 0).getTime() - new Date(a.lastupdate || 0).getTime();
-        if (this.sortBy === 'platform')   return (a.platform || '').localeCompare(b.platform || '');
+        if (this.sortBy === 'platform')   return basePlatform(a.platform).localeCompare(basePlatform(b.platform)) || (a.alias || '').localeCompare(b.alias || '');
         if (this.sortBy === 'alias')      return (a.alias || '').localeCompare(b.alias || '');
         return 0;
       });
@@ -233,6 +260,13 @@ export default {
       fetchEnviros: 'enviros/fetchItems',
     }),
     isSelected_(udid) { return this.selectedUdids.includes(udid); },
+    platformOf(device) { return platformInfo(device.platform); },
+    // b_medium_NN.png for icons 1..73, otherwise 01.
+    symbolSrc(icon) {
+      const n = parseInt(icon, 10);
+      const nn = Number.isInteger(n) && n >= 1 && n <= 73 ? String(n).padStart(2, '0') : '01';
+      return DEVICE_SYMBOLS('./b_medium_' + nn + '.png');
+    },
     toggleDevice(udid) {
       const i = this.selectedUdids.indexOf(udid);
       if (i > -1) this.selectedUdids.splice(i, 1);
@@ -321,9 +355,6 @@ export default {
       } else {
         this.error = result.message || 'Failed to revoke device.';
       }
-    },
-    categoryColor(cat) {
-      return CATEGORY_COLORS[cat] || '#525e64';
     },
   },
 };

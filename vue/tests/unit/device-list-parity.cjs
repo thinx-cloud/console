@@ -736,7 +736,7 @@ check('clicking the Arduino pill keeps arduino and arduino:esp8266 devices only'
 
 check('a reload without the selected platform falls back to All', () => {
   const { vm } = renderFleet({ viewMode: 'list' });
-  vm.filterPlatform = 'arduino';
+  vm.platformFilter = 'arduino';
   assert.equal(vm.filteredItems.length, 2);
   vm.items = fleet().filter((d) => platforms().basePlatform(d.platform) !== 'arduino');
   assert.equal(vm.activePlatform, 'All');
@@ -751,17 +751,18 @@ check('sort Platform orders by base platform, then alias; Last Update and Alias 
   const { basePlatform } = platforms();
   vm.sortBy = 'platform';
   assert.deepEqual(vm.filteredItems.map((d) => d.alias),
-    ['Alpha', 'Bravo', 'Hotel', 'Echo', 'Charlie', 'Delta', 'Foxtrot', 'Golf']);
+    ['Alpha', 'Bravo', 'Hotel', 'Echo', 'Charlie', 'Delta', 'Foxtrot', 'Golf'], 'platform sort order');
   assert.deepEqual(vm.filteredItems.map((d) => basePlatform(d.platform)),
-    ['arduino', 'arduino', 'mongoose', 'nodemcu', 'platformio', 'sigfox', 'unknown', 'unknown']);
+    ['arduino', 'arduino', 'mongoose', 'nodemcu', 'platformio', 'sigfox', 'unknown', 'unknown'], 'platform sort keys');
   const swapped = fleet().reverse();
   vm.items = swapped;
   assert.deepEqual(vm.filteredItems.slice(0, 2).map((d) => d.alias), ['Alpha', 'Bravo'], 'alias breaks the tie');
   vm.items = fleet();
+  // Same comparator as the page: localeCompare follows the host locale (in Czech "Ch" sorts after "H").
   vm.sortBy = 'alias';
-  assert.deepEqual(vm.filteredItems.map((d) => d.alias), FLEET.map((d) => d.alias).sort());
+  assert.deepEqual(vm.filteredItems.map((d) => d.alias), FLEET.map((d) => d.alias).sort((a, b) => a.localeCompare(b)), 'alias sort');
   vm.sortBy = 'lastupdate';
-  assert.deepEqual(vm.filteredItems.map((d) => d.alias), FLEET.map((d) => d.alias).reverse());
+  assert.deepEqual(vm.filteredItems.map((d) => d.alias), FLEET.map((d) => d.alias).reverse(), 'last update sort');
 });
 
 function emptyText(vnode, viewMode) {

@@ -37,6 +37,40 @@ $platform-colors: (
   vertical-align: middle;
 }
 
+// Device icon tile: the Legacy symbol on a platform-coloured tile with a 4px frame (UI-D11).
+.device-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+}
+
+.device-icon-symbol {
+  width: 40px;
+  height: 40px;
+  background-color: #F9F9F9;
+  border-radius: 4px;
+}
+
+// Table variant.
+.device-icon--sm {
+  width: 32px;
+  height: 32px;
+}
+
+.device-icon--sm .device-icon-symbol {
+  width: 24px;
+  height: 24px;
+}
+
+// Grid card header: tile, 8px, alias.
+.device-card-heading > .device-icon {
+  margin-right: 8px;
+}
+
 // Several platform backgrounds sit close to the dark page; the outline keeps the shape visible.
 .platform-bullet,
 .device-icon {
