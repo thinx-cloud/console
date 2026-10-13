@@ -7,9 +7,9 @@
       Settings - <span class="fw-semi-bold">Environment Globals</span>
     </h1>
 
-    <p>
-      <b-button variant="success" @click="$bvModal.show('create-enviro-modal')">Add Variable</b-button>
-    </p>
+    <div class="settings-add">
+      <b-button variant="success" data-cy="enviro-add" @click="openCreate"><i class="fa fa-plus" aria-hidden="true"></i><span class="button-text">Add Variable</span></b-button>
+    </div>
 
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
     <b-alert v-if="loadFailed" variant="danger" show data-cy="enviros-load-error">Could not load environment variables. Refresh to retry.</b-alert>
@@ -67,14 +67,16 @@
       </template>
     </b-modal>
 
-    <!-- Create Modal -->
-    <b-modal id="create-enviro-modal" title="Add Environment Variable" @ok="create" ok-title="Add">
+    <!-- Add dialog (UI-T24): a listed key is refused, so Add never replaces a value silently;
+         changing a value is Edit value's job. Its errors stay in its own feedback line. -->
+    <b-modal id="create-enviro-modal" title="Add Environment Variable" ok-title="Add variable" ok-variant="success" cancel-title="Close without adding" cancel-variant="default" :ok-disabled="adding" @ok="create">
       <b-form-group label="Key" label-for="enviro-key">
-        <b-form-input id="enviro-key" v-model="form.key" placeholder="e.g. WIFI_SSID" required />
+        <b-form-input id="enviro-key" v-model="form.key" placeholder="e.g. WIFI_SSID" required aria-describedby="enviro-add-feedback" />
       </b-form-group>
       <b-form-group label="Value" label-for="enviro-value">
-        <b-form-input id="enviro-value" v-model="form.value" placeholder="e.g. MyNetwork" required />
+        <b-form-input id="enviro-value" v-model="form.value" placeholder="e.g. MyNetwork" required aria-describedby="enviro-add-feedback" />
       </b-form-group>
+      <p id="enviro-add-feedback" class="dialog-feedback" aria-live="polite" data-cy="enviro-add-feedback">{{ addError }}</p>
     </b-modal>
   </div>
 </template>
@@ -94,6 +96,8 @@ export default {
       loadFailed: false,
       error: null,
       form: { key: '', value: '' },
+      adding: false,
+      addError: null,
       editKey: '',
       editValue: '',
       editSaving: false,
@@ -115,17 +119,42 @@ export default {
   methods: {
     ...mapGetters({ getItems: "enviros/getItems" }),
     ...mapActions({ loadItems: "enviros/loadItems", createItem: "enviros/createItem", deleteItems: "enviros/deleteItems" }),
+    openCreate() {
+      if (!this.adding) this.addError = null;
+      this.$bvModal.show('create-enviro-modal');
+    },
+    // Add (UI-T24): an empty key or value keeps OK a no-op; a trimmed key that is already
+    // listed is refused with nothing sent, because the PUT would replace its value. Without
+    // a loaded list that cannot be checked, so the list is read first and Add refuses when it
+    // still cannot be read. One click sends one request; the page alert is not used.
     async create(bvModalEvt) {
       bvModalEvt.preventDefault();
-      if (!this.form.key.trim() || !this.form.value.trim()) return;
-      const result = await this.createItem({ key: this.form.key.trim(), value: this.form.value.trim() });
-      if (result.success) {
-        this.form = { key: '', value: '' };
-        this.$bvModal.hide('create-enviro-modal');
-        this.showItems(this.getItems());
-      } else {
-        this.error = result.message || 'Failed to add environment variable.';
-      }
+      if (this.adding) return;
+      const key = this.form.key.trim();
+      const value = this.form.value.trim();
+      if (!key || !value) return;
+      this.adding = true;
+      this.addError = null;
+      try {
+        if (this.loading || this.loadFailed) await this.loadData();
+        if (this.loadFailed) { this.addError = 'Could not add the variable. Try again.'; return; }
+        if (this.items.some(item => item.label === key)) {
+          this.addError = 'A variable with this key already exists. Use Edit value to change it.';
+          return;
+        }
+        let result = null;
+        try {
+          result = await this.createItem({ key, value });
+        } catch (e) { result = null; }
+        if (result && result.success) {
+          this.form = { key: '', value: '' };
+          this.$bvModal.hide('create-enviro-modal');
+          if (result.refreshed === false) await this.loadData();
+          else this.showItems(this.getItems());
+          return;
+        }
+        this.addError = 'Could not add the variable. Try again.';
+      } finally { this.adding = false; }
     },
     isDeleting(item) { return this.deletingKeys.includes(item.label); },
     // Bulk delete (D-16, UI-T23): one plain confirmation that names every selected variable,

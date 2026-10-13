@@ -1759,6 +1759,22 @@ check('G5 Enviros.vue holds no forbidden string, no raw-HTML binding and no cons
   assert.ok(!/console[.](log|info|warn|error|debug|trace)/.test(source), 'no console call');
 });
 
+checkAsync('G6 without a loaded list add reads it first, refuses while it cannot be read and then refuses a listed key', async () => {
+  const h = enviroLiveHarness({ items: [], loadFailed: true }, { loadItems: async () => { throw new Error('offline'); } });
+  h.vm.form = { key: 'WIFI', value: SECRET };
+  await h.vm.create(okEvent());
+  assert.equal(h.calls.loadItems, 1, 'the list is read before adding');
+  assert.deepEqual(h.calls.createItem, [], 'nothing sent while the list cannot be read');
+  assert.equal(h.vm.addError, ADD_FAILED);
+  assert.equal(h.vm.adding, false);
+  h.control.loadItems = async () => {};
+  h.control.storeItems = enviroItems();
+  await h.vm.create(okEvent());
+  assert.equal(h.vm.loadFailed, false, 'the list is loaded now');
+  assert.deepEqual(h.calls.createItem, [], 'a listed key is still refused');
+  assert.equal(h.vm.addError, DUPLICATE_KEY);
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
