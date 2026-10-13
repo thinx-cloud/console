@@ -92,9 +92,22 @@
             <td>{{ device.status }}</td>
             <td>{{ device.lastupdate | fromNow }}</td>
             <td class="actions-cell">
-              <b-button size="sm" variant="secondary" data-cy="row-build" @click="buildDevice(device)" class="mr-1">Build</b-button>
+              <IconButton
+                :icon="buildAction(device).icon"
+                :label="buildAction(device).label"
+                :disabled="buildAction(device).disabled"
+                data-cy="row-build"
+                @click="buildDevice(device)"
+              />
+              <IconButton
+                icon="fa fa-eye"
+                :label="hasBuild(device) ? 'View log' : 'No build yet'"
+                :disabled="!hasBuild(device)"
+                data-cy="row-log"
+                @click="openLastBuild(device)"
+              />
               <IconButton icon="fa fa-pencil" label="Edit" data-cy="row-detail" @click="viewDevice(device.udid)" />
-              <b-button size="sm" variant="danger" data-cy="row-revoke" @click="revokeRow(device.udid)" class="ml-1">Revoke</b-button>
+              <IconButton icon="fa fa-trash" label="Revoke" variant="danger" data-cy="row-revoke" @click="revokeRow(device.udid)" />
             </td>
           </tr>
           <tr v-if="!filteredItems.length">
@@ -124,23 +137,40 @@
           <p class="mb-1"><PlatformBullet :platform="device.platform" /></p>
           <p class="mb-1 text-muted small">{{ device.firmware }}</p>
           <p class="mb-2 text-muted small">{{ device.lastupdate | fromNow }}</p>
-          <div class="abc-checkbox d-inline-block mr-2">
-            <input
-              type="checkbox"
-              :id="'grid-checkbox-' + device.udid"
-              :checked="isSelected_(device.udid)"
-              @change="toggleDevice(device.udid)"
+          <div class="d-flex align-items-center flex-nowrap">
+            <div class="abc-checkbox d-inline-block mr-2">
+              <input
+                type="checkbox"
+                :id="'grid-checkbox-' + device.udid"
+                :checked="isSelected_(device.udid)"
+                @change="toggleDevice(device.udid)"
+              />
+              <label :for="'grid-checkbox-' + device.udid" />
+            </div>
+            <IconButton
+              :icon="buildAction(device).icon"
+              :label="buildAction(device).label"
+              :disabled="buildAction(device).disabled"
+              data-cy="card-build"
+              @click="buildDevice(device)"
             />
-            <label :for="'grid-checkbox-' + device.udid" />
+            <IconButton
+              icon="fa fa-eye"
+              :label="hasBuild(device) ? 'View log' : 'No build yet'"
+              :disabled="!hasBuild(device)"
+              data-cy="card-log"
+              @click="openLastBuild(device)"
+            />
+            <IconButton icon="fa fa-pencil" label="Edit" class="ml-auto" data-cy="card-detail" @click="viewDevice(device.udid)" />
           </div>
-          <b-button size="sm" variant="primary" @click="viewDevice(device.udid)" class="mr-1">Detail</b-button>
-          <b-button size="sm" variant="secondary" @click="buildDevice(device)">Build</b-button>
         </b-card>
       </b-col>
       <b-col v-if="!filteredItems.length" cols="12">
         <p>{{ emptyMessage }}</p>
       </b-col>
     </b-row>
+
+    <BuildLogDialog ref="buildLogDialog" />
 
     <!-- Transfer Modal -->
     <b-modal id="transfer-modal" title="Transfer Devices" @ok="transfer" ok-title="Transfer" ok-variant="warning">
@@ -174,6 +204,7 @@ import { mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
 import PlatformBullet from '@/components/PlatformBullet/PlatformBullet';
 import IconButton from '@/components/IconButton/IconButton';
+import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import { basePlatform, platformInfo } from '@/utils/platforms';
 
 // Legacy device symbols b_medium_01.png .. b_medium_73.png (DEV-01, UI-D10).
@@ -181,7 +212,7 @@ const DEVICE_SYMBOLS = require.context('@/assets/thinx/ioticons', false, /^\.\/b
 
 export default {
   name: "Devices",
-  components: { PlatformBullet, IconButton },
+  components: { PlatformBullet, IconButton, BuildLogDialog },
   filters: {
     fromNow(val) {
       if (!val) return '—';
@@ -202,6 +233,8 @@ export default {
       platformFilter: 'All',
       sortBy: 'lastupdate',
       searchText: '',
+      // udids whose build request is in flight (UI-D17).
+      buildingUdids: [],
     };
   },
   computed: {
@@ -281,10 +314,37 @@ export default {
     viewDevice(udid) {
       this.$router.push({ name: 'DeviceDetail', params: { udid } });
     },
+    // Build action state (UI-SPEC Actions rows 1): in flight, not buildable, no source, else the hammer.
+    buildAction(device) {
+      if (this.buildingUdids.includes(device.udid)) {
+        return { icon: 'fa fa-spin fa-circle-o-notch', label: 'Building…', disabled: true };
+      }
+      if (platformInfo(device.platform).build === false) return { icon: 'fa fa-ban', label: 'Not supported', disabled: true };
+      if (!device.source) return { icon: 'fa fa-ban', label: 'No source', disabled: true };
+      return { icon: 'icomoon-hammer_icon', label: 'Build', disabled: false };
+    },
+    // One request per device at a time; the udid is released however the request settles.
     async buildDevice(device) {
-      const result = await this.buildFirmware({ udid: device.udid, source_id: device.source });
-      if (result.success) this.message = 'Build triggered.';
-      else this.error = result.message || 'Build failed.';
+      if (this.buildAction(device).disabled) return;
+      this.buildingUdids.push(device.udid);
+      let result;
+      try {
+        result = await this.buildFirmware({ udid: device.udid, source_id: device.source });
+      } catch (e) {
+        result = { success: false };
+      } finally {
+        const i = this.buildingUdids.indexOf(device.udid);
+        if (i > -1) this.buildingUdids.splice(i, 1);
+      }
+      if (result && result.success) this.message = 'Build triggered.';
+      else this.error = (result && result.message) || 'Build failed.';
+    },
+    hasBuild(device) {
+      return typeof device.last_build_id === 'string' && device.last_build_id.trim() !== '';
+    },
+    openLastBuild(device) {
+      if (!this.hasBuild(device)) return;
+      this.$refs.buildLogDialog.open({ build_id: device.last_build_id });
     },
     async confirmRevoke() {
       const confirmed = await this.$bvModal.msgBoxConfirm(
