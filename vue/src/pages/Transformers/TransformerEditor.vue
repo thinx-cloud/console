@@ -11,7 +11,7 @@
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
     <b-alert v-if="hasChanges" variant="warning" show>You have unsaved changes.</b-alert>
 
-    <b-form-group label="Alias" label-for="transformer-alias" class="mb-3" style="max-width:400px">
+    <b-form-group label="Name" label-for="transformer-alias" class="mb-3" style="max-width:400px">
       <b-form-input id="transformer-alias" v-model="form.alias" @input="hasChanges = true" />
     </b-form-group>
 
@@ -22,10 +22,10 @@
       class="mb-3"
     />
 
-    <b-button variant="primary" @click="save" :disabled="saving || !loaded || !form.alias.trim()">
-      {{ saving ? 'Saving...' : 'Save' }}
+    <b-button variant="success" @click="save" :disabled="saving || !loaded || !form.alias.trim()">
+      {{ saving ? 'Saving…' : 'Save Transformer' }}
     </b-button>
-    <b-button variant="secondary" class="ml-2" @click="cancel">Cancel</b-button>
+    <b-button variant="default" class="ml-2" @click="cancel">Back to Transformers</b-button>
   </div>
 </template>
 
@@ -101,7 +101,7 @@ export default {
         return;
       }
       if (!this.form.alias || !this.form.alias.trim()) {
-        this.error = 'Transformer alias is required.';
+        this.error = 'Enter a transformer name.';
         return;
       }
       this.saving = true;
