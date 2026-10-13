@@ -2112,6 +2112,45 @@ check('I8 compiled theme: the card head, the unsaved note, the action row and th
   expectDecls('.transformer-card-alert', { 'margin-bottom': '8px' });
 });
 
+// ---------------------------------------------------------------- J: transformer editor copy (46-04 task 3)
+
+function renderEditor(state = {}) {
+  const r = renderPage(editorPage().def, Object.assign({ loaded: true, form: { alias: 'Battery Parser', body: 'x' } }, state));
+  assert.equal(r.error, null, 'TransformerEditor renders without error');
+  assert.deepEqual(r.warnings, [], 'TransformerEditor renders without Vue warnings');
+  return r;
+}
+
+checkAsync('J1 the editor says Name, saves with Save Transformer (success) and goes Back to Transformers (default)', async () => {
+  const { vm, vnode } = renderEditor();
+  const group = one(nodesOf(vnode).filter((n) => n.tag === 'b-form-group'), 'form group');
+  assert.equal(attrsOf(group).label, 'Name', 'field label');
+  assert.equal(attrsOf(group)['label-for'], 'transformer-alias', 'label-for unchanged');
+  const buttons = byTag(vnode, 'b-button');
+  assert.equal(buttons.length, 2, 'two buttons');
+  const [save, back] = buttons;
+  assert.equal(attrsOf(save).variant, 'success');
+  assert.equal(textOf(save), 'Save Transformer');
+  assert.equal(attrsOf(back).variant, 'default');
+  assert.equal(textOf(back), 'Back to Transformers');
+  const pushed = [];
+  vm.$router = { push: (to) => { pushed.push(to); } };
+  click(back);
+  assert.deepEqual(pushed, ['/app/transformers'], 'Back to Transformers calls cancel()');
+  vm.saving = true;
+  assert.equal(textOf(byTag(rerender(vm), 'b-button')[0]), 'Saving' + ELLIPSIS, 'Saving with U+2026');
+  vm.saving = false;
+  const writes = [];
+  vm.updateItem = async (x) => { writes.push(x); return { success: true }; };
+  vm.form.alias = '   ';
+  await vm.save();
+  assert.equal(vm.error, 'Enter a transformer name.');
+  assert.deepEqual(writes, [], 'a blank name writes nothing');
+  const source = read('pages/Transformers/TransformerEditor.vue');
+  const forbidden = ['Alias', '>Cancel<', "'Save'", 'Saving...', "okTitle: 'Leave'", 'Transformer alias is required.'];
+  assert.deepEqual(forbidden.filter((x) => source.includes(x)), [], 'forbidden strings in TransformerEditor.vue');
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
