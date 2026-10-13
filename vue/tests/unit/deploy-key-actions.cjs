@@ -1495,6 +1495,38 @@ checkAsync('K13 reloads refresh in place; focus returns to the renamed row\'s Re
   assert.ok(page().template.includes(':ref="\'rename-\' + item.id"'), 'each Rename button has a per-key ref');
 });
 
+// 45-UI-REVIEW finding 5: the created-key modal predates Phase 45. Its pill used
+// outline-secondary (Phase 44 measured that text under 2:1), the textarea used mb-2 (7px,
+// off the 4px grid), and the copy said "Copy to clipboard" / "Deploy Key — ".
+checkAsync('K14 the created-key modal uses the default variant, the 4px grid and the Phase 45 copy', async () => {
+  const items = keyItems();
+  const { vm, vnode } = renderKeys({ items, shownName: 'Firmware', createdPubkey: 'ssh-ed25519 AAAA Firmware' });
+  const modal = nodesOf(vnode).find((n) => n.tag === 'b-modal' && attrsOf(n).id === 'rsakey-result-modal');
+  assert.ok(modal, 'the result modal is on the page');
+  const a = attrsOf(modal);
+  assert.equal(a.title, 'Deploy key ' + DASH + ' Firmware');
+  assert.equal(a['ok-title'], 'Close');
+  assert.equal(a['ok-variant'], 'default', 'the Close button is not the blue primary');
+  const text = nodesOf(modal).find((n) => n.tag === 'b-form-textarea');
+  assert.deepEqual(classList(text), ['key-result-text']);
+  const buttons = nodesOf(modal).filter((n) => n.tag === 'b-button');
+  assert.equal(buttons.length, 1, 'one copy button');
+  assert.equal(attrsOf(buttons[0]).variant, 'default', '#474D84 with white text, 7.89:1');
+  assert.equal(attrsOf(buttons[0]).size, 'sm');
+  assert.equal(cyOf(buttons[0]), 'result-copy');
+  assert.equal(textOf(buttons[0]), 'Copy key');
+  const icons = byTag(buttons[0], 'i');
+  assert.deepEqual(classList(icons[0]).sort(), ['fa', 'fa-copy']);
+  assert.equal(attrsOf(icons[0])['aria-hidden'], 'true');
+  const copied = [];
+  vm.copyToClipboard = (value) => copied.push(value);
+  buttons[0].data.on.click();
+  assert.deepEqual(copied, ['ssh-ed25519 AAAA Firmware']);
+  const template = page().template;
+  ['outline-secondary', 'Copy to clipboard', 'Deploy Key ' + DASH, 'mb-2'].forEach((old) => assert.ok(!template.includes(old), 'no ' + old));
+  expectDecls('.key-result-text', { 'margin-bottom': '8px' });
+});
+
 check('G3 compiled theme: key-name-feedback in #FF8A8A, hidden when empty; key-name-help in body colour', () => {
   const fb = expectDecls('.key-name-feedback', { margin: '4px 0 0', 'font-size': '.875rem', 'font-weight': '400' });
   assert.match(value(fb, 'color') || '', /^#ff8a8a$/i, '.key-name-feedback colour');

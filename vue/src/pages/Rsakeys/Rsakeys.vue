@@ -45,11 +45,11 @@
         </tbody>
       </table>
     </div>
-    <b-modal id="rsakey-result-modal" :title="'Deploy Key — ' + shownName" ok-only ok-title="Close">
+    <b-modal id="rsakey-result-modal" :title="'Deploy key — ' + shownName" ok-only ok-title="Close" ok-variant="default">
       <p>Add this public key to your Git repository's deploy keys.</p>
       <b-form-group label="Public key" label-for="shown-deploy-key">
-        <b-form-textarea id="shown-deploy-key" readonly :value="createdPubkey" rows="5" class="mb-2" />
-        <b-button variant="outline-secondary" size="sm" @click="copyToClipboard(createdPubkey)">Copy to clipboard</b-button>
+        <b-form-textarea id="shown-deploy-key" readonly :value="createdPubkey" rows="5" class="key-result-text" />
+        <b-button variant="default" size="sm" data-cy="result-copy" @click="copyToClipboard(createdPubkey)"><i class="fa fa-copy" aria-hidden="true"></i><span class="key-toolbar__text">Copy key</span></b-button>
       </b-form-group>
     </b-modal>
     <b-modal id="rsakey-rename-modal" title="Rename deploy key" @shown="onRenameShown" @hide="onRenameHide" @hidden="onRenameHidden">

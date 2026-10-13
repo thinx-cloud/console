@@ -92,3 +92,9 @@
   font-size: .875rem;
   font-weight: 400;
 }
+
+// Created-key modal: the key text sits 8px above the Copy key button (4px grid; was mb-2,
+// 7px at the 14px root size).
+.key-result-text {
+  margin-bottom: 8px;
+}
