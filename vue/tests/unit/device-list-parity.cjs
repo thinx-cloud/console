@@ -850,6 +850,24 @@ check('python and micropython devices share one Micropython pill and filter toge
   assert.deepEqual(vm.filteredItems.map((d) => d.udid).sort(), ['p1', 'p2']);
 });
 
+// UI review: gap-2 is a Bootstrap 5 utility (dead on 4.6) and mr-1 is 3.5px, off the 4px grid.
+check('toolbar: 4px gaps from .device-toolbar and .platform-pills, no gap-N or mr-1 on toggles and pills', () => {
+  const { source } = devices();
+  assert.doesNotMatch(source, /\bgap-\d/, 'Bootstrap 5 gap utility');
+  const { vnode } = renderFleet({ viewMode: 'list' });
+  const bars = byClass(vnode, 'device-toolbar');
+  assert.equal(bars.length, 1, 'one .device-toolbar');
+  assert.ok(['d-flex', 'flex-wrap', 'align-items-center'].every((c) => classList(bars[0]).includes(c)), 'flex toolbar');
+  const groups = nodesOf(bars[0]).filter((n) => attrsOf(n).role === 'group');
+  assert.equal(groups.length, 1);
+  assert.ok(classList(groups[0]).includes('platform-pills'), 'pill group has .platform-pills');
+  const buttons = nodesOf(bars[0]).filter((n) => n.tag === 'b-button');
+  assert.ok(buttons.length >= 3, 'toggles and pills');
+  buttons.forEach((b) => assert.ok(!classList(b).includes('mr-1'), (cyOf(b) || 'button') + ' has mr-1'));
+  assert.equal(value(decls('.device-toolbar'), 'gap'), '4px', '.device-toolbar gap');
+  assert.equal(value(decls('.platform-pills'), 'gap'), '4px', '.platform-pills gap');
+});
+
 check('clicking the Arduino pill keeps arduino and arduino:esp8266 devices only', () => {
   const first = renderFleet({ viewMode: 'list' });
   const pill = pillsOf(first.vnode).find((p) => cyOf(p) === 'platform-pill-arduino');

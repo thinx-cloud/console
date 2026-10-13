@@ -77,6 +77,14 @@ $platform-colors: (
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .24);
 }
 
+// Devices toolbar (UI review): Bootstrap 4.6 has no gap utilities, so the 4px gap between
+// the view toggles, the platform pill group and the sort/search block, and between the
+// pills themselves, lives here. Wrapped rows are 4px apart as well.
+.device-toolbar,
+.platform-pills {
+  gap: 4px;
+}
+
 // Shared icon button (UI-D08): 32px minimum, 4px apart, glyph only below lg.
 .icon-button {
   display: inline-block;

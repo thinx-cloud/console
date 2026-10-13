@@ -22,14 +22,14 @@
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
     <b-alert v-if="message" variant="success" show dismissible @dismissed="message = null">{{ message }}</b-alert>
 
-    <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-      <b-button size="sm" data-cy="view-list" :variant="viewMode === 'list' ? 'primary' : 'outline-secondary'" @click="viewMode = 'list'" class="mr-1">
+    <div class="d-flex align-items-center flex-wrap mb-3 device-toolbar">
+      <b-button size="sm" data-cy="view-list" :variant="viewMode === 'list' ? 'primary' : 'outline-secondary'" @click="viewMode = 'list'">
         <span>&#9776;</span>
       </b-button>
-      <b-button size="sm" data-cy="view-grid" :variant="viewMode === 'grid' ? 'primary' : 'outline-secondary'" @click="viewMode = 'grid'" class="mr-1">
+      <b-button size="sm" data-cy="view-grid" :variant="viewMode === 'grid' ? 'primary' : 'outline-secondary'" @click="viewMode = 'grid'">
         <span>&#9635;</span>
       </b-button>
-      <div role="group" aria-label="Filter by platform" class="d-inline-flex flex-wrap">
+      <div role="group" aria-label="Filter by platform" class="d-inline-flex flex-wrap platform-pills">
         <b-button
           v-for="pill in platformPills"
           :key="pill.key"
@@ -38,7 +38,6 @@
           :variant="activePlatform === pill.key ? 'light' : 'outline-light'"
           :aria-pressed="String(activePlatform === pill.key)"
           @click="platformFilter = pill.key"
-          class="mr-1"
         >{{ pill.label }}</b-button>
       </div>
       <div class="ml-auto d-flex align-items-center">
