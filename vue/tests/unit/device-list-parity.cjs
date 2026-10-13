@@ -1162,6 +1162,203 @@ check('compiled theme: icomoon font face (woff, ttf) and only the hammer glyph r
   assert.equal(imports.length, 1, 'theme imports the icomoon partial once');
 });
 
+// ---------------------------------------------------------------- Devices: status, firmware, API-key warning (44-02)
+
+const CC = (n) => String.fromCharCode(n);
+const API_KEY_TIP = 'No API key assigned. The device cannot check in until you assign one.';
+const LONG_STATUS = Array.from({ length: 200 }, (_, i) => CC(97 + (i % 26))).join('');
+// Status fixtures are built with String.fromCharCode, so this file holds no control-character escapes.
+const STATUS_DEVICES = [
+  { udid: 's1', alias: 'Kilo', keyhash: null, firmware: 'thinx-1.2.3' },
+  { udid: 's2', alias: 'Lima', keyhash: '', status: null },
+  { udid: 's3', alias: 'Mike', status: '', firmware: '' },
+  { udid: 's4', alias: 'November', keyhash: 'abc', status: 'x' },
+  { udid: 's5', alias: 'Oscar', keyhash: 'abc', status: 'Online', firmware: null },
+  { udid: 's6', alias: 'Papa', keyhash: 'abc', status: LONG_STATUS },
+  { udid: 's7', alias: 'Quebec', keyhash: 'abc', status: 'On' + CC(9) + 'li' + CC(7) + 'ne' + CC(127) },
+  { udid: 's8', alias: 'Romeo', keyhash: 'abc', status: 'Fault #E12' },
+  { udid: 's9', alias: 'Sierra', keyhash: 'abc', status: 'low batt #w' },
+  { udid: 's10', alias: 'Tango', keyhash: null, status: '#e and #W', firmware: 'x'.repeat(120) },
+  { udid: 's11', alias: 'Uniform', keyhash: 'abc', status: 'A' + CC(1) },
+];
+const EXPECT_STATUS = {
+  s1: { key: true, text: 'Registered', title: null, alert: false, warning: false, firmware: 'thinx-1.2.3' },
+  s2: { key: true, text: 'Registered', title: null, alert: false, warning: false, firmware: '' },
+  s3: { key: true, text: 'Registered', title: null, alert: false, warning: false, firmware: '' },
+  s4: { key: false, text: 'Registered', title: null, alert: false, warning: false, firmware: '' },
+  s5: { key: false, text: 'Online', title: null, alert: false, warning: false, firmware: '' },
+  s6: { key: false, text: LONG_STATUS.slice(0, 22) + ELLIPSIS, title: LONG_STATUS, alert: false, warning: false, firmware: '' },
+  s7: { key: false, text: 'Online', title: null, alert: false, warning: false, firmware: '' },
+  s8: { key: false, text: 'Fault #E12', title: null, alert: true, warning: false, firmware: '' },
+  s9: { key: false, text: 'low batt #w', title: null, alert: false, warning: true, firmware: '' },
+  s10: { key: true, text: '#e and #W', title: null, alert: true, warning: true, firmware: 'x'.repeat(120) },
+  s11: { key: false, text: 'Registered', title: null, alert: false, warning: false, firmware: '' },
+};
+
+function renderStatus(viewMode) {
+  return renderDevices({ items: STATUS_DEVICES.map((d) => Object.assign({}, d)), viewMode });
+}
+
+const statusDeviceOf = (top, vm) => {
+  const text = deepText(top, vm);
+  const hits = STATUS_DEVICES.filter((d) => new RegExp('\\b' + d.alias + '\\b').test(text));
+  assert.equal(hits.length, 1, 'one alias in ' + text.slice(0, 60));
+  return hits[0];
+};
+
+function checkMarker(node, cls, text) {
+  assert.equal(node.tag, 'span', cls + ' is a span');
+  assert.deepEqual(classList(node), [cls]);
+  assert.equal(attrsOf(node).role, 'img', cls + ' role');
+  assert.equal(attrsOf(node)['aria-label'], text, cls + ' aria-label');
+  assert.equal(attrsOf(node).title, text, cls + ' title');
+  const glyph = tagged(node);
+  assert.equal(glyph.length, 1, cls + ' one glyph');
+  assert.equal(glyph[0].tag, 'i');
+  assert.deepEqual(classList(glyph[0]), ['fa', 'fa-warning']);
+  assert.equal(attrsOf(glyph[0])['aria-hidden'], 'true');
+}
+
+function checkStatus(top, dev) {
+  const want = EXPECT_STATUS[dev.udid];
+  const holders = byClass(top, 'device-status');
+  assert.equal(holders.length, 1, dev.alias + ' one .device-status');
+  assert.equal(holders[0].tag, 'span');
+  const parts = tagged(holders[0]);
+  const heart = parts.shift();
+  assert.equal(heart.tag, 'i', dev.alias + ' heartbeat first');
+  assert.deepEqual(classList(heart), ['fa', 'fa-heartbeat']);
+  assert.equal(attrsOf(heart)['aria-hidden'], 'true');
+  const warnings = byCy(top, 'api-key-warning');
+  if (want.key) {
+    const key = parts.shift();
+    assert.equal(warnings.length, 1, dev.alias + ' one api-key-warning');
+    assert.equal(key, warnings[0], dev.alias + ' the warning follows the heartbeat');
+    assert.equal(cyOf(key), 'api-key-warning');
+    checkMarker(key, 'api-key-indicator', API_KEY_TIP);
+  } else {
+    assert.equal(warnings.length, 0, dev.alias + ' no api-key-warning');
+    assert.equal(byClass(top, 'api-key-indicator').length, 0, dev.alias + ' no indicator');
+  }
+  const label = parts.shift();
+  assert.equal(label.tag, 'span', dev.alias + ' status text span');
+  assert.deepEqual(classList(label), [], dev.alias + ' status text has no class');
+  assert.equal(textOf(label), want.text, dev.alias + ' status text');
+  if (want.title === null) assert.ok(attrsOf(label).title == null, dev.alias + ' no status title');
+  else assert.equal(attrsOf(label).title, want.title, dev.alias + ' status title');
+  if (want.alert) checkMarker(parts.shift(), 'status-alert', 'Device reported an error');
+  if (want.warning) checkMarker(parts.shift(), 'status-warning', 'Device reported a warning');
+  assert.equal(parts.length, 0, dev.alias + ' nothing else in the status');
+  const control = (c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127;
+  assert.ok(!nodesOf(holders[0]).some((n) => !n.tag && n.text && n.text.split('').some(control)), dev.alias + ' no control characters');
+}
+
+function checkCogs(node, dev) {
+  const glyphs = tagged(node);
+  assert.equal(glyphs.length, 1, dev.alias + ' one glyph in the firmware');
+  assert.equal(glyphs[0].tag, 'i');
+  assert.deepEqual(classList(glyphs[0]), ['fa', 'fa-cogs']);
+  assert.equal(attrsOf(glyphs[0])['aria-hidden'], 'true');
+  const want = EXPECT_STATUS[dev.udid].firmware;
+  assert.equal(textOf(node), want || CC(0x2014), dev.alias + ' firmware text');
+}
+
+check('table: heartbeat, API-key warning, cleaned status and markers in the Status cell', () => {
+  const { vm, vnode } = renderStatus('list');
+  const rows = byCy(vnode, 'device-row');
+  assert.equal(rows.length, STATUS_DEVICES.length);
+  rows.forEach((row) => {
+    const dev = statusDeviceOf(row, vm);
+    const tds = (row.children || []).filter((n) => n.tag === 'td');
+    checkStatus(tds[5], dev);
+  });
+});
+
+check('grid: the same status line in every card', () => {
+  const { vm, vnode } = renderStatus('grid');
+  const cards = byCy(vnode, 'device-card');
+  assert.equal(cards.length, STATUS_DEVICES.length);
+  cards.forEach((card) => checkStatus(card, statusDeviceOf(card, vm)));
+});
+
+check('table: firmware cell with cogs, full text as title, dash when empty', () => {
+  const { vm, vnode } = renderStatus('list');
+  byCy(vnode, 'device-row').forEach((row) => {
+    const dev = statusDeviceOf(row, vm);
+    const td = (row.children || []).filter((n) => n.tag === 'td')[4];
+    assert.deepEqual(classList(td), ['firmware-cell'], dev.alias + ' firmware-cell');
+    const want = EXPECT_STATUS[dev.udid].firmware;
+    if (want) assert.equal(attrsOf(td).title, want, dev.alias + ' firmware title');
+    else assert.ok(attrsOf(td).title == null, dev.alias + ' no firmware title');
+    checkCogs(td, dev);
+  });
+});
+
+check('grid: firmware line with cogs in body text', () => {
+  const { vm, vnode } = renderStatus('grid');
+  byCy(vnode, 'device-card').forEach((card) => {
+    const dev = statusDeviceOf(card, vm);
+    const lines = byClass(card, 'device-firmware');
+    assert.equal(lines.length, 1, dev.alias + ' one firmware line');
+    assert.equal(lines[0].tag, 'p');
+    assert.ok(!classList(lines[0]).includes('text-muted') && !classList(lines[0]).includes('small'), dev.alias + ' body text');
+    checkCogs(lines[0], dev);
+  });
+});
+
+check('status helpers: Registered, truncation, control characters and markers', () => {
+  const { vm } = renderStatus('list');
+  [undefined, null, '', 'x', CC(9) + 'y' + CC(0)].forEach((s) => assert.equal(vm.statusText(s), 'Registered', JSON.stringify(s)));
+  assert.equal(vm.statusText('Online'), 'Online');
+  assert.equal(vm.statusTitle('Online'), null);
+  assert.equal(vm.statusText(LONG_STATUS), LONG_STATUS.slice(0, 22) + ELLIPSIS);
+  assert.equal(vm.statusTitle(LONG_STATUS), LONG_STATUS);
+  assert.equal(vm.statusText('a'.repeat(22)), 'a'.repeat(22), '22 characters are not truncated');
+  assert.equal(vm.cleanStatus('a' + CC(31) + 'b' + CC(127) + 'c' + CC(32) + 'd'), 'abc d');
+  assert.equal(vm.statusHasError('x #E y'), true);
+  assert.equal(vm.statusHasWarning('x #W y'), true);
+  assert.equal(vm.statusHasError('ok'), false);
+  assert.equal(vm.statusHasWarning(null), false);
+  assert.equal(vm.missingApiKey({ keyhash: null }), true);
+  assert.equal(vm.missingApiKey({}), true);
+  assert.equal(vm.missingApiKey({ keyhash: '' }), true);
+  assert.equal(vm.missingApiKey({ keyhash: 'abc' }), false);
+});
+
+check('Devices.vue: no control-character escape or regex, no raw HTML, tip defined once, heartbeat in both views', () => {
+  const { source } = devices();
+  const bs = CC(92);
+  [bs + 'x0', bs + 'x1', bs + 'u000', bs + 'u001', 'v-html'].forEach((s) => assert.equal(source.indexOf(s), -1, 'found ' + s));
+  assert.equal(source.split(API_KEY_TIP).length - 1, 1, 'API-key tip defined once');
+  assert.ok(source.split('fa fa-heartbeat').length - 1 >= 2, 'heartbeat in table and grid');
+});
+
+const loose = (sel) => sel.replace(/\s*([>+~])\s*/g, '$1').replace(/\s+/g, ' ').trim();
+function declsLoose(selector) {
+  const want = loose(selector);
+  return allRules().filter((r) => r.media === '' && r.selectors.some((s) => loose(s) === want)).map((r) => r.body);
+}
+
+check('compiled CSS: warning colours reach 3:1, firmware ellipsis at 240px, 8px status and cogs gaps', () => {
+  const page = parseColour('#333867');
+  const ratios = [];
+  [['.api-key-indicator', '#FFA500'], ['.status-alert', '#FF6B6B'], ['.status-warning', '#F0AD4E']].forEach(([sel, hex]) => {
+    const c = parseColour(value(decls(sel), 'color'));
+    assert.ok(sameColour(c, parseColour(hex)), sel + ' colour ' + value(decls(sel), 'color'));
+    const ratio = contrast(c, page);
+    assert.ok(ratio >= 3, sel + ' ' + ratio.toFixed(2));
+    ratios.push(sel + ' ' + ratio.toFixed(2));
+  });
+  const fw = decls('.firmware-cell');
+  const want = { 'max-width': '240px', overflow: 'hidden', 'text-overflow': 'ellipsis', 'white-space': 'nowrap' };
+  Object.keys(want).forEach((p) => assert.equal(value(fw, p), want[p], '.firmware-cell ' + p));
+  assert.equal(value(decls('.device-firmware'), 'overflow-wrap'), 'anywhere');
+  assert.equal(value(declsLoose('.device-status > * + *'), 'margin-left'), '8px', 'status gap');
+  assert.equal(value(declsLoose('.firmware-cell > .fa-cogs'), 'margin-right'), '8px', 'table cogs gap');
+  assert.equal(value(declsLoose('.device-firmware > .fa-cogs'), 'margin-right'), '8px', 'grid cogs gap');
+  return ratios.join(', ');
+});
+
 (async () => {
   for (const [name, fn] of asyncChecks) {
     try {
