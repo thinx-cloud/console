@@ -73,25 +73,27 @@
 
         <b-col md="6" class="mb-4">
           <b-card title="Recent Builds" data-cy="recent-builds">
-            <div v-if="!buildItems.length" class="text-muted">No builds yet.</div>
+            <div v-if="!buildItems.length">No builds yet.</div>
             <table v-else class="table table-sm mb-0">
-              <thead><tr><th>Time</th><th>Device</th><th>Status</th><th>Download</th></tr></thead>
+              <thead><tr><th>Time</th><th>Device</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
                 <tr v-for="(item, i) in buildItems.slice(0, 10)" :key="i">
-                  <td class="text-muted" style="white-space:nowrap">{{ item.date | shortDate }}</td>
+                  <td class="text-nowrap">{{ item.date | shortDate }}</td>
                   <td>{{ formatBuildName(item) }}</td>
                   <td>
                     <b-badge :variant="badgeVariant(item.status)">{{ item.status || '—' }}</b-badge>
                   </td>
-                  <td>
-                    <b-button
-                      v-if="item.build_id"
-                      size="sm"
-                      variant="primary"
-                      data-cy="build-download"
-                      @click="downloadArtifact(item)"
-                    >Download</b-button>
-                    <span v-else class="text-muted">—</span>
+                  <td class="actions-cell">
+                    <span v-if="item.build_id" class="build-actions">
+                      <b-button size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'Open build log ' + item.build_id" @click="openBuildLog(item)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
+                      <b-button
+                        size="sm"
+                        variant="primary"
+                        data-cy="build-download"
+                        @click="downloadArtifact(item)"
+                      >Download</b-button>
+                    </span>
+                    <span v-else data-cy="build-no-log"><span aria-hidden="true">—</span><span class="sr-only">No build log</span></span>
                   </td>
                 </tr>
               </tbody>
@@ -101,19 +103,21 @@
         </b-col>
       </b-row>
     </div>
+    <BuildLogDialog ref="buildLogDialog" />
   </div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
 import { buildStatusVariant } from '@/utils/buildLog';
+import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import CheckinsTimeline from './components/CheckinsTimeline/CheckinsTimeline.vue';
 import hostnameMixin from '@/mixins/hostnames';
 
 export default {
   name: "Dashboard",
   mixins: [hostnameMixin],
-  components: { CheckinsTimeline },
+  components: { CheckinsTimeline, BuildLogDialog },
   filters: {
     shortDate(val) {
       if (!val) return '—';
@@ -225,6 +229,10 @@ export default {
     },
     badgeVariant(status) {
       return buildStatusVariant(status);
+    },
+    // The dialog refuses a row without a build_id, a second guard behind the template (UI-B13).
+    openBuildLog(build) {
+      this.$refs.buildLogDialog.open(build);
     },
     async loadData() {
       this.loading = true;

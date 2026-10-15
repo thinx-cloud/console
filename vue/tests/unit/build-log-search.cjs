@@ -984,7 +984,7 @@ check('V2 a row with a build id: View (link, p-0, eye, aria-label) then Download
   const eye = one(byTag(view, 'i'), 'eye glyph');
   assert.ok(classList(eye).includes('la') && classList(eye).includes('la-eye'), 'la la-eye');
   assert.equal(attrsOf(eye)['aria-hidden'], 'true');
-  assert.ok(a['aria-label'].startsWith(textOf(view)), 'the accessible name starts with the visible text');
+  assert.ok(!textOf(view).includes('b1'), 'the build id is only in the aria-label, not the visible text');
   assert.equal(download && download.tag, 'b-button');
   assert.equal(cyOf(download), 'build-download', 'Download comes second');
   assert.equal(attrsOf(download).variant, 'primary');

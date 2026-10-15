@@ -63,3 +63,11 @@
   background-color: $build-log-current-bg;
   color: $build-log-current-color;
 }
+
+// Dashboard Recent Builds actions (UI-B11): View then Download, 8px apart, on one line inside
+// the non-wrapping .actions-cell.
+.build-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
