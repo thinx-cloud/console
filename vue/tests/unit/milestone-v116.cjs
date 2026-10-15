@@ -66,7 +66,7 @@ assert.equal(preferences.notifForm.info,false);
 const transformers = load('store/transformers.js');
 const keys = load('store/rsakeys.js');
 const device = load('pages/Devices/DeviceDetail.vue');
-const dialog = load('components/BuildLogDialog/BuildLogDialog.vue',{buildLogText:text});
+const dialog = load('components/BuildLogDialog/BuildLogDialog.vue',{buildLogText:text,buildLogSearch:logModule.exports.buildLogSearch,IconButton:{}});
 // Phase 45: the page imports the client key-name check; load the real module.
 const keyNamesModule = {exports:{}};
 new Function('module', fs.readFileSync(path.join(root,'utils/keyNames.js'),'utf8').replace(/export function (\w+)/g,'module.exports.$1 = function $1').replace(/export const (\w+) =/g,'const $1 = module.exports.$1 ='))(keyNamesModule);

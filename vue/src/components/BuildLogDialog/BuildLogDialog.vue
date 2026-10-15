@@ -1,18 +1,64 @@
 <template>
   <b-modal ref="modal" :title="'Build Log — ' + buildId" size="xl" ok-only ok-title="Close" @hidden="requestId++">
+    <div v-if="text && !loading && !error" class="build-log-search" role="search" aria-label="Search this build log" data-cy="build-log-search-bar">
+      <b-input-group class="build-log-search__field">
+        <b-input-group-prepend is-text><i class="fa fa-search" aria-hidden="true"></i></b-input-group-prepend>
+        <b-form-input ref="searchInput" v-model="searchInput" type="text" aria-label="Search this build log" placeholder="Search log (3+ characters)" autocomplete="off" spellcheck="false" data-cy="build-log-search" />
+      </b-input-group>
+      <span class="build-log-search__count" data-cy="build-log-search-count"><span aria-hidden="true">{{ countText }}</span><span class="sr-only" aria-live="polite" aria-atomic="true">{{ countSpeech }}</span></span>
+    </div>
     <div v-if="loading" role="status"><b-spinner small /> Loading build log…</div>
     <b-alert v-else-if="error" variant="danger" show>{{ error }} <b-button size="sm" @click="load">Retry</b-button></b-alert>
-    <pre v-else-if="text" class="build-log-text" data-cy="full-build-log">{{ text }}</pre>
+    <!-- Keep the <pre> and its children on one line: whitespace inside <pre> would become log text. -->
+    <pre v-else-if="text" ref="log" class="build-log-text" data-cy="full-build-log"><template v-if="result.count"><template v-for="(seg, n) in result.segments"><mark v-if="seg.match" :key="n" class="build-log-match" data-cy="build-log-match">{{ seg.text }}</mark><span v-else :key="n">{{ seg.text }}</span></template></template><template v-else>{{ text }}</template></pre>
     <p v-else class="text-muted">No log output is available for this build yet.</p>
   </b-modal>
 </template>
 
 <script>
-import { buildLogText } from '@/utils/buildLog';
+import { buildLogText, buildLogSearch } from '@/utils/buildLog';
+
+// Phase 47 (BUILD-03): browser-find style search over the full log. Matches are rendered as
+// text-only segments (interpolation, never HTML), so log content stays inert.
+const SEARCH_DEBOUNCE_MS = 200;
+
 export default {
   name: 'BuildLogDialog',
-  data() { return { buildId: '', loading: false, error: null, text: '', requestId: 0 }; },
+  data() {
+    return { buildId: '', loading: false, error: null, text: '', requestId: 0, searchInput: '', term: '', current: 0, debounceTimer: null };
+  },
+  computed: {
+    searching() { return this.term.length >= 3 && this.term.trim() !== ''; },
+    result() { return buildLogSearch(this.text, this.term); },
+    countText() {
+      if (!this.searching) return '';
+      if (!this.result.count) return 'No matches';
+      return (this.current + 1) + ' / ' + this.result.count + (this.result.capped ? '+' : '');
+    },
+    countSpeech() {
+      if (!this.searching) return '';
+      if (!this.result.count) return 'No matches';
+      return 'Match ' + (this.current + 1) + ' of ' + (this.result.capped ? 'more than ' : '') + this.result.count;
+    },
+  },
+  watch: {
+    searchInput(value) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+      if (value === this.term) return;
+      this.debounceTimer = setTimeout(() => {
+        this.debounceTimer = null;
+        this.applyTerm();
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    term() { this.current = 0; },
+    text() { this.current = 0; },
+  },
   methods: {
+    applyTerm() {
+      this.term = this.searchInput;
+      this.current = 0;
+    },
     open(build) {
       this.buildId = build.build_id || build.id || '';
       this.text = '';
