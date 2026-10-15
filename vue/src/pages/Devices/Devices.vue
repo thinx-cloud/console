@@ -23,11 +23,27 @@
     <b-alert v-if="message" variant="success" show dismissible @dismissed="message = null">{{ message }}</b-alert>
 
     <div class="d-flex align-items-center flex-wrap mb-3 device-toolbar">
-      <b-button size="sm" data-cy="view-list" :variant="viewMode === 'list' ? 'primary' : 'outline-secondary'" @click="viewMode = 'list'">
-        <span>&#9776;</span>
+      <b-button
+        size="sm"
+        data-cy="view-list"
+        :variant="viewMode === 'list' ? 'light' : 'outline-light'"
+        :aria-pressed="String(viewMode === 'list')"
+        aria-label="List view"
+        title="List view"
+        @click="viewMode = 'list'"
+      >
+        <span aria-hidden="true">&#9776;</span>
       </b-button>
-      <b-button size="sm" data-cy="view-grid" :variant="viewMode === 'grid' ? 'primary' : 'outline-secondary'" @click="viewMode = 'grid'">
-        <span>&#9635;</span>
+      <b-button
+        size="sm"
+        data-cy="view-grid"
+        :variant="viewMode === 'grid' ? 'light' : 'outline-light'"
+        :aria-pressed="String(viewMode === 'grid')"
+        aria-label="Grid view"
+        title="Grid view"
+        @click="viewMode = 'grid'"
+      >
+        <span aria-hidden="true">&#9635;</span>
       </b-button>
       <div role="group" aria-label="Filter by platform" class="d-inline-flex flex-wrap platform-pills">
         <b-button
@@ -66,16 +82,16 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(device, index) in filteredItems" :key="device.udid" data-cy="device-row">
+          <tr v-for="device in filteredItems" :key="device.udid" data-cy="device-row">
             <td>
               <div class="abc-checkbox">
                 <input
                   type="checkbox"
-                  :id="'checkbox-' + index"
+                  :id="'checkbox-' + device.udid"
                   :checked="isSelected_(device.udid)"
                   @change="toggleDevice(device.udid)"
                 />
-                <label :for="'checkbox-' + index" />
+                <label :for="'checkbox-' + device.udid" />
               </div>
             </td>
             <td>
@@ -95,6 +111,8 @@
                   v-if="missingApiKey(device)"
                   class="api-key-indicator"
                   role="img"
+                  tabindex="0"
+                  v-b-tooltip.hover.focus
                   data-cy="api-key-warning"
                   :aria-label="apiKeyTip"
                   :title="apiKeyTip"
@@ -104,6 +122,8 @@
                   v-if="statusHasError(device.status)"
                   class="status-alert"
                   role="img"
+                  tabindex="0"
+                  v-b-tooltip.hover.focus
                   aria-label="Device reported an error"
                   title="Device reported an error"
                 ><i class="fa fa-warning" aria-hidden="true"></i></span>
@@ -111,6 +131,8 @@
                   v-if="statusHasWarning(device.status)"
                   class="status-warning"
                   role="img"
+                  tabindex="0"
+                  v-b-tooltip.hover.focus
                   aria-label="Device reported a warning"
                   title="Device reported a warning"
                 ><i class="fa fa-warning" aria-hidden="true"></i></span>
@@ -169,6 +191,8 @@
                 v-if="missingApiKey(device)"
                 class="api-key-indicator"
                 role="img"
+                tabindex="0"
+                v-b-tooltip.hover.focus
                 data-cy="api-key-warning"
                 :aria-label="apiKeyTip"
                 :title="apiKeyTip"
@@ -178,6 +202,8 @@
                 v-if="statusHasError(device.status)"
                 class="status-alert"
                 role="img"
+                tabindex="0"
+                v-b-tooltip.hover.focus
                 aria-label="Device reported an error"
                 title="Device reported an error"
               ><i class="fa fa-warning" aria-hidden="true"></i></span>
@@ -185,6 +211,8 @@
                 v-if="statusHasWarning(device.status)"
                 class="status-warning"
                 role="img"
+                tabindex="0"
+                v-b-tooltip.hover.focus
                 aria-label="Device reported a warning"
                 title="Device reported a warning"
               ><i class="fa fa-warning" aria-hidden="true"></i></span>
@@ -259,7 +287,7 @@ import moment from 'moment';
 import PlatformBullet from '@/components/PlatformBullet/PlatformBullet';
 import IconButton from '@/components/IconButton/IconButton';
 import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
-import { basePlatform, platformInfo } from '@/utils/platforms';
+import { basePlatform, platformInfo, comparePlatformKeys } from '@/utils/platforms';
 
 // Tip for a device without an API key (DEV-05). Legacy's text from device.html: keyhash
 // is the key chosen for the device in the console (builds use it); devices register and
@@ -319,11 +347,7 @@ export default {
     platformPills() {
       const keys = [...new Set(this.items.map(d => basePlatform(d.platform)))];
       const pills = keys.map(key => ({ key, label: platformInfo(key).label }));
-      pills.sort((a, b) => {
-        if (a.key === 'unknown') return 1;
-        if (b.key === 'unknown') return -1;
-        return a.label.toLowerCase().localeCompare(b.label.toLowerCase());
-      });
+      pills.sort((a, b) => comparePlatformKeys(a.key, b.key));
       return [{ key: 'All', label: 'All' }, ...pills];
     },
     // The selected platform, or All once a reload no longer contains it.
@@ -349,7 +373,8 @@ export default {
       }
       result = [...result].sort((a, b) => {
         if (this.sortBy === 'lastupdate') return new Date(b.lastupdate || 0).getTime() - new Date(a.lastupdate || 0).getTime();
-        if (this.sortBy === 'platform')   return basePlatform(a.platform).localeCompare(basePlatform(b.platform)) || asText(a.alias).localeCompare(asText(b.alias));
+        // Same order as the pills: by label, unknown last (D-14), then the alias.
+        if (this.sortBy === 'platform')   return comparePlatformKeys(basePlatform(a.platform), basePlatform(b.platform)) || asText(a.alias).localeCompare(asText(b.alias));
         if (this.sortBy === 'alias')      return asText(a.alias).localeCompare(asText(b.alias));
         return 0;
       });

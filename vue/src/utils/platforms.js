@@ -45,3 +45,15 @@ export function platformInfo(raw) {
   }
   return { key, label: PLATFORMS[key].label, build: PLATFORMS[key].build };
 }
+
+// Order of two platforms by display label, case-insensitive, with unknown last (D-14: the
+// platform pills and the device list's Platform sort share it). Keys and raw values both go
+// through basePlatform, so a missing, non-string or unrecognised platform counts as unknown.
+export function comparePlatformKeys(a, b) {
+  const ka = basePlatform(a);
+  const kb = basePlatform(b);
+  if (ka === kb) return 0;
+  if (ka === 'unknown') return 1;
+  if (kb === 'unknown') return -1;
+  return PLATFORMS[ka].label.toLowerCase().localeCompare(PLATFORMS[kb].label.toLowerCase());
+}

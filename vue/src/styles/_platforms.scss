@@ -141,6 +141,22 @@ $platform-colors: (
   color: #F0AD4E;
 }
 
+// The markers are focusable for their tooltips (D-14, UI-C12): no ring on a mouse focus, a 2px
+// white ring at a 2px offset on a keyboard focus (11.04:1 on the page, 13.62:1 on the card).
+.api-key-indicator:focus,
+.status-alert:focus,
+.status-warning:focus {
+  outline: none;
+}
+
+.api-key-indicator:focus-visible,
+.status-alert:focus-visible,
+.status-warning:focus-visible {
+  outline: 2px solid #FFFFFF;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 // Firmware (UI-D15): ellipsised at 240px in the table with the full text as tip, wrapping
 // grid line. The limit sits on a block inside the <td>: max-width on a table cell is
 // undefined in CSS 2.1 and the cell grew with spare width instead (44 IN-03).
