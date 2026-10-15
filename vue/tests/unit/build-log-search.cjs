@@ -472,6 +472,176 @@ checkAsync('D7 open, load, type: the log arrives, the term is applied and two ma
   assert.equal(textOf(elementsOf(countOf(vnode))[0]), '1 / 2');
 });
 
+// ---------------------------------------------------------------- T: stepping
+
+const stepButtonOf = (vnode, cy) => one(componentsOf(vnode, 'IconButton').filter((n) => cyOf(n) === cy), cy + ' IconButton');
+
+// Replace a method on a vm with a recorder; the render functions and other methods call it.
+function record(vm, name, impl = () => {}) {
+  const calls = [];
+  vm[name] = (...args) => { calls.push(args); return impl(...args); };
+  return calls;
+}
+
+check('T1 the bar holds field, count, Previous match and Next match IconButtons; both disabled without a match', () => {
+  const found = renderDialog({ text: 'abc abc', term: 'abc' }).vnode;
+  const bar = one(barOf(found), 'build-log-search-bar');
+  const blocks = elementsOf(bar);
+  assert.equal(blocks.length, 4, 'four blocks in the bar');
+  assert.equal(blocks[0].tag, 'b-input-group');
+  assert.equal(cyOf(blocks[1]), 'build-log-search-count');
+  assert.ok(isComponent(blocks[2], 'IconButton') && cyOf(blocks[2]) === 'build-log-prev', 'third: build-log-prev IconButton');
+  assert.ok(isComponent(blocks[3], 'IconButton') && cyOf(blocks[3]) === 'build-log-next', 'fourth: build-log-next IconButton');
+  const prev = propsOf(blocks[2]);
+  const next = propsOf(blocks[3]);
+  assert.equal(prev.icon, 'fa fa-chevron-left');
+  assert.equal(prev.label, 'Previous match');
+  assert.equal(next.icon, 'fa fa-chevron-right');
+  assert.equal(next.label, 'Next match');
+  assert.equal(prev.disabled, false, 'prev enabled with matches');
+  assert.equal(next.disabled, false, 'next enabled with matches');
+  [['xyz', 'no hit'], ['ab', 'short term'], ['', 'no term']].forEach(([term, why]) => {
+    const vnode = renderDialog({ text: 'abc abc', term }).vnode;
+    assert.equal(propsOf(stepButtonOf(vnode, 'build-log-prev')).disabled, true, 'prev disabled: ' + why);
+    assert.equal(propsOf(stepButtonOf(vnode, 'build-log-next')).disabled, true, 'next disabled: ' + why);
+  });
+});
+
+check('T2 step wraps at both ends; no match leaves current at 0; one match stays on it', () => {
+  const { vm } = dialogHarness({ text: 'abc abc abc', term: 'abc', current: 2 });
+  assert.equal(typeof vm.step, 'function', 'step method');
+  vm.step(1);
+  assert.equal(vm.current, 0, 'next on the last goes to the first');
+  vm.step(-1);
+  assert.equal(vm.current, 2, 'previous on the first goes to the last');
+  vm.current = 0;
+  vm.step(1);
+  assert.equal(vm.current, 1);
+  const none = dialogHarness({ text: 'abc', term: 'xyz', current: 0 }).vm;
+  none.step(1);
+  assert.equal(none.current, 0, 'no match: unchanged');
+  none.step(-1);
+  assert.equal(none.current, 0, 'no match: unchanged');
+  const single = dialogHarness({ text: 'x abc y', term: 'abc', current: 0 }).vm;
+  single.step(1);
+  assert.equal(single.current, 0);
+  single.step(-1);
+  assert.equal(single.current, 0);
+});
+
+check('T3 only the current match carries build-log-match--current and aria-current="true"', () => {
+  const { vnode } = renderDialog({ text: 'abc abc abc', term: 'abc', current: 1 });
+  const marks = marksOf(vnode);
+  assert.equal(marks.length, 3);
+  marks.forEach((m, i) => {
+    const current = i === 1;
+    assert.equal(classList(m).includes('build-log-match--current'), current, 'mark ' + i + ' current class');
+    if (current) assert.equal(attrsOf(m)['aria-current'], 'true', 'mark ' + i + ' aria-current');
+    else assert.ok(attrsOf(m)['aria-current'] == null, 'mark ' + i + ' has no aria-current attribute');
+    assert.ok(classList(m).includes('build-log-match'), 'mark ' + i + ' keeps build-log-match');
+  });
+});
+
+const keyEvent = (key, extra = {}) => {
+  const evt = { type: 'keydown', key, keyCode: { Enter: 13, Escape: 27 }[key], shiftKey: false, prevented: 0, ...extra };
+  evt.preventDefault = () => { evt.prevented++; };
+  return evt;
+};
+const keydownOf = (vnode) => {
+  const on = fieldOf(vnode).data.on || {};
+  assert.ok(on.keydown, 'the field has a keydown handler');
+  return (evt) => (Array.isArray(on.keydown) ? on.keydown : [on.keydown]).forEach((fn) => fn(evt));
+};
+
+check('T4 Enter steps forward, Shift+Enter back, Escape is left to the modal', () => {
+  const { vm } = dialogHarness({ text: 'abc abc abc', term: 'abc' });
+  const steps = record(vm, 'step');
+  const keydown = keydownOf(rerender(vm));
+  const enter = keyEvent('Enter');
+  keydown(enter);
+  assert.deepEqual(steps, [[1]], 'Enter: step(1) once');
+  assert.equal(enter.prevented, 1, 'Enter: preventDefault once');
+  const back = keyEvent('Enter', { shiftKey: true });
+  keydown(back);
+  assert.deepEqual(steps, [[1], [-1]], 'Shift+Enter: step(-1)');
+  assert.equal(back.prevented, 1);
+  const esc = keyEvent('Escape');
+  keydown(esc);
+  assert.equal(steps.length, 2, 'Escape does not step');
+  assert.equal(esc.prevented, 0, 'Escape is not prevented');
+});
+
+checkAsync('T5 Enter while the debounce is pending applies the term at once and does not step', async () => {
+  const { vm } = dialogHarness({ text: 'xx error yy error' });
+  vm.searchInput = 'error';
+  await tick();
+  assert.ok(vm.debounceTimer, 'debounce pending');
+  assert.equal(vm.term, '');
+  const steps = record(vm, 'step');
+  const original = vm.$options.methods.applyTerm;
+  const applied = record(vm, 'applyTerm', () => original.call(vm));
+  vm.current = 1;
+  keydownOf(rerender(vm))(keyEvent('Enter'));
+  assert.equal(vm.term, 'error', 'term applied at once');
+  assert.equal(vm.current, 0, 'first match selected');
+  assert.equal(steps.length, 0, 'no step');
+  assert.equal(applied.length, 1, 'applied once');
+  assert.equal(vm.debounceTimer, null, 'timer cleared');
+  await sleep(300);
+  assert.equal(applied.length, 1, 'no later timer applies the term again');
+  assert.equal(vm.term, 'error');
+});
+
+check('T6 scrollToCurrent centres the current mark by setting only the log box scrollTop', () => {
+  const { vm } = dialogHarness({ text: 'abc', term: 'abc' });
+  assert.equal(typeof vm.scrollToCurrent, 'function', 'scrollToCurrent method');
+  const selectors = [];
+  let intoView = 0;
+  const mark = { offsetTop: 500, offsetHeight: 20, scrollIntoView: () => { intoView++; } };
+  const log = { clientHeight: 100, scrollTop: 0, querySelector: (sel) => { selectors.push(sel); return mark; } };
+  vm.$refs.log = log;
+  vm.scrollToCurrent();
+  assert.equal(log.scrollTop, 460, '500 - (100 - 20) / 2');
+  assert.deepEqual(selectors, ['.build-log-match--current'], 'queries the current mark only');
+  assert.equal(intoView, 0, 'the element scroll-into-view API is not used');
+  const empty = { clientHeight: 100, scrollTop: 37, querySelector: () => null };
+  vm.$refs.log = empty;
+  vm.scrollToCurrent();
+  assert.equal(empty.scrollTop, 37, 'no current mark: scrollTop unchanged');
+  vm.$refs.log = undefined;
+  vm.scrollToCurrent();
+});
+
+checkAsync('T7 a change of term, of text, or a step scrolls on a following tick, never synchronously', async () => {
+  const { vm } = dialogHarness({ text: 'abc abc abc' });
+  await tick();
+  const scrolls = record(vm, 'scrollToCurrent');
+  vm.term = 'abc';
+  assert.equal(scrolls.length, 0, 'term: not synchronous');
+  await tick(); await tick();
+  assert.ok(scrolls.length >= 1, 'term: scrolled after the tick');
+  scrolls.length = 0;
+  vm.text = 'abc abc abc abc';
+  assert.equal(scrolls.length, 0, 'text: not synchronous');
+  await tick(); await tick();
+  assert.ok(scrolls.length >= 1, 'text: scrolled after the tick');
+  scrolls.length = 0;
+  vm.step(1);
+  assert.equal(scrolls.length, 0, 'step: not synchronous');
+  await tick(); await tick();
+  assert.ok(scrolls.length >= 1, 'step: scrolled after the tick');
+});
+
+check('T8 a click on Next match steps forward and on Previous match steps back', () => {
+  const { vm } = dialogHarness({ text: 'abc abc', term: 'abc' });
+  const steps = record(vm, 'step');
+  const vnode = rerender(vm);
+  click(stepButtonOf(vnode, 'build-log-next'));
+  assert.deepEqual(steps, [[1]]);
+  click(stepButtonOf(vnode, 'build-log-prev'));
+  assert.deepEqual(steps, [[1], [-1]]);
+});
+
 // ---------------------------------------------------------------- compiled theme
 
 const sass = require('sass');
