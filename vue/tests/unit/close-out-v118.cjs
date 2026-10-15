@@ -606,6 +606,119 @@ checkAsync('I8 audited callers take an empty envelope without throwing and keep 
   return done.join(', ');
 });
 
+// ================================================================ H: Header and auth logout (35 IN-08, D-13)
+
+checkAsync('H1 Header logout() dispatches auth/logout once and pushes /login only after it resolves', async () => {
+  const { def } = header();
+  const gate = deferred();
+  const calls = { dispatch: [], push: [] };
+  const vm = {
+    $store: { dispatch: (...args) => { calls.dispatch.push(args); return gate.promise; } },
+    $router: { push: (location) => { calls.push.push(location); return Promise.resolve(); } },
+  };
+  const done = def.methods.logout.call(vm);
+  await tick();
+  assert.deepEqual(calls.dispatch, [['auth/logout']], 'one auth/logout dispatch');
+  assert.deepEqual(calls.push, [], 'no push while the logout is pending');
+  gate.resolve();
+  await done;
+  assert.deepEqual(calls.push, ['/login'], 'one push of /login after the logout resolved');
+  assert.equal(calls.dispatch.length, 1, 'still one dispatch');
+});
+
+checkAsync('H2 auth/logout with a failing fetch still resolves and clears the session once', async () => {
+  const auth = loadStore('store/auth.js');
+  const prevFetch = global.fetch;
+  const requests = [];
+  global.fetch = (url, opts) => { requests.push([url, opts]); return Promise.reject(new Error('offline')); };
+  const dispatched = [];
+  try {
+    await auth.actions.logout.call(
+      { $api: { composePath: (p) => 'https://api.test/api/v2' + p } },
+      { dispatch: (...args) => { dispatched.push(args); return Promise.resolve(); } },
+    );
+  } finally {
+    global.fetch = prevFetch;
+  }
+  assert.equal(requests.length, 1, 'one logout request');
+  assert.equal(requests[0][0], 'https://api.test/api/v2/logout');
+  assert.equal(requests[0][1].credentials, 'include', 'the session cookie is sent');
+  assert.deepEqual(dispatched, [['clearSession']], 'clearSession dispatched once');
+});
+
+// ================================================================ N: Notifications rows (35 IN-08)
+
+const readTest = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
+
+// A citation: the named check strings must still exist in the other test file.
+function cites(file, strings) {
+  const text = readTest(file);
+  strings.forEach((s) => assert.ok(text.includes(s), file + ' still asserts: ' + s));
+  return 'cited ' + file;
+}
+
+check('N1 a Notifications row with a build id opens the dialog once and a row without one is static', () => cites('build-log-search.cjs', [
+  "check('N1 navbar rows: buttons with a click listener only with a build id; a row without one is static and inert'",
+  "assert.equal(opened.length, 2, 'two opens')",
+  "the row without a build id has no listener (on and nativeOn empty)",
+]));
+
+// ================================================================ R: History build rows (35 IN-08, 47-REVIEW IN-10)
+
+const historyPage = lazy(() => loadSfc('pages/History/History.vue', {
+  BuildLogDialog: { name: 'BuildLogDialog', render: (h) => h('div') },
+  normPaging: loadModule('store/logPaging.js').normPaging,
+  buildStatusVariant: logUtils().buildStatusVariant,
+  hasBuildLog: logUtils().hasBuildLog,
+}));
+
+check('R1 History rowListeners: exactly click for a build log row, none otherwise', () => {
+  const { def } = historyPage();
+  const ctx = { onBuildRowClick: () => {} };
+  assert.deepEqual(Object.keys(def.methods.rowListeners.call(ctx, { build_id: 'b1' })), ['click'], 'b1: exactly click');
+  [{ build_id: '' }, { build_id: 42 }, {}].forEach((build) => {
+    assert.deepEqual(def.methods.rowListeners.call(ctx, build), {}, JSON.stringify(build) + ': no listener');
+  });
+});
+
+check('R2 History row click: an inner button target (keyboard activation of Expand or View) never opens through the row', () => {
+  const { def } = historyPage();
+  const opened = [];
+  const ctx = { openBuildLog: (b) => opened.push(b) };
+  const build = { build_id: 'b1' };
+  const prevWindow = global.window;
+  global.window = { getSelection: () => '' };
+  try {
+    const listeners = def.methods.rowListeners.call({ onBuildRowClick: (b, e) => def.methods.onBuildRowClick.call(ctx, b, e) }, build);
+    const asked = [];
+    const inner = { closest: (sel) => { asked.push(sel); return { tagName: 'BUTTON' }; } };
+    listeners.click({ target: inner });
+    assert.equal(opened.length, 0, 'a click whose target is inside an inner button does not open the log');
+    assert.ok(/\bbutton\b/.test(asked[0] || ''), 'the row asks closest() for a button');
+    listeners.click({ target: { closest: () => null } });
+    assert.deepEqual(opened, [build], 'a plain cell click opens the build once');
+  } finally {
+    global.window = prevWindow;
+  }
+});
+
+// ================================================================ E: existing coverage (35 IN-08 citations)
+
+check('E1 TransformerEditor failed-load save is covered (milestone-v116.cjs 35 CR-01)', () => cites('milestone-v116.cjs', [
+  '35 CR-01: the editor refuses to save after a failed load',
+  "'save after a failed load does not write'",
+]));
+
+check('E2 assignment from the stored selection is covered (transformers-enviros.cjs K6, milestone-v116.cjs 35 WR-02)', () => {
+  cites('transformers-enviros.cjs', ["'stored plus new, never the unsaved tick'"]);
+  return cites('milestone-v116.cjs', ['device.methods.createTransformer.call', "'unsaved selection is not written'"]);
+});
+
+check('E3 History build row without keydown is covered (milestone-v116.cjs 35 WR-01)', () => cites('milestone-v116.cjs', [
+  "'build row has no ' + attr",
+  "'click on an inner button does not open the dialog'",
+]));
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
