@@ -31,9 +31,23 @@ export default {
         }
       }
     },
+    // Resolves with the confirmed initial path once the router's initial navigation
+    // has settled: onReady's success callback, or its error callback when that
+    // navigation failed (so created() never stays pending).
+    waitForInitialRoute() {
+      return new Promise((resolve) => {
+        const done = () => resolve(this.$router.currentRoute.path);
+        this.$router.onReady(done, done);
+      });
+    },
   },
+  // The default-route decision reads the confirmed initial route (NOTIF-04, D-07).
+  // Before the initial navigation confirms, the current route is the router's start
+  // route `/`, which is what sent every reloaded deep link to the dashboard. For
+  // /app/* the Routes.js guard has already hydrated, so the hydrate below returns
+  // from the in-memory token without a request.
   async created() {
-    const currentPath = this.$router.history.current.path;
+    const currentPath = await this.waitForInitialRoute();
     // GET /api/oauth/* destroyed the API session before the provider redirect,
     // so the XSRF-TOKEN cookie on /oauth-return is stale: re-prime, don't trust it.
     const authenticated = await this.hydrateSession({ forcePrime: currentPath === "/oauth-return" });

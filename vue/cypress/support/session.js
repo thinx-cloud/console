@@ -82,28 +82,8 @@ Cypress.Commands.add('visitApp', (url, options = {}) => {
   });
 });
 
-// Enter the app at a route other than the dashboard.
-//
-//   cy.visitAppRoute('/app/history', { session: true })
-//   cy.visitAppRoute('/app/device/udid-z', { session: true, onBeforeLoad(win) { ... } })
-//
-// A hard load of a deep link such as `/#/app/history` currently lands on the
-// dashboard: after hydrateSession, src/App.vue reads
-// `$router.history.current.path` before the initial navigation has confirmed,
-// sees `/`, and pushes /app/dashboard. That is a pre-existing app bug, recorded
-// as a follow-up and deliberately NOT fixed from the test harness. This command
-// works around it without touching the app: it loads the dashboard (the route
-// the app settles on anyway), waits until it has rendered, then navigates in
-// app by setting the hash, which the hash-mode router handles like a link.
-//
-// Side effect: the dashboard requests the first audit and build pages (and the
-// devices, stats and profile) before the target route mounts. A
-// cy.wait('@alias') after this command may therefore match the dashboard's
-// request, not the target page's — assert on the target page's rendered rows.
+// Enter the app at a route with a hard load, e.g. cy.visitAppRoute('/app/history', { session: true }).
+// NOTIF-04 fixed the cold-load path (App.vue waits for the confirmed route), so specs exercise it.
 Cypress.Commands.add('visitAppRoute', (route, options = {}) => {
-  cy.visitApp('/#/app/dashboard', options);
-  cy.get('.page-title').should('contain', 'Dashboard');
-  return cy.window().then((win) => {
-    win.location.hash = '#' + route;
-  });
+  return cy.visitApp('/#' + route, options);
 });
