@@ -119,25 +119,39 @@ function renderLinkedRepository(repos, source) {
   return { anchors, hrefs, text: text.join(' ').replace(/\s+/g, ' ').trim() };
 }
 // G-36-3: render the whole real DeviceDetail page after the real loadDevice().
-async function renderDeviceDetail(builds, dev, transformerItems = []) {
+// 36 IN-01: Vue warnings are collected from before `new Vue(...)` through loadDevice() and
+// _render(), and the previous handler is restored in a finally. options.template transforms
+// the template source (mutation checks), options.extraMethods merges after the overrides, and
+// options.expectClean (default true) asserts no render error and no warning.
+async function renderDeviceDetail(builds, dev, transformerItems = [], options = {}) {
+  const { template = t => t, extraMethods = {}, expectClean = true } = options;
   const sfc = compiler.parseComponent(fs.readFileSync(path.join(root, 'pages/Devices/DeviceDetail.vue'), 'utf8'));
-  const compiled = compiler.compileToFunctions(sfc.template.content);
+  const source = template(sfc.template.content);
+  assert.deepEqual(compiler.compile(source).errors, [], 'DeviceDetail template compiles');
+  const compiled = compiler.compileToFunctions(source);
   const opened = [];
   const noop = async () => {};
   const overrides = { openBuildLog: b => opened.push(b), fetchItems: noop, loadDevices: noop, fetchBuildLog: noop, fetchTransformers: noop, fetchRepositories: noop,
     getByUdid: () => udid => (udid === dev.udid ? dev : null), getBuildItems: () => builds, getTransformers: () => transformerItems, getRepositories: () => [] };
-  const vm = new Vue({ render: compiled.render, staticRenderFns: compiled.staticRenderFns, data: device.data, computed: device.computed,
-    filters: { fromNow: v => (v ? String(v) : '—') }, components: { BuildLogDialog: { render: h => h('div') } },
-    methods: Object.assign({}, device.methods, overrides) });
-  vm.$route = { params: { udid: dev.udid } };
-  await vm.loadDevice();
   renderError = null;
   const warnings = [], prevWarn = Vue.config.warnHandler;
   Vue.config.warnHandler = msg => warnings.push(msg);
-  const vnode = vm._render();
-  Vue.config.warnHandler = prevWarn;
-  assert.equal(renderError, null, 'DeviceDetail page renders without error');
-  assert.deepEqual(warnings, [], 'DeviceDetail page renders without Vue warnings');
+  let vm, vnode;
+  try {
+    vm = new Vue({ render: compiled.render, staticRenderFns: compiled.staticRenderFns, data: device.data, computed: device.computed,
+      filters: { fromNow: v => (v ? String(v) : '—') }, components: { BuildLogDialog: { render: h => h('div') } },
+      methods: Object.assign({}, device.methods, overrides, extraMethods) });
+    vm.$route = { params: { udid: dev.udid } };
+    await vm.loadDevice();
+    vnode = vm._render();
+  } finally {
+    Vue.config.warnHandler = prevWarn;
+  }
+  const error = renderError;
+  if (expectClean) {
+    assert.equal(error, null, 'DeviceDetail page renders without error');
+    assert.deepEqual(warnings, [], 'DeviceDetail page renders without Vue warnings');
+  }
   const nodes = [];
   (function walk(node) { if (!node) return; nodes.push(node); (node.children || []).forEach(walk); })(vnode);
   const cy = node => (node.data && node.data.attrs && node.data.attrs['data-cy']) || null;
@@ -147,7 +161,23 @@ async function renderDeviceDetail(builds, dev, transformerItems = []) {
   const rows = tbody ? (tbody.children || []).filter(n => n.tag === 'tr') : [];
   const buttons = card ? under(card, n => cy(n) === 'build-open-log') : [];
   const textOf = top => under(top, n => !n.tag && n.text).map(n => n.text).join(' ').replace(/\s+/g, ' ').trim();
-  return { vm, opened, nodes, card, rows, buttons, text: textOf(vnode), textOf, under };
+  return { vm, opened, nodes, card, rows, buttons, text: textOf(vnode), textOf, under, warnings, error };
+}
+// 36 WR-01: inside the Build History card only the Open build log buttons may carry a listener
+// (on or nativeOn, so @click.native counts), and no other node in a row may have a tabindex or
+// a role. Returns every node that breaks this, with the reason.
+function buildHistoryViolations(page) {
+  assert.ok(page.card, 'page has a Build History card');
+  const out = [];
+  const attrs = n => (n.data && n.data.attrs) || {};
+  const listens = n => !!(n.data && ((n.data.on && Object.keys(n.data.on).length) || (n.data.nativeOn && Object.keys(n.data.nativeOn).length)));
+  for (const n of page.under(page.card, () => true)) {
+    if (!page.buttons.includes(n) && listens(n)) out.push({ tag: n.tag, why: 'listener' });
+  }
+  for (const row of page.rows) for (const n of page.under(row, () => true)) {
+    if (!page.buttons.includes(n) && ('tabindex' in attrs(n) || 'role' in attrs(n))) out.push({ tag: n.tag, why: 'tabindex or role' });
+  }
+  return out;
 }
 const httpsCard = renderLinkedRepository([{ id: 'r1', alias: 'Firmware repo', url: 'https://github.com/org/repo.git' }], 'r1');
 assert.equal(httpsCard.anchors.length, 1, 'https repository URL renders exactly one link');
@@ -367,6 +397,41 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   device.methods.openBuildLog.call({ $refs: { buildLogDialog: { open: b => dialogOpened.push(b) } } }, devPage.vm.buildHistory[1]);
   assert.equal(dialogOpened.length, 1, 'openBuildLog hands the build to BuildLogDialog.open');
   assert.equal(dialogOpened[0], devPage.vm.buildHistory[1], 'BuildLogDialog.open receives the same build object');
+  // 36 WR-01: the whole card, not only the <tr>: only the View buttons listen or take focus.
+  assert.deepEqual(buildHistoryViolations(devPage), [], 'Build History: only the Open build log buttons carry listeners, tabindex or role');
+  assert.deepEqual(buildHistoryViolations(idlessPage), [], 'Build History without a build id: nothing interactive but the one View button');
+  // UI-B15: the row without a build id holds the No build log placeholder and no View button.
+  const noLog = idlessPage.under(idlessPage.rows[1], n => attrsOf(n)['data-cy'] === 'build-no-log');
+  assert.equal(noLog.length, 1, 'the row without a build id has one build-no-log placeholder');
+  assert.ok(idlessPage.textOf(noLog[0]).includes('No build log'), 'the placeholder reads No build log for screen readers');
+  assert.equal(idlessPage.under(idlessPage.rows[1], n => attrsOf(n)['data-cy'] === 'build-open-log').length, 0, 'the row without a build id has no View button');
+  // Mutation checks: each change must alter the template, and the walk must report it.
+  const mutate = (from, to) => t => {
+    assert.equal(t.split(from).length - 1, 1, 'mutation anchor found once: ' + from);
+    const out = t.replace(from, to);
+    assert.notEqual(out, t, 'mutation changes the template: ' + to);
+    return out;
+  };
+  const mutations = [
+    ['(a) click handler on the Build ID cell', mutate('<td><code>{{ build.build_id }}</code></td>', '<td @click="openBuildLog(build)"><code>{{ build.build_id }}</code></td>')],
+    ['(b) keydown Enter handler on the <code>', mutate('<code>{{ build.build_id }}</code>', '<code @keydown.enter="openBuildLog(build)">{{ build.build_id }}</code>')],
+    ['(c) @click.native on the status badge', mutate('<b-badge :variant="buildStatusVariant(build.status)">', '<b-badge :variant="buildStatusVariant(build.status)" @click.native="openBuildLog(build)">')],
+    ['(d) tabindex on the date cell', mutate('<td>{{ build.date | fromNow }}</td>', '<td tabindex="0">{{ build.date | fromNow }}</td>')],
+  ];
+  for (const [name, template] of mutations) {
+    const mutated = await renderDeviceDetail(zBuilds, zDev, [], { template, expectClean: false });
+    assert.equal(mutated.error, null, name + ': renders without error');
+    assert.equal(mutated.rows.length, 2, name + ': both rows render');
+    const found = buildHistoryViolations(mutated);
+    assert.ok(found.length >= 1, name + ': the Build History guard reports a violation');
+    console.log('WR-01 mutation ' + name + ': ' + found.length + ' violation(s), ' + found.map(v => v.tag + ' ' + v.why).filter((v, i, a) => a.indexOf(v) === i).join(', '));
+  }
+  // 36 IN-01: a method named like a DeviceDetail data property warns at construction, and the
+  // warning is now collected (it was emitted before the handler was installed).
+  const collided = await renderDeviceDetail(zBuilds, zDev, [], { extraMethods: { buildHistory() { return []; } }, expectClean: false });
+  assert.ok(collided.warnings.length > 0, 'a construction-time warning is collected');
+  assert.ok(collided.warnings.some(w => String(w).includes('buildHistory')), 'the collected warning names the colliding key');
+  console.log('IN-01 collision check: ' + collided.warnings.length + ' warning(s) collected, first: ' + String(collided.warnings[0]).split('\n')[0]);
   // G-37-5: transformer assignment is one checkbox per transformer; Manage Transformers is a filled orange button (operator 2026-10-12).
   const tDev = { udid: 'udid-t', alias: 'tango-01', transformers: ['t2'], environment: {} };
   const tItems = [{ utid: 't1', alias: 'Alpha' }, { utid: 't2', alias: 'passthrough' }, { utid: 't3' }];
