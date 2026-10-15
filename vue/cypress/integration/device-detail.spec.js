@@ -104,11 +104,14 @@ describe('Device Detail feature', function() {
         { method: 'GET', pathname: '/api/v2/logs/build/build-1' },
         { statusCode: 200, body: { success: true, response: { contents: 'FULL LOG build-1' } } }
       ).as('getBuildDetail');
-      cy.get('[data-cy=card-build-history] tbody tr').first().find('td').first().click();
+      // 36 WR-01: click every cell except the last (the one holding the View button).
+      cy.get('[data-cy=card-build-history] tbody tr').first().find('td').not(':last').each($td => cy.wrap($td).click());
+      // 36 IN-03: this length-0 check is what proves the cell clicks sent no request.
+      cy.get('@getBuildDetail.all').should('have.length', 0);
       cy.get('[data-cy=card-build-history] [data-cy=build-open-log]').click();
       cy.wait('@getBuildDetail');
       cy.get('[data-cy=full-build-log]').should('contain', 'FULL LOG build-1');
-      // A request from the row click above would make this 2.
+      // The View click made exactly one request; the cells were already checked above.
       cy.get('@getBuildDetail.all').should('have.length', 1);
     });
 
