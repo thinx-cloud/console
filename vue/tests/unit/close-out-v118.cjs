@@ -972,6 +972,105 @@ check('W2 compiled theme: .device-detail-content max-width 1140px, no margin; im
   assert.equal(lines[lines.indexOf("@import 'build-log';") + 1], "@import 'device-detail';", 'right after build-log');
 });
 
+// ================================================================ M: account menu (POL-01, D-16, UI-C07..UI-C09)
+
+// The children a named old-syntax slot (`<template slot="x">`) contributes to an element vnode.
+function slotChildren(n, name) {
+  const marked = (n.children || []).filter((c) => c.data && c.data.slot === name);
+  return marked.length === 1 && marked[0].tag === 'template' ? (marked[0].children || []) : marked;
+}
+
+check('M1 the account menu toggle is a user icon named Account menu with an Account tip; items unchanged', () => {
+  const { def, source } = header();
+  assert.ok(!source.includes('flaticon-settings-10'), 'no settings cog in Header.vue');
+  const r = renderPage(def, { profile: {} });
+  assert.equal(r.error, null, 'Header renders without error');
+  assert.deepEqual(r.warnings, [], 'Header renders without Vue warnings');
+  const dropdown = one(byCy(r.vnode, 'settings-dropdown'), 'settings-dropdown');
+  assert.equal(dropdown.tag, 'b-nav-item-dropdown');
+  assert.ok('no-caret' in attrsOf(dropdown) && 'right' in attrsOf(dropdown), 'no-caret and right kept');
+  assert.deepEqual(classList(dropdown), ['mr-2'], 'class mr-2');
+  assert.equal(attrsOf(dropdown)['menu-class'], 'dropdown-menu-settings', 'menu class kept');
+  const content = slotChildren(dropdown, 'button-content');
+  assert.deepEqual(content.filter((c) => !c.tag && c.text.trim() !== ''), [], 'no loose text in the toggle');
+  const [glyph, name, ...rest] = content.filter((c) => c.tag);
+  assert.deepEqual(rest, [], 'two toggle children');
+  assert.equal(glyph.tag, 'i', 'glyph is an i');
+  assert.deepEqual(classList(glyph), ['la', 'la-user-circle', 'account-menu-icon'], 'la la-user-circle account-menu-icon');
+  assert.equal(attrsOf(glyph).title, 'Account', 'hover tip Account');
+  assert.equal(attrsOf(glyph)['aria-hidden'], 'true', 'glyph aria-hidden');
+  assert.equal(name.tag, 'span', 'name is a span');
+  assert.deepEqual(classList(name), ['sr-only'], 'visually hidden name');
+  assert.equal(textOf(name), 'Account menu', 'accessible name Account menu');
+  const items = elementsOf(dropdown).filter((c) => !(c.data && c.data.slot));
+  assert.deepEqual(items.map((c) => c.tag), ['b-dropdown-item', 'b-dropdown-divider', 'b-dropdown-item-button'], 'two items and a divider');
+  assert.equal(attrsOf(items[0]).to, '/app/profile', 'My Profile goes to /app/profile');
+  assert.equal(cyOf(items[0]), 'header-profile', 'header-profile hook kept');
+  assert.deepEqual(classList(one(byTag(items[0], 'i'), 'profile glyph')), ['la', 'la-user']);
+  assert.equal(textOf(items[0]), 'My Profile');
+  assert.deepEqual(classList(one(byTag(items[2], 'i'), 'logout glyph')), ['la', 'la-sign-out']);
+  assert.equal(textOf(items[2]), 'Log Out');
+  assert.ok(items[2].data.on && items[2].data.on.click, 'Log Out has its click handler');
+});
+
+const headerRules = lazy(() => cssRules(sass.compile(path.join(SRC, 'components', 'Header', 'Header.scss'), {
+  style: 'compressed',
+  quietDeps: true,
+  logger: sass.Logger.silent,
+}).css));
+
+check('M2 compiled Header.scss: .account-menu-icon has padding 0 8px', () => {
+  const bodies = headerRules().filter((r) => r.selectors.some((s) => /(^|\s)\.account-menu-icon$/.test(loose(s)))).map((r) => r.body);
+  assert.ok(bodies.length, '.account-menu-icon has a rule');
+  assert.equal(value(bodies, 'padding'), '0 8px', 'padding 0 8px');
+});
+
+// ================================================================ C: danger alert contrast (D-14, UI-C15, UI-C16)
+
+// WCAG 2.x relative luminance and contrast of two #rrggbb / #rgb colours.
+function rgbOf(hex) {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  assert.match(full, /^[0-9a-f]{6}$/i, 'a #rgb or #rrggbb colour: ' + hex);
+  return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+}
+function luminanceOf(hex) {
+  const [r, g, b] = rgbOf(hex).map((v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function contrastOf(a, b) {
+  const [hi, lo] = [luminanceOf(a), luminanceOf(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+const ruleIndex = (pred) => allRules().findIndex((r) => r.media === '' && pred(r.selectors.map(loose)));
+
+check('C1 compiled theme: .alert-danger text and close button are #fff after the generic close rule, at least 4.5:1', () => {
+  const danger = decls('.alert-danger');
+  assert.equal(value(danger, 'color'), '#fff', '.alert-danger color #fff');
+  const bg = value(danger, 'background');
+  const ratio = contrastOf('#fff', bg);
+  assert.ok(ratio >= 4.5, 'white on ' + bg + ' is ' + ratio.toFixed(2) + ':1');
+  const close = ruleIndex((s) => s.includes('.alert-danger .close') && s.includes('.alert-danger button.close'));
+  assert.ok(close !== -1, 'a rule for .alert-danger .close, .alert-danger button.close');
+  assert.equal(value([allRules()[close].body], 'color'), '#fff', 'close button color #fff');
+  assert.equal(value([allRules()[close].body], 'opacity'), '1', 'close button opacity 1');
+  const generic = ruleIndex((s) => s.includes('.alert button.close'));
+  assert.ok(generic !== -1 && generic < close, 'the danger close rule comes after .alert button.close');
+  return 'white on ' + bg + ' ' + ratio.toFixed(2) + ':1';
+});
+
+check('C2 compiled theme: success, info, warning and transparent danger alerts and the danger inner button are unchanged', () => {
+  const header = value(decls('.alert-default'), 'color');
+  assert.ok(header && header !== '#fff', 'the mixin header colour: ' + header);
+  ['.alert-success', '.alert-info', '.alert-warning'].forEach((sel) => assert.equal(value(decls(sel), 'color'), header, sel + ' keeps the header colour'));
+  const dangerBg = value(decls('.alert-danger'), 'background');
+  assert.equal(value(decls('.alert-danger.alert-transparent'), 'color'), dangerBg, 'transparent danger keeps the danger colour');
+  const btn = decls('.alert-danger .btn:not(.btn-default)');
+  assert.equal(value(btn, 'color'), dangerBg, 'danger inner button text keeps the danger colour');
+  assert.equal(value(btn, 'background'), value(decls('.alert-success .btn:not(.btn-default)'), 'background'), 'danger inner button background as the other variants');
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
