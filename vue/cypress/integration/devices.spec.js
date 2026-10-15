@@ -17,19 +17,28 @@ describe('Devices feature', function() {
     cy.wait('@getDevices');
   });
 
-  it('Should display category filter pills (DEVI-01)', function() {
-    // 'All' plus the seven CATEGORY_COLORS keys.
-    cy.get('[data-cy^=category-pill-]').should('have.length', 8);
-    cy.get('[data-cy=category-pill-All]').should('have.class', 'btn-primary');
+  it('Should display platform filter pills (DEVI-01, Phase 44)', function() {
+    // 'All' plus one pill per platform in devices.json: gamma-probe is MongooseOS
+    // (mongoose); esp32 and esp8266 are not PLATFORMS keys, so they share unknown.
+    cy.get('[data-cy^=platform-pill-]').should('have.length', 3);
+    cy.get('[data-cy=platform-pill-All]').should('have.class', 'btn-light');
+    cy.get('[data-cy=platform-pill-All]').should('have.attr', 'aria-pressed', 'true');
+    cy.get('[data-cy=platform-pill-mongoose]').should('have.attr', 'aria-pressed', 'false');
+    cy.get('[data-cy=platform-pill-unknown]').should('have.attr', 'aria-pressed', 'false');
     cy.get('@consoleError').should('not.have.been.called');
   });
 
-  it('Should filter devices by category (DEVI-01)', function() {
+  it('Should filter devices by platform (DEVI-01)', function() {
     cy.get('[data-cy=device-row]').should('have.length', 4);
-    cy.get('[data-cy=category-pill-green]').click();
-    cy.get('[data-cy=device-row]').should('have.length', 2);
-    cy.get('[data-cy=device-row]').should('contain', 'zephyr-01').and('contain', 'beta-node');
-    cy.get('[data-cy=device-row]').should('not.contain', 'alpha-node');
+    cy.get('[data-cy=platform-pill-mongoose]').click();
+    cy.get('[data-cy=platform-pill-mongoose]').should('have.attr', 'aria-pressed', 'true');
+    cy.get('[data-cy=device-row]').should('have.length', 1).and('contain', 'gamma-probe');
+    cy.get('[data-cy=platform-pill-unknown]').click();
+    cy.get('[data-cy=device-row]').should('have.length', 3);
+    cy.get('[data-cy=device-row]').should('contain', 'zephyr-01').and('contain', 'alpha-node').and('contain', 'beta-node');
+    cy.get('[data-cy=device-row]').should('not.contain', 'gamma-probe');
+    cy.get('[data-cy=platform-pill-All]').click();
+    cy.get('[data-cy=device-row]').should('have.length', 4);
   });
 
   it('Should sort devices by alias (DEVI-02)', function() {
@@ -48,6 +57,16 @@ describe('Devices feature', function() {
     });
   });
 
+  it('Should sort by platform label with unknown last (D-14)', function() {
+    cy.get('[data-cy=device-sort]').select('platform');
+    // MongooseOS first, then the unknown platforms, each group by alias. Function-style
+    // .should() for the same reason as DEVI-02.
+    cy.get('[data-cy=device-row]').should(($rows) => {
+      const aliases = $rows.toArray().map((row) => Cypress.$(row).find('td').eq(2).text().trim());
+      expect(aliases).to.deep.equal(['gamma-probe', 'alpha-node', 'beta-node', 'zephyr-01']);
+    });
+  });
+
   it('Should search devices by alias substring (DEVI-03)', function() {
     cy.get('[data-cy=device-search]').type('node');
     cy.get('[data-cy=device-row]').should('have.length', 2);
@@ -57,12 +76,23 @@ describe('Devices feature', function() {
   });
 
   it('Should toggle to grid view (DEVI-04)', function() {
+    // The glyph-only toggles carry a name and a pressed state (D-14).
+    cy.get('[data-cy=view-list]').should('have.attr', 'aria-label', 'List view');
+    cy.get('[data-cy=view-list]').should('have.attr', 'title', 'List view');
+    cy.get('[data-cy=view-grid]').should('have.attr', 'aria-label', 'Grid view');
+    cy.get('[data-cy=view-grid]').should('have.attr', 'title', 'Grid view');
+    cy.get('[data-cy=view-list]').should('have.attr', 'aria-pressed', 'true');
+    cy.get('[data-cy=view-grid]').should('have.attr', 'aria-pressed', 'false');
     cy.get('[data-cy=device-card]').should('not.exist');
     cy.get('[data-cy=view-grid]').click();
     cy.get('[data-cy=device-card]').should('have.length', 4);
     cy.get('table.table').should('not.exist');
+    cy.get('[data-cy=view-grid]').should('have.attr', 'aria-pressed', 'true');
+    cy.get('[data-cy=view-list]').should('have.attr', 'aria-pressed', 'false');
     cy.get('[data-cy=view-list]').click();
     cy.get('table.table').should('be.visible');
+    cy.get('[data-cy=view-list]').should('have.attr', 'aria-pressed', 'true');
+    cy.get('[data-cy=view-grid]').should('have.attr', 'aria-pressed', 'false');
   });
 
   it('Should revoke a single device with confirmation (DEVI-05)', function() {
@@ -83,18 +113,22 @@ describe('Devices feature', function() {
   it('Should bulk revoke selected devices (DEVI-06)', function() {
     cy.intercept({ method: 'GET', pathname: '/api/v2/device' }, { fixture: 'api/devices-after-revoke.json' }).as('getDevicesAfterRevoke');
 
-    // The inputs are visually hidden by the .abc-checkbox styling.
-    cy.get('#checkbox-0').check({ force: true });
-    cy.get('#checkbox-1').check({ force: true });
+    // Rows are picked by content; checkbox ids come from the udid (D-14). The inputs
+    // are visually hidden by the .abc-checkbox styling.
+    cy.contains('[data-cy=device-row]', 'zephyr-01').find('input[type=checkbox]')
+      .should('have.attr', 'id', 'checkbox-udid-z')
+      .check({ force: true });
+    cy.contains('[data-cy=device-row]', 'alpha-node').find('input[type=checkbox]').check({ force: true });
     cy.get('[data-cy=bulk-revoke]').should('contain', 'Revoke (2)').click();
     cy.get('.modal-footer .btn-danger').click();
 
-    cy.wait('@revokeDevices').its('request.body.udids').should('have.length', 2);
+    cy.wait('@revokeDevices').its('request.body.udids').should('have.length', 2)
+      .and('have.members', ['udid-z', 'udid-a']);
     cy.get('.alert-success').should('contain', 'Devices revoked.');
   });
 
   it('Should transfer a device (DEVI-07)', function() {
-    cy.get('#checkbox-0').check({ force: true });
+    cy.contains('[data-cy=device-row]', 'zephyr-01').find('input[type=checkbox]').check({ force: true });
     cy.get('[data-cy=bulk-transfer]').click();
     cy.get('#transfer-modal').should('be.visible');
     cy.get('#transfer-to').type('new-owner@example.test');
@@ -110,7 +144,7 @@ describe('Devices feature', function() {
   });
 
   it('Should push configuration to selected devices (DEVI-08)', function() {
-    cy.get('#checkbox-0').check({ force: true });
+    cy.contains('[data-cy=device-row]', 'zephyr-01').find('input[type=checkbox]').check({ force: true });
     cy.get('[data-cy=bulk-push]').click();
     cy.get('#push-config-modal').should('be.visible');
     // Both env.json globals render as checkboxes; clicking the label toggles the
@@ -134,6 +168,16 @@ describe('Devices feature', function() {
       build: { udid: 'udid-z', source_id: 'src-1', dryrun: false },
     });
     cy.get('.alert-success').should('contain', 'Build triggered.');
+  });
+
+  it('Should reach the API-key marker by keyboard and show its tip (D-14)', function() {
+    // No device in devices.json has a keyhash, so every row shows the marker.
+    cy.get('[data-cy=api-key-warning]').first().as('apiKeyMarker');
+    cy.get('@apiKeyMarker').should('have.attr', 'tabindex', '0');
+    cy.get('@apiKeyMarker').focus();
+    cy.get('.tooltip-inner').should('be.visible').and('contain', 'No API Key assigned');
+    cy.get('@apiKeyMarker').blur();
+    cy.get('.tooltip-inner').should('not.exist');
   });
 
 });

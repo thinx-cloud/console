@@ -8,11 +8,13 @@
 // Fixture-to-spec map, and the load-bearing properties of each fixture that
 // specs actually depend on (change these values and something below silently
 // diverges rather than failing loudly):
-//   - devices.json      — devices.spec.js + device-detail.spec.js. Two devices
-//     are category "green" (DEVI-01 filter), two aliases contain "node"
-//     (DEVI-03 search), and the alias-ascending order (DEVI-02) is the
-//     REVERSE of the default lastupdate-descending order — a fixture that
-//     happened to already be alias-sorted would hide a broken sort.
+//   - devices.json      — devices.spec.js + device-detail.spec.js. One device
+//     is mongoose and three are platforms outside PLATFORMS (esp32, esp8266),
+//     so the pills are All, MongooseOS and unknown (DEVI-01); no device has a
+//     keyhash, so every row shows the API-key marker (D-14); two aliases
+//     contain "node" (DEVI-03 search), and the alias-ascending order (DEVI-02)
+//     is the REVERSE of the default lastupdate-descending order — a fixture
+//     that happened to already be alias-sorted would hide a broken sort.
 //   - build-log.json    — dashboard.spec.js + history.spec.js +
 //     device-detail.spec.js. build-1's log contents must exceed ~400 chars or
 //     HIST-03's Expand/Collapse button never renders (History.vue only shows

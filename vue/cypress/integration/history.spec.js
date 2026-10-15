@@ -24,8 +24,8 @@ describe('History feature', function() {
     beforeEach(function() {
       cy.visitAppRoute('/app/history', { session: true });
       cy.wait(['@getAuditLog', '@getBuildLog']);
-      // The waits above may be satisfied by the dashboard that cy.visitAppRoute
-      // passes through; wait for History's own rows before any test runs.
+      // visitAppRoute is a plain hard load (NOTIF-04), so History itself sent the
+      // requests above; wait for its rendered rows before any test runs.
       cy.get('.page-title').should('contain', 'History');
       cy.get('[data-cy=audit-row]').should('have.length', 4);
     });
@@ -88,8 +88,8 @@ describe('History feature', function() {
     // Two-page stubs (26-RESEARCH.md "Cypress: two-page stub"). Registered AFTER
     // the outer beforeEach's cy.stubThinxApi(), so they outrank its catch-all and
     // its @getAuditLog / @getBuildLog intercepts (Pitfall 11). The handler branches
-    // on the cursor query parameter: no cursor is a first-page request (History,
-    // and the dashboard / Header / Notifications on the way in), a cursor is a
+    // on the cursor query parameter: no cursor is a first-page request (History's
+    // own, and any from Header / Notifications on the same load), a cursor is a
     // Load more. `auditFailures` / `buildFailures` say how many cursor requests
     // answer 500 before the stub starts answering with page 2.
     function stubPagedLogs({ auditFailures = 0, buildFailures = 0 } = {}) {
@@ -114,9 +114,8 @@ describe('History feature', function() {
     }
 
     // Cursor (Load more) requests seen so far by a paged intercept. cy.wait('@alias')
-    // yields the OLDEST unwaited request, and the dashboard that visitAppRoute
-    // passes through has already sent first-page requests, so a Load more
-    // request is picked out of `.all` by its cursor instead.
+    // yields the OLDEST unwaited request, and History's own first-page request is
+    // already in `.all`, so a Load more request is picked out by its cursor instead.
     function cursorCalls(alias) {
       return cy.get(`${alias}.all`).then((calls) =>
         calls.filter((call) => new URL(call.request.url).searchParams.get('cursor')));
@@ -245,8 +244,8 @@ describe('History feature', function() {
       stubPagedLogs();
       openPagedHistory();
       cy.get('[data-cy=audit-filter-hint]').should('not.exist');
-      // Snapshot only after History's rows are visible, so the dashboard's and
-      // History's own first-page requests are already counted.
+      // Snapshot only after History's rows are visible, so every first-page
+      // request of the hard load is already counted.
       cy.get('@getAuditLogPaged.all').its('length').then((before) => {
         // Date filter.
         cy.get('.tab-pane.active [data-cy=date-from]').type('2026-09-21');

@@ -5,7 +5,8 @@ describe('Device Detail feature', function() {
     cy.stubThinxApi();
   });
 
-  it('Should navigate to device detail on Detail button click (DEVI-10)', function() {
+  it('Should navigate to device detail from the row Edit button (DEVI-10)', function() {
+    // A plain hard load of the device list (cy.visitAppRoute, NOTIF-04).
     cy.visitAppRoute('/app/devices', {
       session: true,
       onBeforeLoad(win) {
@@ -27,9 +28,8 @@ describe('Device Detail feature', function() {
   describe('once on the detail page', function() {
 
     beforeEach(function() {
-      // visitAppRoute enters through the dashboard (see cypress/support/session.js),
-      // which may satisfy these waits itself; the assertions below retry on the
-      // rendered detail page, so they do not depend on which request matched.
+      // visitAppRoute is a plain hard load of the detail route (NOTIF-04), so the
+      // detail page itself sends the three requests these waits match.
       cy.visitAppRoute('/app/device/udid-z', { session: true });
       cy.wait(['@getDevices', '@getBuildLog', '@getProfile']);
     });
@@ -117,6 +117,38 @@ describe('Device Detail feature', function() {
 
     it('Should display Transfer button in Actions card (DEVI-11)', function() {
       cy.get('[data-cy=card-actions] [data-cy=action-transfer]').should('be.visible').and('contain', 'Transfer Device');
+    });
+
+    it('Should send one build request for a double click on Build Firmware (POL-01, D-17)', function() {
+      // Registered after stubThinxApi, so it outranks the base build stub. The delay
+      // keeps the first request in flight while the second click lands.
+      cy.intercept({ method: 'POST', pathname: '/api/v2/build' }, (req) => req.reply({
+        delay: 800,
+        statusCode: 200,
+        body: { success: true, response: 'build_started' },
+      })).as('buildFirmware');
+
+      // Two native clicks in the same tick, before Vue re-renders the disabled button.
+      cy.get('[data-cy=action-build]').then(($b) => {
+        $b[0].click();
+        $b[0].click();
+      });
+      cy.get('[data-cy=action-build]').should('be.disabled');
+      cy.get('[data-cy=action-build-spinner]').should('exist');
+      cy.get('[data-cy=action-build-status]').should('have.text', 'Requesting build…');
+
+      cy.wait('@buildFirmware');
+      cy.get('[data-cy=device-detail-content] .alert-success').should('contain', 'Build triggered.');
+      cy.get('[data-cy=action-build]').should('be.enabled');
+      cy.get('[data-cy=action-build-spinner]').should('not.exist');
+      cy.get('@buildFirmware.all').should('have.length', 1);
+    });
+
+    it('Should cap the content column at 1140px (POL-01, D-18)', function() {
+      cy.get('[data-cy=device-detail-content]').should('have.css', 'max-width', '1140px');
+      cy.get('[data-cy=device-detail-content]').find('[data-cy=card-actions]').should('exist');
+      cy.get('[data-cy=device-detail-content] .page-title').should('not.exist');
+      cy.get('.page-title').should('exist');
     });
 
   });
