@@ -9,9 +9,12 @@
 //   H  Header logout and the auth store logout (35 IN-08, D-13);
 //   N  Notifications build rows (35 IN-08);
 //   R  History build rows (35 IN-08, 47-REVIEW IN-10);
-//   E  citations of existing coverage for the other 35 IN-08 bullets.
-// 48-03 extends this file with F (Build Firmware), W (content column), M (account menu),
-// C (theme contrast) and L (device list).
+//   E  citations of existing coverage for the other 35 IN-08 bullets;
+//   F  Device Detail Build Firmware in-flight state (POL-01, D-17);
+//   W  Device Detail content column (POL-01, D-18);
+//   M  header account menu (POL-01, D-16);
+//   C  danger alert contrast in the compiled theme (D-14);
+//   L  device list toggles, markers, platform sort and checkbox ids (D-14).
 //
 // SFC templates are compiled with vue-template-compiler (whitespace: 'condense', as
 // vue-cli does) and rendered with vue.runtime.common; bootstrap-vue elements (b-*) stay
@@ -1232,6 +1235,15 @@ check('L6 row checkbox ids follow the udid and stay with their row after a re-so
   assert.equal(cols.length, L_FLEET.length, 'one grid card per device');
   cols.forEach((col) => assert.equal(attrsOf(one(byTag(col, 'input'), 'grid checkbox')).id, 'grid-checkbox-' + col.key));
 });
+
+// device-list-parity.cjs runs in the same test:unit chain; this asserts it still carries the
+// Phase 48 harness changes and the label-titled sort check, so its pass is the L7 evidence.
+check('L7 device-list-parity.cjs renders Devices.vue with the no-op tooltip and the comparator, sort check by label', () => cites('device-list-parity.cjs', [
+  "Vue.directive('b-tooltip', {});",
+  'comparePlatformKeys: p.comparePlatformKeys',
+  "check('sort Platform orders by platform label, unknown last, then alias; Last Update and Alias unchanged'",
+  "['Alpha', 'Bravo', 'Hotel', 'Echo', 'Charlie', 'Delta', 'Foxtrot', 'Golf'], 'platform sort order'",
+]));
 
 check('L8 a missing or unrecognised platform sorts with unknown at the end; a missing alias sorts first in its platform', () => {
   const fleet = [
