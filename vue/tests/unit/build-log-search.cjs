@@ -906,6 +906,165 @@ check('C3 sources: six !default tokens, one build-log import after settings-page
   });
 });
 
+check('V7 compiled theme: .build-actions spaces View and Download 8px apart on one line', () => {
+  expectDecls('.build-actions', { display: 'inline-flex', 'align-items': 'center', gap: '8px' });
+});
+
+// ---------------------------------------------------------------- V: dashboard Recent Builds card
+
+// A component stub that keeps its name, so the render tree can be searched for it.
+const namedStub = (name) => ({ name, render: (h) => h('div') });
+
+const visits = lazy(() => loadSfc('pages/Visits/Visits.vue', {
+  buildStatusVariant: logUtils().buildStatusVariant,
+  CheckinsTimeline: namedStub('CheckinsTimeline'),
+  hostnameMixin: {},
+  BuildLogDialog: namedStub('BuildLogDialog'),
+}));
+
+// The store getters the page's computed properties and loadData call (mapGetters is stubbed).
+const VISITS_GETTERS = {
+  getTimeline: () => null,
+  getStats: () => null,
+  getToday: () => null,
+  getDevices: () => [],
+  getAudit: () => [],
+  getBuildLog: () => [],
+  getProfile: () => ({}),
+};
+
+// Render the dashboard with loading false; no Vue warning and no render error allowed.
+function renderVisits(state = {}) {
+  const { def } = visits();
+  const page = renderPage(Object.assign({}, def, { methods: Object.assign({}, def.methods, VISITS_GETTERS) }), state);
+  assert.equal(page.error, null, 'Visits renders without error');
+  assert.deepEqual(page.warnings, [], 'Visits renders without Vue warnings');
+  return page;
+}
+
+const visitBuilds = () => [
+  { build_id: 'b1', status: 'OK', name: 'zephyr-01', udid: 'udid-zephyr', date: Date.UTC(2026, 9, 14, 12) },
+  { build_id: '', status: 'FAILED', udid: 'udid-x', date: Date.UTC(2026, 9, 14, 11) },
+];
+
+const buildsCardOf = (vnode) => one(byCy(vnode, 'recent-builds'), 'recent-builds card');
+const rowsOf = (card) => byTag(one(byTag(card, 'tbody'), 'tbody'), 'tr');
+const lastCellOf = (row) => { const cells = elementsOf(row); return cells[cells.length - 1]; };
+const hasListener = (n) => {
+  const d = n.data || {};
+  return Object.keys(d.on || {}).length > 0 || Object.keys(d.nativeOn || {}).length > 0
+    || !!(n.componentOptions && Object.keys(n.componentOptions.listeners || {}).length);
+};
+const isInert = (n) => !hasListener(n) && !('tabindex' in attrsOf(n)) && !('role' in attrsOf(n));
+
+check('V1 the dashboard Recent Builds card has the columns Time, Device, Status, Actions', () => {
+  const card = buildsCardOf(renderVisits({ buildItems: visitBuilds() }).vnode);
+  assert.deepEqual(byTag(card, 'th').map(textOf), ['Time', 'Device', 'Status', 'Actions']);
+  assert.equal(rowsOf(card).length, 2, 'one row per build');
+});
+
+check('V2 a row with a build id: View (link, p-0, eye, aria-label) then Download inside .build-actions in .actions-cell', () => {
+  const card = buildsCardOf(renderVisits({ buildItems: visitBuilds() }).vnode);
+  const cell = lastCellOf(rowsOf(card)[0]);
+  assert.equal(cell.tag, 'td');
+  assert.ok(classList(cell).includes('actions-cell'), 'td.actions-cell');
+  const wrap = one(elementsOf(cell), 'element in the actions cell');
+  assert.equal(wrap.tag, 'span');
+  assert.ok(classList(wrap).includes('build-actions'), 'span.build-actions');
+  const [view, download, ...rest] = elementsOf(wrap);
+  assert.equal(rest.length, 0, 'two buttons in .build-actions');
+  assert.equal(view && view.tag, 'b-button');
+  assert.equal(cyOf(view), 'build-open-log', 'View comes first');
+  const a = attrsOf(view);
+  assert.equal(a.size, 'sm');
+  assert.equal(a.variant, 'link');
+  assert.ok(classList(view).includes('p-0'), 'View has p-0');
+  assert.equal(a['aria-label'], 'Open build log b1');
+  assert.equal(textOf(view), 'View');
+  const eye = one(byTag(view, 'i'), 'eye glyph');
+  assert.ok(classList(eye).includes('la') && classList(eye).includes('la-eye'), 'la la-eye');
+  assert.equal(attrsOf(eye)['aria-hidden'], 'true');
+  assert.ok(a['aria-label'].startsWith(textOf(view)), 'the accessible name starts with the visible text');
+  assert.equal(download && download.tag, 'b-button');
+  assert.equal(cyOf(download), 'build-download', 'Download comes second');
+  assert.equal(attrsOf(download).variant, 'primary');
+  assert.equal(textOf(download), 'Download');
+});
+
+check('V3 a row without a build id: the No build log placeholder, no View, no Download, nothing interactive', () => {
+  const card = buildsCardOf(renderVisits({ buildItems: visitBuilds() }).vnode);
+  const cell = lastCellOf(rowsOf(card)[1]);
+  const holder = one(byCy(cell, 'build-no-log'), 'build-no-log placeholder');
+  assert.equal(holder.tag, 'span');
+  const [dash, sr, ...rest] = elementsOf(holder);
+  assert.equal(rest.length, 0, 'two spans in the placeholder');
+  assert.equal(attrsOf(dash)['aria-hidden'], 'true');
+  assert.equal(textOf(dash), '—');
+  assert.ok(classList(sr).includes('sr-only'), 'screen-reader text');
+  assert.equal(textOf(sr), 'No build log');
+  assert.equal(byCy(cell, 'build-open-log').length, 0, 'no View');
+  assert.equal(byCy(cell, 'build-download').length, 0, 'no Download');
+  nodesOf(cell).filter((n) => n.tag).forEach((n) => assert.ok(isInert(n), n.tag + ' has no listener, tabindex or role'));
+});
+
+check('V4 the time cell is text-nowrap without inline style; no muted text in the card; rows are inert; empty line', () => {
+  const card = buildsCardOf(renderVisits({ buildItems: visitBuilds() }).vnode);
+  rowsOf(card).forEach((row, i) => {
+    const time = elementsOf(row)[0];
+    assert.ok(classList(time).includes('text-nowrap'), 'row ' + i + ' time cell text-nowrap');
+    assert.ok(!time.data.staticStyle && !time.data.style, 'row ' + i + ' time cell has no inline style');
+    assert.ok(isInert(row), 'row ' + i + ' has no listener, tabindex or role');
+  });
+  assert.equal(byClass(card, 'text-muted').length, 0, 'no text-muted in the card');
+  const empty = buildsCardOf(renderVisits({ buildItems: [] }).vnode);
+  assert.equal(byTag(empty, 'table').length, 0, 'no table without builds');
+  const line = elementsOf(empty).find((n) => textOf(n) === 'No builds yet.');
+  assert.ok(line, 'No builds yet. line');
+  assert.ok(!classList(line).includes('text-muted'), 'the empty line is body colour');
+  assert.equal(byClass(empty, 'text-muted').length, 0, 'no text-muted in the empty card');
+});
+
+check('V5 one BuildLogDialog with ref buildLogDialog, also while loading; View hands its own row to open()', () => {
+  const { vm, vnode } = renderVisits({ buildItems: visitBuilds() });
+  const dlg = one(componentsOf(vnode, 'BuildLogDialog'), 'BuildLogDialog');
+  assert.equal(dlg.data.ref, 'buildLogDialog');
+  const loadingPage = renderVisits({ loading: true, buildItems: visitBuilds() }).vnode;
+  assert.equal(componentsOf(loadingPage, 'BuildLogDialog').length, 1, 'the dialog is outside the loading branch');
+  const opened = [];
+  vm.$refs.buildLogDialog = { open: (b) => { opened.push(b); return Promise.resolve(); } };
+  click(one(byCy(buildsCardOf(vnode), 'build-open-log'), 'build-open-log'));
+  assert.equal(opened.length, 1, 'open() called once');
+  assert.equal(opened[0], vm.buildItems[0], 'open() receives the same row object');
+});
+
+// The real store module: fetchBuildDetail runs with an $api recorder (logPaging inlined).
+const buildlogStore = lazy(() => loadModule('store/buildlog.js', (s) => read('store/logPaging.js').replace(/^export /gm, '') + '\n' + s.replace('export default', 'export const store =')).store);
+
+checkAsync('V6 end to end: View on a row with a build id makes one GET /logs/build/b1; a row without one makes none', async () => {
+  const store = buildlogStore();
+  assert.equal(typeof store.actions.fetchBuildDetail, 'function', 'fetchBuildDetail action');
+  const run = async (row) => {
+    const gets = [];
+    const $api = { $get: (p) => { gets.push(p); return Promise.resolve({ success: true, response: { contents: 'log for ' + p } }); } };
+    const h = dialogHarness({}, (action, payload) => store.actions[action.split('/')[1]].call({ $api }, {}, payload));
+    const { vm } = renderVisits({ buildItems: visitBuilds() });
+    vm.$refs.buildLogDialog = h.vm;
+    assert.equal(typeof vm.openBuildLog, 'function', 'Visits has openBuildLog');
+    await vm.openBuildLog(row);
+    await tick();
+    await tick();
+    return { gets, show: h.calls.show, text: h.vm.text };
+  };
+  const [withId, withoutId] = visitBuilds();
+  const a = await run(withId);
+  assert.deepEqual(a.gets, ['/logs/build/b1'], 'one GET for b1');
+  assert.equal(a.show, 1, 'modal shown once');
+  assert.equal(a.text, 'log for /logs/build/b1');
+  const b = await run(withoutId);
+  assert.deepEqual(b.gets, [], 'no request without a build id');
+  assert.equal(b.show, 0, 'the modal stays closed');
+});
+
 // Referenced by the checks that 47-02 adds; kept so the harness stays whole.
 void [expand, renderPage];
 
