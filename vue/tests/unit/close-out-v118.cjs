@@ -702,6 +702,41 @@ check('R2 History row click: an inner button target (keyboard activation of Expa
   }
 });
 
+// ================================================================ T: Device Detail Create & Assign (35 IN-08)
+
+const deviceDetailPage = lazy(() => loadSfc('pages/Devices/DeviceDetail.vue', {
+  BuildLogDialog: { name: 'BuildLogDialog', render: (h) => h('div') },
+  moment: () => ({ fromNow: () => '' }),
+  parseEnvironmentJSON: () => ({ ok: true }),
+  buildStatusVariant: logUtils().buildStatusVariant,
+  hasBuildLog: logUtils().hasBuildLog,
+  confirmLeave: async () => true,
+}));
+
+checkAsync('T1 Create & Assign: a failed assignment write reports it, keeps the modal open and resets the saving flag', async () => {
+  const { def } = deviceDetailPage();
+  const calls = { update: [], hide: 0, load: 0 };
+  const vm = Object.assign(def.data.call({}), {
+    device: { udid: 'd', transformers: ['existing'] },
+    editForm: { transformers: ['existing', 'unsaved'] },
+    transformerForm: { alias: 'New', body: 'return status;' },
+    getTransformers: () => [],
+    createTransformerItem: async () => ({ success: true, utid: 'new' }),
+    updateDevice: async (x) => { calls.update.push(x); return { success: false }; },
+    loadDevice: async () => { calls.load++; },
+    $bvModal: { hide: () => { calls.hide++; } },
+  });
+  await def.methods.createTransformer.call(vm, { preventDefault() {} });
+  assert.equal(calls.update.length, 1, 'one assignment write');
+  assert.deepEqual(calls.update[0].changes.transformers, ['existing', 'new'], 'stored plus new');
+  assert.equal(vm.transformerError, 'Transformer created, but assignment failed. Tick it in the list and save to retry.');
+  assert.equal(calls.hide, 0, 'the modal stays open');
+  assert.equal(calls.load, 0, 'no reload');
+  assert.equal(vm.transformerSaving, false, 'saving flag reset');
+  assert.deepEqual(vm.device.transformers, ['existing'], 'the stored list is unchanged');
+  assert.ok(!vm.message, 'no success message');
+});
+
 // ================================================================ E: existing coverage (35 IN-08 citations)
 
 check('E1 TransformerEditor failed-load save is covered (milestone-v116.cjs 35 CR-01)', () => cites('milestone-v116.cjs', [
