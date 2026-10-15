@@ -8,12 +8,12 @@
       <b-list-group-item v-if="!recentBuilds.length" class="listGroupItem">
         <p class="m-0 text-muted">No recent builds.</p>
       </b-list-group-item>
-      <!-- A row is a button only with a build id; without one it is static text (D-14). -->
+      <!-- A row is a button only with a build log (hasBuildLog); without one it is static text (D-14). -->
       <b-list-group-item
         v-for="build in recentBuilds"
         :key="build.id || `${build.date}-${build.name || build.udid}`"
-        :class="['listGroupItem', { 'listGroupItem--static': !build.build_id }]"
-        :button="!!build.build_id"
+        :class="['listGroupItem', { 'listGroupItem--static': !hasBuildLog(build) }]"
+        :button="hasBuildLog(build)"
         data-cy="recent-build"
         v-on="rowListeners(build)"
       >
@@ -49,7 +49,7 @@
 import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import Vue from 'vue';
 import { mapActions, mapGetters } from 'vuex';
-import { buildStatusVariant } from '@/utils/buildLog';
+import { buildStatusVariant, hasBuildLog } from '@/utils/buildLog';
 
 export default {
   name: 'Notification',
@@ -73,11 +73,11 @@ export default {
     this.loadNotifications();
   },
   methods: {
+    hasBuildLog,
     openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
-    // Only a row with a build id gets a click listener; a row without one sends no request.
+    // Only a row with a build log gets a click listener; a row without one sends no request.
     rowListeners(build) {
-      if (typeof build.build_id === 'string' && build.build_id) return { click: () => this.openBuildLog(build) };
-      return {};
+      return hasBuildLog(build) ? { click: () => this.openBuildLog(build) } : {};
     },
     ...mapGetters({ getBuildLog: 'buildlog/getItems' }),
     ...mapActions({ fetchBuildLog: 'buildlog/fetchBuildLog' }),
