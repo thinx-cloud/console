@@ -16,7 +16,9 @@
     "test:csp:dist": "node tests/security/csp.cjs --dist",
     "test:unit": "node tests/unit/env-json.cjs && node tests/unit/apikey-created-dialog.cjs && node tests/unit/footer-hostnames.cjs && node tests/unit/log-paging-store.cjs && node tests/unit/table-row-contrast.cjs && node tests/unit/milestone-v116.cjs && node tests/unit/login-page.cjs && node tests/unit/device-list-parity.cjs && node tests/unit/deploy-key-actions.cjs && node tests/unit/github-token-scopes.cjs && node tests/unit/transformers-enviros.cjs && node tests/unit/build-log-search.cjs && node tests/unit/close-out-v118.cjs",
     "cy:open": "cypress open",
-    "test": "start-server-and-test serve http://127.0.0.1:3000/ cy:test",
+    "test": "VUE_APP_API_HOSTNAME= start-server-and-test serve http://127.0.0.1:3000/ cy:test",
+    "cy:test:ci": "cypress run --reporter junit --reporter-options 'mochaFile=cypress/results/junit-[hash].xml'",
+    "test:ci": "VUE_APP_API_HOSTNAME= start-server-and-test serve http://127.0.0.1:3000/ cy:test:ci",
     "eslint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "doc-drift": "node ../scripts/doc-drift.js",
     "prepare": "cd .. && npx husky install"

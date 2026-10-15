@@ -21,5 +21,6 @@ yarn-error.log*
 *.sw*
 cypress/videos
 cypress/screenshots
+cypress/results
 
 .env

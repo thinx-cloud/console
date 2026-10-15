@@ -30,5 +30,9 @@ describe('OAuth return feature', function() {
       expect(seen[0], 'first API call').to.eq('prime');
       expect(seen.filter((c) => c === 'prime'), 'one shared prime').to.have.length(1);
     });
+    // The run is same-origin (VUE_APP_API_HOSTNAME= in test/test:ci), so the API is the dev
+    // server's own origin. Only that lets the stubbed prime's Set-Cookie replace the stale
+    // XSRF-TOKEN cookie, as in production; ensureCsrfToken is unchanged (D-04).
+    cy.get('@login').its('request.url').should('eq', Cypress.config('baseUrl') + '/api/v2/login');
   });
 });
