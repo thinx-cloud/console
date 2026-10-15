@@ -1,8 +1,9 @@
-// Network stubs for the six spec files that do not use live credentials.
+// Network stubs for the spec files that do not use live credentials.
 //
-// Intercepts match on `pathname`, not a full URL, because VUE_APP_API_HOSTNAME
-// is a remote host in CI (https://rtm.thinx.cloud) and falls back to
-// window.location.origin locally. Matching the path alone works in both.
+// Intercepts match on `pathname`, not a full URL. `test` and `test:ci` start the
+// dev server with VUE_APP_API_HOSTNAME= (empty), so the app falls back to
+// window.location.origin and calls the dev server's own origin (D-04); a run
+// with a remote API host still matches because only the path is compared.
 //
 // Fixture-to-spec map, and the load-bearing properties of each fixture that
 // specs actually depend on (change these values and something below silently
@@ -19,6 +20,8 @@
 //   - audit-log.json    — dashboard.spec.js + history.spec.js. Exactly one
 //     entry carries the `danger` flag, and the oldest entry is 2026-09-10 —
 //     both are asserted on directly by name/count, not just "some rows exist".
+
+import { forgeJwt } from './session';
 
 const API = '/api/v2';
 
@@ -75,4 +78,24 @@ Cypress.Commands.add('stubThinxApi', (overrides = {}) => {
   // saveNotifications and uploadAvatar share the route (store/profile.js:93,98).
   cy.intercept({ method: 'POST', pathname: `${API}/profile` }, ok('profile_updated')).as('postProfile');
   cy.intercept({ method: 'DELETE', pathname: `${API}/user` }, ok('user_deleted')).as('deleteAccount');
+});
+
+// The CI login (D-02): the Vue login form posts { username, password } to
+// /api/v2/login (pages/Login/Login.vue), the endpoint CONTEXT D-02 calls
+// /api/login. Call this AFTER cy.stubThinxApi() so it outranks the catch-all.
+//   cy.stubLogin()                     // 200, forged access and refresh tokens
+//   cy.stubLogin({ success: false })   // 403, the app shows "Login failed: …"
+// Any credentials are accepted; no real account is involved.
+Cypress.Commands.add('stubLogin', ({ success = true } = {}) => {
+  const reply = success
+    ? {
+      statusCode: 200,
+      body: {
+        success: true,
+        access_token: forgeJwt(),
+        refresh_token: forgeJwt({ expiresInSeconds: 86400 }),
+      },
+    }
+    : { statusCode: 403, body: { success: false, message: 'invalid credentials (stub)' } };
+  cy.intercept({ method: 'POST', pathname: `${API}/login` }, reply).as('login');
 });
