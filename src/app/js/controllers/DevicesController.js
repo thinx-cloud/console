@@ -114,8 +114,10 @@ angular.module( "RTM" ).controller( "DevicesController", [ "$rootScope", "$scope
             }
           }
 
+          // The build reply carries no status field (Phase 43 carry, D-09, UI-C19): fixed copy only,
+          // no reply value reaches toastr (it renders HTML).
           toastr.info(
-            response.status + "<br><br>Click to show build log...",
+            ( response.response === "queued" ? "Build queued." : "Build started." ) + "<br><br>Click to show build log...",
             "THiNX Builder",
             {
               timeOut: 3000,

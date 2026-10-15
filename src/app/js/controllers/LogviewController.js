@@ -57,11 +57,12 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
         // open websocket
         $rootScope.wss = new WebSocket( "<ENV::wssUrl>/" + $rootScope.profile.owner );
 
+        // Always subscribe first, so a tab whose first socket opens from the log overlay still
+        // receives Build Status and device frames (D-09, 43-REVIEW IN-04); then tail the selected build.
         $rootScope.wss.onopen = function() {
+          $rootScope.wssinit();
           if ( typeof( $rootScope.modalBuildId ) !== "undefined" ) {
             $rootScope.wsstailLog( $rootScope.modalBuildId );
-          } else {
-            $rootScope.wssinit();
           }
         };
         $rootScope.wss.onmessage = function( message ) {
@@ -138,7 +139,10 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
     // $rootScope.logdata.buffer[$rootScope.modalBuildId] = "";
     $rootScope.logdata[ build_id ] = "";
     $rootScope.modalBuildId = build_id;
-    $rootScope.wss.send( JSON.stringify( message ) );
+    // A connecting socket would throw InvalidStateError; it sends the tail from its own onopen.
+    if ( $rootScope.wss && $rootScope.wss.readyState === 1 ) {
+      $rootScope.wss.send( JSON.stringify( message ) );
+    }
   };
 
   $rootScope.wssinit = function() {
@@ -223,7 +227,14 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
             timestamp: nowTime
           };
 
-          // prepare user metadata for particular device
+          // prepare user metadata for particular device; a device with no build history has
+          // no array yet, and a throw here would lose the frame's toast (43-UI-REVIEW fix 3, D-09)
+          if ( typeof( $rootScope.meta.deviceBuilds ) !== "object" || $rootScope.meta.deviceBuilds === null ) {
+            $rootScope.meta.deviceBuilds = {};
+          }
+          if ( !Array.isArray( $rootScope.meta.deviceBuilds[ msg.udid ] ) ) {
+            $rootScope.meta.deviceBuilds[ msg.udid ] = [];
+          }
           $rootScope.meta.deviceBuilds[ msg.udid ].push( buildRecord );
           $scope.$apply();
 

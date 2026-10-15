@@ -357,8 +357,9 @@ function init( $rootScope, $scope ) {
     $rootScope.deploykeys = Array.isArray(data.response) ? data.response : [];
     safeApply( $scope );
 
-    // save user-spcific goal achievement
-    if ( $rootScope.profile && $rootScope.profile.info && Array.isArray($rootScope.profile.info.goals) ) {
+    // save user-spcific goal achievement; same rule as the sibling handlers (goals.length > 0),
+    // kept null-safe (35 IN-05)
+    if ( $rootScope.profile && $rootScope.profile.info && Array.isArray( $rootScope.profile.info.goals ) && $rootScope.profile.info.goals.length > 0 ) {
       if ( !$rootScope.profile.info.goals.includes( "deploykey" ) && $rootScope.deploykeys.length > 0 ) {
         $rootScope.profile.info.goals.push( "deploykey" );
         $scope.$emit( "saveProfileChanges", [ "goals" ] );

@@ -269,7 +269,8 @@ check('G7 updateDeploykeys records the goal only for a non-empty goals array, nu
   const started = loadApi({ info: { goals: ['build'] } });
   started.deploykeys(KEYS);
   assert.deepEqual(started.$rootScope.profile.info.goals, ['build', 'deploykey']);
-  assert.deepEqual(started.emits.filter(e => e[0] === 'saveProfileChanges'), [['saveProfileChanges', ['goals']]]);
+  // The emitted array comes from the vm realm: compare by value, not by prototype.
+  assert.equal(JSON.stringify(started.emits.filter(e => e[0] === 'saveProfileChanges')), JSON.stringify([['saveProfileChanges', ['goals']]]));
   for (const profile of [undefined, {}, { info: {} }]) {
     const r = loadApi(profile);
     r.deploykeys(KEYS);
