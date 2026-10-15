@@ -3,7 +3,7 @@
     <div v-if="text && !loading && !error" class="build-log-search" role="search" aria-label="Search this build log" data-cy="build-log-search-bar">
       <b-input-group class="build-log-search__field">
         <b-input-group-prepend is-text><i class="fa fa-search" aria-hidden="true"></i></b-input-group-prepend>
-        <b-form-input ref="searchInput" v-model="searchInput" type="text" aria-label="Search this build log" placeholder="Search log (3+ characters)" autocomplete="off" spellcheck="false" data-cy="build-log-search" @keydown.enter.prevent="onSearchEnter" />
+        <b-form-input v-model="searchInput" type="text" aria-label="Search this build log" placeholder="Search log (3+ characters)" autocomplete="off" spellcheck="false" data-cy="build-log-search" @keydown.enter.prevent="onSearchEnter" />
       </b-input-group>
       <span class="build-log-search__count" data-cy="build-log-search-count"><span aria-hidden="true">{{ countText }}</span><span class="sr-only" aria-live="polite" aria-atomic="true">{{ countSpeech }}</span></span>
       <IconButton icon="fa fa-chevron-left" label="Previous match" :disabled="!result.count" data-cy="build-log-prev" @click="step(-1)" />
@@ -18,7 +18,7 @@
 </template>
 
 <script>
-import { buildLogText, buildLogSearch } from '@/utils/buildLog';
+import { buildLogText, buildLogSearch, hasBuildLog } from '@/utils/buildLog';
 import IconButton from '@/components/IconButton/IconButton';
 
 // Phase 47 (BUILD-03): browser-find style search over the full log. Matches are rendered as
@@ -95,11 +95,12 @@ export default {
       if (!mark) return;
       log.scrollTop = mark.offsetTop - (log.clientHeight - mark.offsetHeight) / 2;
     },
-    // Only the row's own build_id is used (D-15): a row without one never shows the dialog
-    // or requests /logs/build/<list index>. Each open forgets the previous search (D-12).
+    // Only the row's own build_id is used (D-15), and the shared hasBuildLog predicate decides:
+    // a row without a build log never shows the dialog or requests /logs/build/<list index>.
+    // Each open forgets the previous search (D-12).
     open(build) {
-      const buildId = build && build.build_id;
-      if (typeof buildId !== 'string' || buildId === '') return Promise.resolve();
+      if (!hasBuildLog(build)) return Promise.resolve();
+      const buildId = build.build_id;
       this.cancelDebounce();
       this.searchInput = '';
       this.term = '';

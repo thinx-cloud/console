@@ -23,6 +23,13 @@ export function buildLogText(detail) {
   return lines(detail.log).join('\n');
 }
 
+// The one rule every build list and the dialog use to decide whether a row has a build log:
+// only a non-empty string build_id counts; a list-index id or a non-string id never does
+// (47-REVIEW WR-01).
+export function hasBuildLog(build) {
+  return !!build && typeof build.build_id === 'string' && build.build_id !== '';
+}
+
 // One colour per normalized build status, shared by every build list (TIMEOUT is not a failure colour).
 export function buildStatusVariant(status) {
   const normalized = String(status || '').toUpperCase();

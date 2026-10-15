@@ -84,8 +84,8 @@
                     <b-badge :variant="badgeVariant(item.status)">{{ item.status || '—' }}</b-badge>
                   </td>
                   <td class="actions-cell">
-                    <span v-if="item.build_id" class="build-actions">
-                      <b-button size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'Open build log ' + item.build_id" @click="openBuildLog(item)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
+                    <span v-if="hasBuildLog(item)" class="build-actions">
+                      <b-button size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'View build log ' + item.build_id" @click="openBuildLog(item)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
                       <b-button
                         size="sm"
                         variant="primary"
@@ -109,7 +109,7 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
-import { buildStatusVariant } from '@/utils/buildLog';
+import { buildStatusVariant, hasBuildLog } from '@/utils/buildLog';
 import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import CheckinsTimeline from './components/CheckinsTimeline/CheckinsTimeline.vue';
 import hostnameMixin from '@/mixins/hostnames';
@@ -230,6 +230,7 @@ export default {
     badgeVariant(status) {
       return buildStatusVariant(status);
     },
+    hasBuildLog,
     // The dialog refuses a row without a build_id, a second guard behind the template (UI-B13).
     openBuildLog(build) {
       this.$refs.buildLogDialog.open(build);
