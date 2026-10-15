@@ -754,6 +754,223 @@ check('E3 History build row without keydown is covered (milestone-v116.cjs 35 WR
   "'click on an inner button does not open the dialog'",
 ]));
 
+// ================================================================ F: Build Firmware in flight (POL-01, D-17, UI-C04, UI-C05)
+
+const F_DEVICE = { udid: 'udid-foxtrot', alias: 'foxtrot-01', source: 'src-foxtrot', transformers: [], environment: {} };
+
+// A rendered Device Detail on F_DEVICE with the getters it reads replaced.
+function detailPage(state = {}) {
+  const r = renderPage(deviceDetailPage().def, Object.assign({
+    device: JSON.parse(JSON.stringify(F_DEVICE)),
+    editForm: { alias: F_DEVICE.alias, description: '', transformers: [] },
+    getTransformers: () => [],
+    getRepositories: () => [],
+  }, state));
+  assert.equal(r.error, null, 'DeviceDetail renders without error');
+  assert.deepEqual(r.warnings, [], 'DeviceDetail renders without Vue warnings');
+  return r;
+}
+
+const one = (list, label) => { assert.equal(list.length, 1, 'exactly one ' + label); return list[0]; };
+const elementsOf = (n) => (n.children || []).filter((c) => c.tag);
+const strayTextOf = (n) => (n.children || []).filter((c) => !c.tag && typeof c.text === 'string' && c.text.trim() !== '');
+const buildButtonOf = (vnode) => one(byCy(vnode, 'action-build'), 'action-build button');
+const buildStatusOf = (vnode) => one(byCy(vnode, 'action-build-status'), 'action-build-status');
+
+check('F1 idle Build Firmware: primary, enabled, ref buildButton, cog glyph and label, empty status next to it', () => {
+  const { vnode } = detailPage();
+  const button = buildButtonOf(vnode);
+  assert.equal(button.tag, 'b-button', 'a b-button');
+  assert.equal(attrsOf(button).variant, 'primary', 'variant primary');
+  assert.deepEqual(classList(button), ['mr-2', 'mb-2'], 'class mr-2 mb-2');
+  assert.equal(attrsOf(button).disabled, false, 'not disabled');
+  assert.equal(button.data.ref, 'buildButton', 'ref buildButton');
+  assert.deepEqual(strayTextOf(button), [], 'no loose text in the button');
+  const [glyph, label, ...rest] = elementsOf(button);
+  assert.deepEqual(rest, [], 'two children');
+  assert.equal(glyph.tag, 'i', 'glyph is an i');
+  assert.deepEqual(classList(glyph), ['fa', 'fa-cogs'], 'fa fa-cogs, no margin utility');
+  assert.equal(attrsOf(glyph)['aria-hidden'], 'true', 'glyph aria-hidden');
+  assert.equal(label.tag, 'span', 'label is a span');
+  assert.deepEqual(classList(label), ['button-text'], 'span.button-text');
+  assert.equal(textOf(label), 'Build Firmware');
+  assert.equal(byTag(button, 'b-spinner').length, 0, 'no spinner');
+  const status = buildStatusOf(vnode);
+  assert.equal(status.tag, 'span', 'status is a span');
+  assert.deepEqual(classList(status), ['sr-only'], 'visually hidden');
+  assert.equal(attrsOf(status).role, 'status', 'role status');
+  assert.equal(textOf(status), '', 'status empty while idle');
+  const card = one(byCy(vnode, 'card-actions'), 'card-actions');
+  const kids = elementsOf(card);
+  assert.equal(kids.indexOf(status), kids.indexOf(button) + 1, 'the status sits right after the button');
+});
+
+check('F2 pending Build Firmware: disabled, small aria-hidden spinner instead of the cog, same label, status Requesting build…', () => {
+  const { vnode } = detailPage({ buildPending: true });
+  const button = buildButtonOf(vnode);
+  assert.equal(attrsOf(button).disabled, true, 'disabled while pending');
+  const [spinner, label, ...rest] = elementsOf(button);
+  assert.deepEqual(rest, [], 'two children');
+  assert.equal(spinner.tag, 'b-spinner', 'a b-spinner first');
+  assert.ok('small' in attrsOf(spinner), 'spinner is small');
+  assert.equal(attrsOf(spinner)['aria-hidden'], 'true', 'spinner aria-hidden');
+  assert.equal(cyOf(spinner), 'action-build-spinner', 'spinner hook');
+  assert.equal(byClass(button, 'fa-cogs').length, 0, 'no cog while pending');
+  assert.deepEqual(classList(label), ['button-text'], 'span.button-text');
+  assert.equal(textOf(label), 'Build Firmware', 'the label does not change');
+  assert.equal(textOf(buildStatusOf(vnode)), 'Requesting build…', 'status announces the request');
+});
+
+checkAsync('F3 a second buildDevice() while the first is in flight sends nothing and touches no alert', async () => {
+  const { vm } = detailPage();
+  const calls = [];
+  const gate = deferred();
+  vm.buildFirmware = (x) => { calls.push(x); return gate.promise; };
+  const first = vm.buildDevice();
+  assert.equal(vm.buildPending, true, 'pending after the click');
+  vm.error = 'kept error';
+  vm.message = 'kept message';
+  assert.equal(await settledWithin(vm.buildDevice()), 'resolved', 'the second call returns at once');
+  assert.equal(calls.length, 1, 'one buildFirmware call');
+  assert.deepEqual(calls[0], { udid: F_DEVICE.udid, source_id: F_DEVICE.source }, 'udid and source_id');
+  assert.equal(vm.error, 'kept error', 'the second call leaves error alone');
+  assert.equal(vm.message, 'kept message', 'the second call leaves message alone');
+  gate.resolve({ success: true });
+  await first;
+  assert.equal(vm.buildPending, false, 'pending ends when the request settles');
+});
+
+// Run one buildDevice() against a buildFirmware that answers `outcome` (a function result or a throw).
+async function runBuild(vm, outcome) {
+  vm.buildFirmware = () => (outcome instanceof Error ? Promise.reject(outcome) : Promise.resolve(outcome));
+  await vm.buildDevice();
+  return vm;
+}
+
+checkAsync('F4 accepted, refused and thrown requests all end the pending state with the right alert', async () => {
+  const cases = [
+    [{ success: true }, 'Build triggered.', null],
+    [{ success: false, response: 'no_source' }, null, 'no_source'],
+    [{ success: false }, null, 'Build failed.'],
+    [new Error('network down'), null, 'Build failed.'],
+  ];
+  for (const [outcome, message, error] of cases) {
+    const label = outcome instanceof Error ? 'thrown' : JSON.stringify(outcome);
+    const vm = await runBuild(detailPage().vm, outcome);
+    assert.equal(vm.buildPending, false, label + ': buildPending false');
+    assert.equal(vm.message, message, label + ': message');
+    assert.equal(vm.error, error, label + ': error');
+  }
+  return cases.length + ' outcomes';
+});
+
+checkAsync('F5 empty and non-string reasons give Build failed.; a usable reason is shown verbatim as text', async () => {
+  const blank = [undefined, null, { success: false, response: '' }, { success: false, response: ' \t\n' },
+    { success: false, message: 42 }, { success: false, response: { code: 1 } }];
+  for (const outcome of blank) {
+    const vm = await runBuild(detailPage().vm, outcome);
+    assert.equal(vm.error, 'Build failed.', JSON.stringify(outcome) + ': Build failed.');
+    assert.equal(vm.message, null, JSON.stringify(outcome) + ': no success message');
+  }
+  const quota = await runBuild(detailPage().vm, { success: false, message: 'Quota reached' });
+  assert.equal(quota.error, 'Quota reached', 'a message reason is shown');
+  const markup = '<img src=x onerror=alert(1)>';
+  const r = detailPage();
+  await runBuild(r.vm, { success: false, response: markup });
+  const alert = one(byTag(rerender(r.vm), 'b-alert').filter((n) => attrsOf(n).variant === 'danger'), 'danger alert');
+  assert.equal(textOf(alert), markup, 'the reason reaches the alert as text');
+  assert.ok(!(alert.data.domProps && 'innerHTML' in alert.data.domProps), 'never as HTML');
+});
+
+checkAsync('F6 each result clears the other alert first', async () => {
+  const vm = detailPage().vm;
+  await runBuild(vm, { success: false, response: 'no_source' });
+  assert.equal(vm.error, 'no_source');
+  await runBuild(vm, { success: true });
+  assert.equal(vm.error, null, 'a success clears the error');
+  assert.equal(vm.message, 'Build triggered.');
+  await runBuild(vm, { success: false });
+  assert.equal(vm.message, null, 'an error clears the success');
+  assert.equal(vm.error, 'Build failed.');
+});
+
+checkAsync('F7 focus returns to Build Firmware after the request only when it had focus at click time', async () => {
+  const prevDocument = global.document;
+  const element = () => ({ focused: 0, focus() { this.focused++; } });
+  try {
+    for (const form of ['component', 'element']) {
+      const button = element();
+      global.document = { activeElement: button };
+      const { vm } = detailPage();
+      vm.$refs.buildButton = form === 'component' ? { $el: button } : button;
+      const gate = deferred();
+      vm.buildFirmware = () => gate.promise;
+      const done = vm.buildDevice();
+      global.document.activeElement = null; // the disabled button drops focus to the body
+      assert.equal(button.focused, 0, form + ': no focus call while pending');
+      gate.resolve({ success: true });
+      await done;
+      await tick();
+      assert.equal(button.focused, 1, form + ': focused once after the request settled');
+    }
+    const button = element();
+    global.document = { activeElement: element() };
+    const { vm } = detailPage();
+    vm.$refs.buildButton = { $el: button };
+    vm.buildFirmware = () => Promise.resolve({ success: false });
+    await vm.buildDevice();
+    await tick();
+    assert.equal(button.focused, 0, 'another element had focus: Build Firmware is never focused');
+  } finally {
+    global.document = prevDocument;
+  }
+});
+
+check('F8 DeviceDetail.vue: no old cog markup, buildDevice returns early on buildPending, no raw-HTML directive', () => {
+  const { def, source, template } = deviceDetailPage();
+  assert.ok(!source.includes('fa fa-cogs mr-1'), 'no fa fa-cogs mr-1');
+  assert.ok(!/\bv-html\b/.test(template), 'no v-html in the template');
+  assert.match(def.methods.buildDevice.toString(), /^async buildDevice\(\)\s*\{\s*if \(this\.buildPending\) return;/, 'buildDevice starts with the buildPending guard');
+  assert.equal(def.data.call({}).buildPending, false, 'buildPending starts false');
+});
+
+// ================================================================ W: Device Detail content column (POL-01, D-18, UI-C06)
+
+check('W1 device-detail-content wraps the alerts, Actions and the card row; breadcrumb, title and modals stay outside', () => {
+  const { vnode } = detailPage({ error: 'some error', message: 'some message' });
+  const column = one(byCy(vnode, 'device-detail-content'), 'device-detail-content');
+  assert.equal(column.tag, 'div', 'a div');
+  assert.deepEqual(classList(column), ['device-detail-content'], 'class device-detail-content');
+  const top = elementsOf(vnode);
+  const at = (n) => top.indexOf(n);
+  const breadcrumb = one(top.filter((n) => n.tag === 'b-breadcrumb'), 'top-level breadcrumb');
+  const title = one(top.filter((n) => n.tag === 'h1'), 'top-level title');
+  assert.ok(at(breadcrumb) < at(title) && at(title) < at(column), 'breadcrumb, title, then the column');
+  const alerts = byTag(column, 'b-alert');
+  assert.ok(alerts.some((n) => attrsOf(n).variant === 'danger' && textOf(n) === 'some error'), 'error alert inside');
+  assert.ok(alerts.some((n) => attrsOf(n).variant === 'success' && textOf(n) === 'some message'), 'success alert inside');
+  one(byCy(column, 'card-actions'), 'Actions card inside');
+  assert.equal(elementsOf(column).filter((n) => n.tag === 'b-row').length, 1, 'the card row inside');
+  assert.equal(byTag(column, 'b-modal').length, 0, 'no modal inside the column');
+  assert.equal(top.filter((n) => n.tag === 'b-modal').length, 2, 'both modals stay at the top level');
+  assert.equal(top.filter((n) => ['b-alert', 'b-card', 'b-row'].includes(n.tag)).length, 0, 'nothing else left at the top level');
+  for (const state of [{ device: null, loading: true }, { device: null, loading: false }]) {
+    const r = renderPage(deviceDetailPage().def, state);
+    assert.equal(r.error, null, 'renders without a device');
+    assert.equal(byCy(r.vnode, 'device-detail-content').length, 0, 'loading / not found is not wrapped (loading=' + state.loading + ')');
+  }
+});
+
+check('W2 compiled theme: .device-detail-content max-width 1140px, no margin; imported once right after build-log', () => {
+  const bodies = expectDecls('.device-detail-content', { 'max-width': '1140px' });
+  bodies.forEach((body) => body.split(';').forEach((d) => {
+    assert.ok(!/^\s*margin/.test(d), 'no margin declaration: ' + d);
+  }));
+  const lines = read('styles/theme.scss').split('\n').map((l) => l.trim());
+  assert.equal(lines.filter((l) => l === "@import 'device-detail';").length, 1, "one @import 'device-detail';");
+  assert.equal(lines[lines.indexOf("@import 'build-log';") + 1], "@import 'device-detail';", 'right after build-log');
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
