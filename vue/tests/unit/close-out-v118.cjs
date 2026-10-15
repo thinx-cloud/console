@@ -434,6 +434,178 @@ checkAsync('A8 pushIfNeeded swallows NavigationDuplicated and rethrows any other
   await assert.rejects(h.vm.pushIfNeeded('/app/history'), (err) => err === boom, 'other errors are rethrown');
 });
 
+// ================================================================ I: parseResult (35 IN-01, D-12)
+
+// core/api.js with its cookies import stubbed; the class is the default export.
+const apiModule = lazy(() => loadModule('core/api.js', (s) => [
+  "const getCsrfToken = () => '';",
+  "const fetchWithCsrf = () => Promise.reject(new Error('offline'));",
+  s.replace('export default class Api', 'export const Api = class Api'),
+].join('\n')));
+const parse = (envelope) => new (apiModule().Api)('https://api.test').parseResult(envelope);
+
+check('I1 an envelope with no data key gives an undefined response', () => {
+  const out = parse({ success: true });
+  assert.equal(out.success, true, 'success kept');
+  assert.equal(out.response, undefined, 'response is undefined, never {}');
+});
+
+check('I2 paging alone is not data: response undefined, paging kept', () => {
+  const out = parse({ success: true, paging: { has_more: false, cursor: null } });
+  assert.equal(out.response, undefined, 'response is undefined');
+  assert.deepEqual(out.paging, { has_more: false, cursor: null }, 'paging passes through');
+});
+
+check('I3 one data key gives that key value', () => {
+  assert.deepEqual(parse({ success: true, devices: [1, 2] }).response, [1, 2]);
+  assert.equal(parse({ success: true, build_id: 'b1' }).response, 'b1');
+});
+
+check('I4 two or more data keys give an object of exactly those keys', () => {
+  const out = parse({ success: true, a: 1, b: 2, paging: { has_more: true, cursor: 'c' } });
+  assert.deepEqual(out.response, { a: 1, b: 2 }, 'no success or paging key inside');
+});
+
+check('I5 an own response key wins, also when it is null or 0', () => {
+  assert.equal(parse({ success: true, response: null }).response, null);
+  assert.equal(parse({ success: true, response: 0, x: 1 }).response, 0);
+});
+
+check('I6 a non-success envelope is returned unchanged; null and undefined give { success: false }', () => {
+  const env = { success: false, response: 'x' };
+  assert.equal(parse(env), env, 'same object');
+  assert.deepEqual(parse(null), { success: false });
+  assert.deepEqual(parse(undefined), { success: false });
+});
+
+const logUtils = lazy(() => loadModule('utils/buildLog.js'));
+const iconButton = lazy(() => loadSfc('components/IconButton/IconButton.vue'));
+const buildLogDialog = lazy(() => loadSfc('components/BuildLogDialog/BuildLogDialog.vue', {
+  buildLogText: logUtils().buildLogText,
+  buildLogSearch: logUtils().buildLogSearch,
+  hasBuildLog: logUtils().hasBuildLog,
+  IconButton: iconButton().def,
+}));
+
+const STRAY_TEXT = ['undefined', '[object Object]', '{}'];
+function assertNoStrayText(vnode, label) {
+  nodesOf(vnode).filter((n) => !n.tag && typeof n.text === 'string').forEach((n) => {
+    assert.ok(!STRAY_TEXT.includes(n.text.trim()), label + ' renders no "' + n.text.trim() + '" text');
+  });
+}
+
+checkAsync('I7 an empty build log envelope shows the dialog empty state, never undefined or {}', async () => {
+  const { def } = buildLogDialog();
+  const vm = new Vue({
+    render: def.render,
+    staticRenderFns: def.staticRenderFns,
+    data: def.data,
+    computed: def.computed,
+    methods: def.methods,
+    watch: def.watch,
+    components: Object.assign({}, def.components),
+  });
+  vm.$refs.modal = { show() {} };
+  vm.$store = { dispatch: () => Promise.resolve(parse({ success: true })) };
+  await vm.open({ build_id: 'b1' });
+  const vnode = rerender(vm);
+  const empty = byCy(vnode, 'build-log-empty');
+  assert.equal(empty.length, 1, 'one build-log-empty line');
+  assert.equal(textOf(empty[0]), 'No log output is available for this build yet.');
+  assert.equal(byCy(vnode, 'build-log-search-bar').length, 0, 'no search bar');
+  assert.equal(byCy(vnode, 'full-build-log').length, 0, 'no log block');
+  assertNoStrayText(vnode, 'the dialog');
+});
+
+// Run one store action against a stub $api whose GET answers `envelope` through parseResult.
+async function runStore(rel, action, envelope) {
+  const mod = loadStore(rel);
+  const state = mod.state;
+  const ctx = {
+    state,
+    commit: (type, payload) => mod.mutations[type](state, payload),
+    dispatch: () => Promise.resolve(),
+  };
+  const $api = { $get: () => Promise.resolve(parse(envelope)) };
+  await mod.actions[action].call({ $api }, ctx);
+  return { state, getters: mod.getters };
+}
+
+const header = lazy(() => loadSfc('components/Header/Header.vue', {
+  mapState: () => ({}),
+  Notifications: { name: 'Notifications', render: (h) => h('div') },
+  avatarDataUri: () => null,
+  require: () => 'default_avatar_sm.png',
+}));
+const visits = lazy(() => loadSfc('pages/Visits/Visits.vue', {
+  buildStatusVariant: () => 'secondary',
+  hasBuildLog: (b) => !!(b && typeof b.build_id === 'string' && b.build_id.trim()),
+  BuildLogDialog: { name: 'BuildLogDialog', render: (h) => h('div') },
+  CheckinsTimeline: { name: 'CheckinsTimeline', render: (h) => h('div') },
+  hostnameMixin: {},
+}));
+const adminUsers = lazy(() => loadSfc('pages/AdminUsers/AdminUsers.vue'));
+
+checkAsync('I8 audited callers take an empty envelope without throwing and keep their empty state', async () => {
+  const EMPTY = { success: true };
+  const done = [];
+
+  // stats store -> Visits.vue metric cards (Visits.vue:245-246 reads getStats/getToday).
+  const stats = await runStore('store/stats.js', 'fetchStats', EMPTY);
+  await (async () => {
+    const mod = loadStore('store/stats.js');
+    const ctx = { state: stats.state, commit: (t, p) => mod.mutations[t](stats.state, p) };
+    await mod.actions.fetchToday.call({ $api: { $get: () => Promise.resolve(parse(EMPTY)) } }, ctx);
+  })();
+  const { def: visitsDef } = visits();
+  const cards = visitsDef.computed.metricCards.call({
+    statsData: stats.getters.getStats(stats.state),
+    todayData: stats.getters.getToday(stats.state),
+    deviceCount: 0,
+    extractMetric: visitsDef.methods.extractMetric,
+  });
+  assert.ok(Array.isArray(cards) && cards.length > 0, 'Visits metric cards render');
+  cards.forEach((c) => ['today', 'week', 'month'].forEach((k) => {
+    if (k in c) assert.equal(c[k], 0, c.label + ' ' + k + ' is 0');
+  }));
+  assert.ok(!stats.getters.getTimeline(stats.state), 'no timeline');
+  done.push('stats');
+
+  // profile store -> Header name (Header.vue:26 reads profile.first_name).
+  const profile = await runStore('store/profile.js', 'fetchProfile', EMPTY);
+  const h = renderPage(header().def, { profile: profile.getters.getProfile(profile.state) });
+  assert.equal(h.error, null, 'Header renders without error');
+  assertNoStrayText(h.vnode, 'the Header');
+  done.push('profile');
+
+  // admin store -> AdminUsers "No users." row.
+  const admin = await runStore('store/admin.js', 'fetchUsers', EMPTY);
+  const a = renderPage(adminUsers().def, { getUsers: () => admin.getters.getUsers(admin.state) });
+  assert.equal(a.error, null, 'AdminUsers renders without error');
+  assert.ok(textOf(a.vnode).includes('No users.'), 'AdminUsers shows No users.');
+  done.push('admin');
+
+  // List stores feeding Devices, Environment Globals, API Keys, Channels and Repositories.
+  const lists = [
+    ['store/devices.js', 'fetchItems'],
+    ['store/enviros.js', 'fetchItems'],
+    ['store/apikeys.js', 'fetchItems'],
+    ['store/channels.js', 'fetchItems'],
+    ['store/repositories.js', 'fetchRepositories'],
+  ];
+  for (const [rel, action] of lists) {
+    let out;
+    try {
+      out = await runStore(rel, action, EMPTY);
+    } catch (err) {
+      throw new Error(rel + ' ' + action + ' throws on an empty envelope: ' + err.message);
+    }
+    assert.deepEqual(out.state.items, [], rel + ' keeps an empty list');
+    done.push(rel.replace(/^store\/|\.js$/g, ''));
+  }
+  return done.join(', ');
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
