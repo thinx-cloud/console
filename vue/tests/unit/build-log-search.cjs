@@ -642,6 +642,134 @@ check('T8 a click on Next match steps forward and on Previous match steps back',
   assert.deepEqual(steps, [[1], [-1]]);
 });
 
+// ---------------------------------------------------------------- L: lifecycle and states
+
+const snapshot = (vm) => ({ buildId: vm.buildId, text: vm.text, error: vm.error, searchInput: vm.searchInput, term: vm.term, loading: vm.loading });
+
+checkAsync('L1 open() without a non-empty string build_id resolves without showing, loading or changing state', async () => {
+  const bad = [{ build_id: '' }, { id: '0' }, {}, null, undefined, { build_id: 42 }, { build_id: null, id: 'x' }];
+  for (const build of bad) {
+    const h = dialogHarness({ buildId: 'keep', text: 'kept log', error: null, searchInput: 'abc', term: 'abc' });
+    const before = snapshot(h.vm);
+    let result;
+    assert.doesNotThrow(() => { result = h.vm.open(build); }, 'open(' + JSON.stringify(build) + ') does not throw');
+    assert.ok(result && typeof result.then === 'function', 'open(' + JSON.stringify(build) + ') returns a promise');
+    await result;
+    assert.equal(h.calls.show, 0, 'modal not shown for ' + JSON.stringify(build));
+    assert.deepEqual(h.calls.dispatch, [], 'no fetchBuildDetail for ' + JSON.stringify(build));
+    assert.deepEqual(snapshot(h.vm), before, 'state unchanged for ' + JSON.stringify(build));
+  }
+});
+
+checkAsync('L2 a valid open() resets the search, cancels the debounce, shows the modal and loads that build', async () => {
+  const h = dialogHarness({ buildId: 'old', text: 'old log', error: 'x' }, () => Promise.resolve({ success: true, response: { contents: 'new log abc' } }));
+  await tick();
+  Object.assign(h.vm, { searchInput: 'abc', term: 'abc', current: 4 });
+  await tick();
+  clearTimeout(h.vm.debounceTimer);
+  let fired = 0;
+  h.vm.debounceTimer = setTimeout(() => { fired++; h.vm.term = 'late'; }, 50);
+  const done = h.vm.open({ build_id: 'b1', id: '7' });
+  assert.equal(h.vm.searchInput, '', 'searchInput reset');
+  assert.equal(h.vm.term, '', 'term reset');
+  assert.equal(h.vm.current, 0, 'current reset');
+  assert.equal(h.vm.buildId, 'b1');
+  assert.equal(h.vm.text, '', 'text cleared');
+  assert.equal(h.vm.error, null, 'error cleared');
+  assert.equal(h.calls.show, 1, 'modal shown once');
+  assert.deepEqual(h.calls.dispatch, [['buildlog/fetchBuildDetail', 'b1']], 'loads build_id, not the list id');
+  assert.equal(attrsOf(rerender(h.vm)).title, 'Build Log — b1');
+  await done;
+  await sleep(120);
+  assert.equal(fired, 0, 'the pending debounce was cancelled');
+  assert.equal(h.vm.term, '');
+  assert.equal(h.vm.text, 'new log abc');
+});
+
+checkAsync('L3 Try again (load) keeps the term; the first match is selected when the text arrives', async () => {
+  const h = dialogHarness({ buildId: 'b1', text: '', error: 'Could not load this build log.' }, () => Promise.resolve({ success: true, response: { contents: 'abc abc abc' } }));
+  Object.assign(h.vm, { searchInput: 'abc', term: 'abc' });
+  await tick();
+  h.vm.current = 2;
+  await h.vm.load();
+  await tick();
+  assert.equal(h.vm.searchInput, 'abc', 'searchInput kept');
+  assert.equal(h.vm.term, 'abc', 'term kept');
+  assert.equal(h.vm.text, 'abc abc abc');
+  assert.equal(h.vm.current, 0, 'first match selected');
+  assert.equal(h.vm.result.count, 3);
+});
+
+checkAsync('L4 onHidden drops the pending request, resets loading and cancels the debounce; the modal binds it', async () => {
+  const h = dialogHarness({ text: 'abc', loading: true, requestId: 5 });
+  assert.equal(typeof h.vm.onHidden, 'function', 'onHidden method');
+  let fired = 0;
+  h.vm.debounceTimer = setTimeout(() => { fired++; h.vm.term = 'late'; }, 50);
+  h.vm.onHidden();
+  assert.equal(h.vm.requestId, 6);
+  assert.equal(h.vm.loading, false);
+  assert.equal(h.vm.debounceTimer, null);
+  await sleep(300);
+  assert.equal(fired, 0, 'the debounce was cancelled');
+  assert.equal(h.vm.term, '');
+  const modal = rerender(h.vm);
+  assert.equal(modal.tag, 'b-modal');
+  assert.equal(modal.data.on && modal.data.on.hidden, h.vm.onHidden, '@hidden="onHidden"');
+  const d = deferred();
+  const late = dialogHarness({ buildId: 'b1' }, () => d.promise);
+  const pending = late.vm.load();
+  late.vm.onHidden();
+  d.resolve({ success: true, response: { contents: 'stale' } });
+  await pending;
+  assert.equal(late.vm.text, '', 'a response after close is dropped');
+  assert.equal(late.vm.loading, false);
+});
+
+check('L5 exactly one state renders: loading line, error with Try again, log box, or the empty line', () => {
+  const states = (vnode) => ({
+    loading: nodesOf(vnode).filter((n) => n.tag === 'div' && attrsOf(n).role === 'status').length,
+    error: byCy(vnode, 'build-log-error').length,
+    log: byCy(vnode, 'full-build-log').length,
+    empty: byCy(vnode, 'build-log-empty').length,
+  });
+  const loading = renderDialog({ loading: true }).vnode;
+  assert.deepEqual(states(loading), { loading: 1, error: 0, log: 0, empty: 0 });
+  const status = nodesOf(loading).find((n) => n.tag === 'div' && attrsOf(n).role === 'status');
+  assert.equal(byTag(status, 'b-spinner').length, 1, 'spinner');
+  assert.equal(textOf(status), 'Loading build log' + ELLIPSIS);
+
+  const h = dialogHarness({ error: 'Could not load this build log.' });
+  const loads = record(h.vm, 'load');
+  const errVnode = rerender(h.vm);
+  assert.deepEqual(states(errVnode), { loading: 0, error: 1, log: 0, empty: 0 });
+  const alert = one(byCy(errVnode, 'build-log-error'), 'build-log-error');
+  assert.equal(alert.tag, 'b-alert');
+  assert.equal(attrsOf(alert).variant, 'danger');
+  assert.ok(textOf(alert).startsWith('Could not load this build log.'), 'error copy');
+  const retry = one(byCy(alert, 'build-log-retry'), 'build-log-retry');
+  assert.equal(retry.tag, 'b-button');
+  assert.equal(attrsOf(retry).variant, 'default');
+  assert.equal(attrsOf(retry).size, 'sm');
+  const glyph = one(byTag(retry, 'i'), 'refresh glyph');
+  assert.ok(classList(glyph).includes('fa') && classList(glyph).includes('fa-refresh'), 'fa fa-refresh');
+  assert.equal(attrsOf(glyph)['aria-hidden'], 'true');
+  const label = one(byClass(retry, 'button-text'), 'button-text');
+  assert.equal(label.tag, 'span');
+  assert.equal(textOf(label), 'Try again');
+  click(retry);
+  assert.equal(loads.length, 1, 'Try again calls load');
+
+  assert.deepEqual(states(renderDialog({ text: 'log' }).vnode), { loading: 0, error: 0, log: 1, empty: 0 });
+
+  const emptyVnode = renderDialog({ text: '' }).vnode;
+  assert.deepEqual(states(emptyVnode), { loading: 0, error: 0, log: 0, empty: 1 });
+  const empty = one(byCy(emptyVnode, 'build-log-empty'), 'build-log-empty');
+  assert.equal(empty.tag, 'p');
+  assert.ok(classList(empty).includes('mb-0'), 'mb-0');
+  assert.ok(!classList(empty).includes('text-muted'), 'body colour, not muted');
+  assert.equal(textOf(empty), 'No log output is available for this build yet.');
+});
+
 // ---------------------------------------------------------------- compiled theme
 
 const sass = require('sass');
@@ -703,8 +831,83 @@ function expectDecls(selector, want) {
   return bodies;
 }
 
-// Referenced by the checks that later tasks and 47-02 add; kept so the harness stays whole.
-void [expand, renderPage, propsOf, componentsOf, byClass, click, deferred, tick, ELLIPSIS, expectDecls];
+check('C1 compiled theme: the log box and both highlights use the build-log tokens', () => {
+  expectDecls('.build-log-text', {
+    position: 'relative',
+    'max-height': '70vh',
+    overflow: 'auto',
+    margin: '0',
+    padding: '16px',
+    'white-space': 'pre-wrap',
+    'overflow-wrap': 'anywhere',
+    'line-height': '1.5',
+    background: '#1e1e1e',
+    color: '#ddd',
+  });
+  expectDecls('.build-log-text .build-log-match', {
+    padding: '0',
+    'border-radius': '0',
+    font: 'inherit',
+    'background-color': '#806600',
+    color: '#fff',
+  });
+  expectDecls('.build-log-text .build-log-match--current', {
+    'background-color': '#ffc94d',
+    color: '#1e1e1e',
+  });
+});
+
+check('C2 compiled theme: the sticky search bar on the modal surface, field, count and step-button spacing', () => {
+  const modalBg = value(decls('.modal-content'), 'background-color');
+  assert.ok(modalBg, '.modal-content has a background-color');
+  expectDecls('.build-log-search', {
+    display: 'flex',
+    'flex-wrap': 'wrap',
+    'align-items': 'center',
+    gap: '8px',
+    'padding-bottom': '8px',
+    position: 'sticky',
+    top: '0',
+    'z-index': '1',
+    'background-color': modalBg,
+  });
+  expectDecls('.build-log-search__field', { flex: '1 1 200px', 'max-width': '320px', width: 'auto' });
+  expectDecls('.build-log-search__count', {
+    'min-width': '88px',
+    'white-space': 'nowrap',
+    'font-size': '.875rem',
+    'font-weight': '400',
+    'font-variant-numeric': 'tabular-nums',
+  });
+  expectDecls('.build-log-search .icon-button', { 'margin-right': '0' });
+});
+
+check('C3 sources: six !default tokens, one build-log import after settings-pages, no local styles or forbidden strings', () => {
+  const variables = read('styles/_variables.scss');
+  const tokens = {
+    'build-log-bg': '#1E1E1E',
+    'build-log-color': '#DDDDDD',
+    'build-log-match-bg': '#806600',
+    'build-log-match-color': '#FFFFFF',
+    'build-log-current-bg': '#FFC94D',
+    'build-log-current-color': '#1E1E1E',
+  };
+  Object.keys(tokens).forEach((name) => {
+    const re = new RegExp('^\\$' + name + ':\\s*' + tokens[name] + '\\s*!default;', 'm');
+    assert.ok(re.test(variables), '$' + name + ': ' + tokens[name] + ' !default');
+  });
+  const theme = read('styles/theme.scss').split('\n').map((l) => l.trim());
+  assert.equal(theme.filter((l) => l === "@import 'build-log';").length, 1, 'build-log imported once');
+  assert.equal(theme[theme.indexOf("@import 'settings-pages';") + 1], "@import 'build-log';", 'right after settings-pages');
+  assert.ok(fs.existsSync(path.join(SRC, 'styles/_build-log.scss')), '_build-log.scss exists');
+  const { source } = dialog();
+  ['<style', 'build.id', 'text-muted', '>Retry<', 'v-html', 'innerHTML', '#1e1e1e', '#ddd', 'console.'].forEach((s) => {
+    assert.ok(!source.includes(s), 'BuildLogDialog.vue has no ' + s);
+  });
+});
+
+// Referenced by the checks that 47-02 adds; kept so the harness stays whole.
+void [expand, renderPage];
 
 // ---------------------------------------------------------------- run
 
