@@ -1219,7 +1219,8 @@ const STATUS_VARIANTS = [['OK', 'success', 'fa-check'], ['TIMEOUT', 'warning', '
 const LIST_FILES = ['pages/Visits/Visits.vue', 'components/Notifications/Notifications.vue', 'pages/History/History.vue', 'pages/Devices/DeviceDetail.vue'];
 const history = lazy(() => loadSfc('pages/History/History.vue', {
   BuildLogDialog: namedStub('BuildLogDialog'),
-  normPaging: (p) => p,
+  // The real paging helper: the paging footer reads buildPaging.has_more, so the page renders.
+  normPaging: loadModule('store/logPaging.js').normPaging,
   buildStatusVariant: logUtils().buildStatusVariant,
   hasBuildLog: logUtils().hasBuildLog,
 }));
@@ -1299,12 +1300,15 @@ check('N6 compiled Notifications.scss: title and meta lines, static rows without
 
 // ---------------------------------------------------------------- H: History and Device Detail
 
-check('H1 History build row: View has p-0 and @click.stop; the date cell is text-nowrap without inline style', () => {
+check('H1 History build row: View gated by hasBuildLog with p-0, @click.stop and the View build log label; date cell text-nowrap', () => {
   const row = regionOf(read('pages/History/History.vue'), 'data-cy="build-row"', '</tr>');
   const view = (row.match(/<b-button\b[^>]*data-cy="build-open-log"[^>]*>/) || [])[0];
   assert.ok(view, 'History build row has a View button');
+  assert.ok(view.includes('v-if="hasBuildLog(item)"'), 'View is gated by hasBuildLog(item)');
   assert.ok(view.includes('class="p-0"'), 'View has class p-0');
   assert.ok(view.includes('@click.stop="openBuildLog(item)"'), 'View keeps @click.stop');
+  assert.ok(view.includes(':aria-label="\'View build log \' + item.build_id"'), 'View aria-label is View build log <id>');
+  assert.ok(!view.includes('item.name'), 'no name fallback in the aria-label');
   const date = (row.match(/<td\b[^>]*>/) || [])[0];
   assert.equal(date, '<td class="text-nowrap">', 'the date cell is <td class="text-nowrap">');
   assert.ok(!row.includes('white-space:nowrap'), 'no inline nowrap in the build row');
@@ -1315,6 +1319,95 @@ check('H2 Device Build History: one No build log placeholder and no muted dash',
   assert.equal(card.split('data-cy="build-no-log"').length - 1, 1, 'exactly one build-no-log placeholder');
   assert.ok(card.includes('<span v-else data-cy="build-no-log"><span aria-hidden="true">—</span><span class="sr-only">No build log</span></span>'), 'UI-B15 placeholder markup');
   assert.ok(!card.includes('class="text-muted">—<'), 'no muted dash');
+});
+
+// History rendered with the real paging helper; openBuildLog is replaced with a recorder.
+function renderHistory(buildlog) {
+  const page = renderPage(history().def, { buildlog });
+  assert.equal(page.error, null, 'History renders without error');
+  assert.deepEqual(page.warnings, [], 'History renders without Vue warnings');
+  const opened = record(page.vm, 'openBuildLog');
+  const vnode = rerender(page.vm);
+  return { vm: page.vm, vnode, rows: byCy(vnode, 'build-row'), opened };
+}
+// A row click that lands on a plain cell (no inner control), as onBuildRowClick sees it.
+const cellClick = () => ({ target: { closest: () => null } });
+
+function expectNoLogPlaceholder(row, what) {
+  const cell = lastCellOf(row);
+  const holder = one(byCy(cell, 'build-no-log'), what + ' build-no-log placeholder');
+  assert.equal(holder.tag, 'span');
+  const [dash, sr, ...rest] = elementsOf(holder);
+  assert.equal(rest.length, 0, what + ' two spans in the placeholder');
+  assert.equal(attrsOf(dash)['aria-hidden'], 'true');
+  assert.equal(textOf(dash), '—');
+  assert.ok(classList(sr).includes('sr-only'), what + ' screen-reader text');
+  assert.equal(textOf(sr), 'No build log');
+  nodesOf(holder).filter((n) => n.tag).forEach((n) => assert.ok(isInert(n), what + ' placeholder ' + n.tag + ' is inert'));
+}
+
+check('H3 History: only a row with a build log is a pointer row with a click; others show the No build log placeholder', () => {
+  const builds = [
+    { build_id: 'b1', name: 'zephyr-01', status: 'OK', date: Date.UTC(2026, 9, 14, 12), log: [] },
+    { build_id: '', name: 'n2', status: 'FAILED', date: Date.UTC(2026, 9, 14, 11), log: [] },
+    { build_id: 42, name: 'n3', status: 'TIMEOUT', date: Date.UTC(2026, 9, 14, 10), log: [] },
+  ];
+  const { vm, rows, opened } = renderHistory(builds);
+  assert.equal(rows.length, 3, 'three build rows');
+  const [b1, empty, numeric] = rows;
+  assert.ok(classList(b1).includes('build-row'), 'row 0 has the build-row class');
+  const view = one(byCy(b1, 'build-open-log'), 'row 0 View');
+  assert.equal(attrsOf(view)['aria-label'], 'View build log b1');
+  assert.equal(textOf(view), 'View');
+  assert.ok(attrsOf(view)['aria-label'].startsWith(textOf(view)), 'the aria-label starts with the visible text (WCAG 2.5.3)');
+  click(b1, cellClick());
+  assert.equal(opened.length, 1, 'a click on row 0 opens once');
+  assert.equal(opened[0][0], vm.buildlog[0], 'row 0 opens its own build');
+  [[empty, 1], [numeric, 2]].forEach(([row, i]) => {
+    const what = 'row ' + i;
+    assert.ok(!classList(row).includes('build-row'), what + ' has no build-row class');
+    assert.ok(!hasListener(row), what + ' has no listener (on and nativeOn empty)');
+    assert.ok(!('tabindex' in attrsOf(row)), what + ' has no tabindex');
+    assert.ok(!('role' in attrsOf(row)), what + ' has no role');
+    assert.equal(byCy(row, 'build-open-log').length, 0, what + ' has no View');
+    expectNoLogPlaceholder(row, what);
+  });
+  assert.equal(opened.length, 1, 'still one open');
+});
+
+check('H4 History agreement: build-row class, row click and View exactly when hasBuildLog(row), the placeholder otherwise', () => {
+  const has = predicate();
+  const { vm, rows } = renderHistory(idRows());
+  assert.equal(rows.length, 9, 'one row per candidate build id');
+  rows.forEach((row, i) => {
+    const item = vm.filteredBuilds[i];
+    const what = 'row ' + i + ' (build_id ' + shown(item.build_id) + ')';
+    const yes = has(item);
+    assert.equal(classList(row).includes('build-row'), yes, what + ' build-row class');
+    assert.equal(hasListener(row), yes, what + ' click listener');
+    assert.equal(byCy(row, 'build-open-log').length, yes ? 1 : 0, what + ' View');
+    assert.equal(byCy(row, 'build-no-log').length, yes ? 0 : 1, what + ' placeholder');
+  });
+});
+
+check('N7 navbar agreement: button, click listener and no static class exactly when hasBuildLog(row)', () => {
+  const has = predicate();
+  const { vm, rows } = renderNav(idRows());
+  assert.equal(rows.length, 9, 'one navbar row per candidate build id');
+  rows.forEach((row, i) => {
+    const item = vm.recentBuilds[i];
+    const what = 'row ' + i + ' (build_id ' + shown(item.build_id) + ')';
+    if (has(item)) {
+      assert.ok(attrsOf(row).button, what + ' has a truthy button attribute');
+      assert.ok(hasListener(row), what + ' has a click listener');
+      assert.ok(!classList(row).includes('listGroupItem--static'), what + ' is not static');
+    } else {
+      assert.ok(!attrsOf(row).button, what + ' has no button attribute');
+      assert.ok(!hasListener(row), what + ' has no listener');
+      assert.ok(!('tabindex' in attrsOf(row)) && !('role' in attrsOf(row)), what + ' has no tabindex or role');
+      assert.ok(classList(row).includes('listGroupItem--static'), what + ' is static');
+    }
+  });
 });
 
 // Referenced by the checks that 47-02 adds; kept so the harness stays whole.
