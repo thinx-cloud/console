@@ -3,20 +3,23 @@
     <div v-if="text && !loading && !error" class="build-log-search" role="search" aria-label="Search this build log" data-cy="build-log-search-bar">
       <b-input-group class="build-log-search__field">
         <b-input-group-prepend is-text><i class="fa fa-search" aria-hidden="true"></i></b-input-group-prepend>
-        <b-form-input ref="searchInput" v-model="searchInput" type="text" aria-label="Search this build log" placeholder="Search log (3+ characters)" autocomplete="off" spellcheck="false" data-cy="build-log-search" />
+        <b-form-input ref="searchInput" v-model="searchInput" type="text" aria-label="Search this build log" placeholder="Search log (3+ characters)" autocomplete="off" spellcheck="false" data-cy="build-log-search" @keydown.enter.prevent="onSearchEnter" />
       </b-input-group>
       <span class="build-log-search__count" data-cy="build-log-search-count"><span aria-hidden="true">{{ countText }}</span><span class="sr-only" aria-live="polite" aria-atomic="true">{{ countSpeech }}</span></span>
+      <IconButton icon="fa fa-chevron-left" label="Previous match" :disabled="!result.count" data-cy="build-log-prev" @click="step(-1)" />
+      <IconButton icon="fa fa-chevron-right" label="Next match" :disabled="!result.count" data-cy="build-log-next" @click="step(1)" />
     </div>
     <div v-if="loading" role="status"><b-spinner small /> Loading build log…</div>
     <b-alert v-else-if="error" variant="danger" show>{{ error }} <b-button size="sm" @click="load">Retry</b-button></b-alert>
     <!-- Keep the <pre> and its children on one line: whitespace inside <pre> would become log text. -->
-    <pre v-else-if="text" ref="log" class="build-log-text" data-cy="full-build-log"><template v-if="result.count"><template v-for="(seg, n) in result.segments"><mark v-if="seg.match" :key="n" class="build-log-match" data-cy="build-log-match">{{ seg.text }}</mark><span v-else :key="n">{{ seg.text }}</span></template></template><template v-else>{{ text }}</template></pre>
+    <pre v-else-if="text" ref="log" class="build-log-text" data-cy="full-build-log"><template v-if="result.count"><template v-for="(seg, n) in result.segments"><mark v-if="seg.match" :key="n" class="build-log-match" :class="{ 'build-log-match--current': seg.index === current }" :aria-current="seg.index === current ? 'true' : null" data-cy="build-log-match">{{ seg.text }}</mark><span v-else :key="n">{{ seg.text }}</span></template></template><template v-else>{{ text }}</template></pre>
     <p v-else class="text-muted">No log output is available for this build yet.</p>
   </b-modal>
 </template>
 
 <script>
 import { buildLogText, buildLogSearch } from '@/utils/buildLog';
+import IconButton from '@/components/IconButton/IconButton';
 
 // Phase 47 (BUILD-03): browser-find style search over the full log. Matches are rendered as
 // text-only segments (interpolation, never HTML), so log content stays inert.
@@ -24,6 +27,7 @@ const SEARCH_DEBOUNCE_MS = 200;
 
 export default {
   name: 'BuildLogDialog',
+  components: { IconButton },
   data() {
     return { buildId: '', loading: false, error: null, text: '', requestId: 0, searchInput: '', term: '', current: 0, debounceTimer: null };
   },
@@ -51,13 +55,44 @@ export default {
         this.applyTerm();
       }, SEARCH_DEBOUNCE_MS);
     },
-    term() { this.current = 0; },
-    text() { this.current = 0; },
+    term() { this.selectFirst(); },
+    text() { this.selectFirst(); },
   },
   methods: {
+    selectFirst() {
+      this.current = 0;
+      this.$nextTick(() => this.scrollToCurrent());
+    },
     applyTerm() {
       this.term = this.searchInput;
       this.current = 0;
+    },
+    // Enter applies a still-pending term at once; otherwise Enter / Shift+Enter step (D-03).
+    // Escape is not handled here: it bubbles to the modal, which closes.
+    onSearchEnter(event) {
+      if (this.debounceTimer) {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = null;
+        this.applyTerm();
+        return;
+      }
+      this.step(event && event.shiftKey ? -1 : 1);
+    },
+    step(delta) {
+      const count = this.result.count;
+      if (!count) return;
+      this.current = (this.current + delta + count) % count;
+      this.$nextTick(() => this.scrollToCurrent());
+    },
+    // Centre the current match inside the log box by moving only the box's own scrollTop:
+    // the element scroll-into-view API would also scroll the modal and the page, and focus
+    // stays in the search field (UI-B06).
+    scrollToCurrent() {
+      const log = this.$refs.log;
+      if (!log) return;
+      const mark = log.querySelector('.build-log-match--current');
+      if (!mark) return;
+      log.scrollTop = mark.offsetTop - (log.clientHeight - mark.offsetHeight) / 2;
     },
     open(build) {
       this.buildId = build.build_id || build.id || '';
