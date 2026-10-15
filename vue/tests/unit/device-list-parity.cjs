@@ -24,6 +24,9 @@ Vue.config.devtools = false;
 Vue.config.ignoredElements = [/^b-/];
 let renderError = null;
 Vue.config.errorHandler = (err) => { renderError = err; };
+// bootstrap-vue registers v-b-tooltip in the app (main.js Vue.use); the warning markers use it
+// (Phase 48 D-14), so a no-op stands in and a Devices.vue render never warns about it.
+Vue.directive('b-tooltip', {});
 
 const SRC = path.join(__dirname, '..', '..', 'src');
 
@@ -411,7 +414,7 @@ const devices = lazy(() => {
   const p = platforms();
   return loadSfc('pages/Devices/Devices.vue', {
     PlatformBullet: bullet().def, IconButton: iconButtonDep(), BuildLogDialog: BUILD_LOG_DIALOG_STUB,
-    basePlatform: p.basePlatform, platformInfo: p.platformInfo,
+    basePlatform: p.basePlatform, platformInfo: p.platformInfo, comparePlatformKeys: p.comparePlatformKeys,
   });
 });
 
@@ -951,7 +954,7 @@ checkAsync('a reload without the selected platform resets the filter to All, and
   assert.equal(vm.filteredItems.length, FLEET.length);
 });
 
-check('sort Platform orders by base platform, then alias; Last Update and Alias unchanged', () => {
+check('sort Platform orders by platform label, unknown last, then alias; Last Update and Alias unchanged', () => {
   const { vm } = renderFleet({ viewMode: 'list' });
   const { basePlatform } = platforms();
   vm.sortBy = 'platform';

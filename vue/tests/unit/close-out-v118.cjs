@@ -1071,6 +1071,187 @@ check('C2 compiled theme: success, info, warning and transparent danger alerts a
   assert.equal(value(btn, 'background'), value(decls('.alert-success .btn:not(.btn-default)'), 'background'), 'danger inner button background as the other variants');
 });
 
+// ================================================================ L: device list (D-14, UI-C10..UI-C14)
+
+// bootstrap-vue registers v-b-tooltip in the app (main.js Vue.use); here a no-op stands in,
+// so a Devices.vue render never warns about an unknown directive.
+Vue.directive('b-tooltip', {});
+
+const platformsMod = lazy(() => loadModule('utils/platforms.js'));
+
+// Fake require.context: resolves './b_medium_07.png' to 'sym:b_medium_07.png'.
+const fakeRequire = {
+  context: () => {
+    const resolve = (key) => 'sym:' + String(key).replace(/^\.\//, '');
+    resolve.keys = () => [];
+    return resolve;
+  },
+};
+
+// Devices.vue with the given platforms module (its import of utils/platforms.js).
+function loadDevices(p) {
+  return loadSfc('pages/Devices/Devices.vue', {
+    moment: () => ({ fromNow: () => 'a moment ago' }),
+    require: fakeRequire,
+    PlatformBullet: { name: 'PlatformBullet', props: ['platform'], render: (h) => h('span') },
+    IconButton: iconButton().def,
+    BuildLogDialog: { name: 'BuildLogDialog', render: (h) => h('div'), methods: { open() {} } },
+    basePlatform: p.basePlatform,
+    platformInfo: p.platformInfo,
+    comparePlatformKeys: p.comparePlatformKeys,
+  });
+}
+const devicesPage = lazy(() => loadDevices(platformsMod()));
+
+function renderList(items, state = {}, page = devicesPage()) {
+  const r = renderPage(page.def, Object.assign({ items: items.map((d) => Object.assign({}, d)), viewMode: 'list' }, state));
+  assert.equal(r.error, null, 'Devices renders without error');
+  assert.deepEqual(r.warnings, [], 'Devices renders without Vue warnings');
+  return r;
+}
+
+// One device per known platform key, plus unknown_platform, a null platform and the alias "python".
+const L_FLEET = [
+  ['sigfox', 'sf'], ['nodemcu', 'nm'], ['unknown', 'u-c'], ['arduino:esp8266', 'ar'], ['python', 'mp-a'],
+  ['nodejs', 'nj'], ['unknown_platform', 'u-a'], ['mongoose', 'mo'], ['platformio', 'pio'], ['pine64', 'p64'],
+  [null, 'u-b'], ['micropython', 'mp-b'],
+].map(([platform, alias], i) => ({ udid: 'l' + i, alias, platform, keyhash: 'k' + i, mac: 'M' + i, lastupdate: new Date(Date.UTC(2026, 9, 1 + i)).toISOString() }));
+
+// Consecutive duplicates removed: the order in which groups appear.
+const groups = (list) => list.filter((x, i) => i === 0 || x !== list[i - 1]);
+
+check('L1 view toggles: light / outline-light, aria-pressed, List view and Grid view names, aria-hidden glyphs', () => {
+  const toggles = (viewMode) => {
+    const { vnode } = renderList(L_FLEET, { viewMode });
+    return { list: one(byCy(vnode, 'view-list'), 'view-list'), grid: one(byCy(vnode, 'view-grid'), 'view-grid') };
+  };
+  [['list', 'list', 'grid'], ['grid', 'grid', 'list']].forEach(([viewMode, on, off]) => {
+    const t = toggles(viewMode);
+    assert.equal(attrsOf(t[on]).variant, 'light', viewMode + ': active toggle is light');
+    assert.equal(attrsOf(t[on])['aria-pressed'], 'true', viewMode + ': active aria-pressed true');
+    assert.equal(attrsOf(t[off]).variant, 'outline-light', viewMode + ': inactive toggle is outline-light');
+    assert.equal(attrsOf(t[off])['aria-pressed'], 'false', viewMode + ': inactive aria-pressed false');
+  });
+  const t = toggles('list');
+  [['list', 'List view'], ['grid', 'Grid view']].forEach(([k, name]) => {
+    assert.equal(attrsOf(t[k])['aria-label'], name, k + ' aria-label');
+    assert.equal(attrsOf(t[k]).title, name, k + ' title');
+    const glyph = one(elementsOf(t[k]), k + ' glyph');
+    assert.equal(glyph.tag, 'span');
+    assert.equal(attrsOf(glyph)['aria-hidden'], 'true', k + ' glyph aria-hidden');
+  });
+});
+
+const MARKERS = [['api-key-indicator', 'No API Key assigned'], ['status-alert', 'Device reported an error'], ['status-warning', 'Device reported a warning']];
+
+check('L2 every API-key, error and warning marker in both views is focusable with a hover and focus tooltip', () => {
+  const fleet = [
+    { udid: 'm1', alias: 'nokey', platform: 'arduino', keyhash: '', status: 'ok' },
+    { udid: 'm2', alias: 'err', platform: 'arduino', keyhash: 'k', status: 'boot #E12' },
+    { udid: 'm3', alias: 'warn', platform: 'arduino', keyhash: 'k', status: 'boot #W7' },
+    { udid: 'm4', alias: 'all', platform: 'arduino', keyhash: null, status: '#e and #w' },
+  ];
+  const seen = [];
+  ['list', 'grid'].forEach((viewMode) => {
+    const { vnode } = renderList(fleet, { viewMode });
+    MARKERS.forEach(([cls, text]) => {
+      const found = byClass(vnode, cls);
+      assert.equal(found.length, 2, viewMode + ': two ' + cls + ' markers');
+      found.forEach((n) => {
+        const a = attrsOf(n);
+        assert.equal(a.role, 'img', cls + ' role img');
+        assert.equal(a['aria-label'], text, cls + ' aria-label');
+        assert.equal(a.title, a['aria-label'], cls + ' title equals aria-label');
+        assert.equal(a.tabindex, '0', cls + ' tabindex 0');
+        const tip = ((n.data && n.data.directives) || []).filter((d) => d.name === 'b-tooltip');
+        assert.equal(tip.length, 1, cls + ' has v-b-tooltip');
+        assert.deepEqual(tip[0].modifiers, { hover: true, focus: true }, cls + ' hover and focus');
+        if (cls === 'api-key-indicator') assert.equal(cyOf(n), 'api-key-warning', 'api-key-warning hook kept');
+      });
+      seen.push(viewMode + ' ' + cls);
+    });
+  });
+  return seen.length + ' marker kinds';
+});
+
+check('L3 compiled theme: marker :focus has no outline, :focus-visible a 2px white ring at 2px offset', () => {
+  MARKERS.forEach(([cls]) => {
+    expectDecls('.' + cls + ':focus', { outline: 'none' });
+    expectDecls('.' + cls + ':focus-visible', { outline: '2px solid #fff', 'outline-offset': '2px', 'border-radius': '2px' });
+  });
+});
+
+check('L4 Platform sort follows the pills (label order, unknown last), alias breaks ties; one shared comparator', () => {
+  const p = platformsMod();
+  assert.equal(typeof p.comparePlatformKeys, 'function', 'comparePlatformKeys is exported');
+  const { vm } = renderList(L_FLEET);
+  vm.sortBy = 'platform';
+  const pills = vm.platformPills.map((x) => x.key).filter((k) => k !== 'All');
+  assert.deepEqual(pills, ['arduino', 'micropython', 'mongoose', 'nodejs', 'nodemcu', 'pine64', 'platformio', 'sigfox', 'unknown'], 'pill order');
+  assert.deepEqual(groups(vm.filteredItems.map((d) => p.basePlatform(d.platform))), pills, 'rows group in pill order');
+  assert.deepEqual(vm.filteredItems.map((d) => d.alias), ['ar', 'mp-a', 'mp-b', 'mo', 'nj', 'nm', 'p64', 'pio', 'sf', 'u-a', 'u-b', 'u-c'], 'alias breaks ties');
+  const { def } = devicesPage();
+  assert.ok(def.computed.platformPills.toString().includes('comparePlatformKeys('), 'platformPills sorts with comparePlatformKeys');
+  assert.ok(def.computed.filteredItems.toString().includes('comparePlatformKeys('), 'the platform sort uses comparePlatformKeys');
+  const c = p.comparePlatformKeys;
+  assert.ok(c('unknown', 'arduino') > 0 && c('arduino', 'unknown') < 0 && c('unknown', 'unknown') === 0, 'unknown last');
+  assert.ok(c('nodejs', 'nodemcu') < 0 && c('pine64', 'platformio') < 0, 'by label');
+});
+
+check('L5 labels decide: renaming NodeJS to Zeta moves nodejs after sigfox in the pills and the sort', () => {
+  const zeta = loadModule('utils/platforms.js', (s) => {
+    assert.ok(s.includes("nodejs: { label: 'NodeJS'"), 'the NodeJS label is where the transform expects it');
+    return s.replace("nodejs: { label: 'NodeJS'", "nodejs: { label: 'Zeta'");
+  });
+  assert.equal(zeta.PLATFORMS.nodejs.label, 'Zeta', 'transform applied');
+  const { vm } = renderList(L_FLEET, {}, loadDevices(zeta));
+  vm.sortBy = 'platform';
+  const want = ['arduino', 'micropython', 'mongoose', 'nodemcu', 'pine64', 'platformio', 'sigfox', 'nodejs', 'unknown'];
+  assert.deepEqual(vm.platformPills.map((x) => x.key).filter((k) => k !== 'All'), want, 'pills by label');
+  assert.deepEqual(groups(vm.filteredItems.map((d) => zeta.basePlatform(d.platform))), want, 'rows by label');
+});
+
+check('L6 row checkbox ids follow the udid and stay with their row after a re-sort; grid and checkboxAll unchanged', () => {
+  const { vm, vnode } = renderList(L_FLEET);
+  const idsOf = (top) => byCy(top, 'device-row').map((row) => {
+    const input = one(byTag(row, 'input'), 'row checkbox');
+    const label = one(byTag(row, 'label'), 'row label');
+    assert.equal(attrsOf(input).id, 'checkbox-' + row.key, row.key + ': checkbox-<udid>');
+    assert.equal(attrsOf(label).for, attrsOf(input).id, row.key + ': label targets its checkbox');
+    return row.key;
+  });
+  const before = idsOf(vnode);
+  vm.sortBy = 'platform';
+  const after = idsOf(rerender(vm));
+  assert.notDeepEqual(after, before, 'the re-sort changed the row order');
+  assert.deepEqual([...after].sort(), [...before].sort(), 'same devices');
+  const all = byTag(vnode, 'thead').map((h) => one(byTag(h, 'input'), 'checkboxAll'))[0];
+  assert.equal(attrsOf(all).id, 'checkboxAll', 'checkboxAll unchanged');
+  vm.viewMode = 'grid';
+  const cols = byTag(rerender(vm), 'b-col').filter((n) => n.key);
+  assert.equal(cols.length, L_FLEET.length, 'one grid card per device');
+  cols.forEach((col) => assert.equal(attrsOf(one(byTag(col, 'input'), 'grid checkbox')).id, 'grid-checkbox-' + col.key));
+});
+
+check('L8 a missing or unrecognised platform sorts with unknown at the end; a missing alias sorts first in its platform', () => {
+  const fleet = [
+    { udid: 'p1', alias: 'b-dev', platform: 'arduino' },
+    { udid: 'p2', platform: 'arduino' },
+    { udid: 'p3', alias: 'z', platform: 'esp-idf:foo' },
+    { udid: 'p4', alias: 'a' },
+    { udid: 'p5', alias: 'm', platform: 'mongoose' },
+    { udid: 'p6', alias: 42, platform: '' },
+  ];
+  const { vm } = renderList(fleet);
+  vm.sortBy = 'platform';
+  assert.deepEqual(vm.filteredItems.map((d) => d.udid), ['p2', 'p1', 'p5', 'p6', 'p4', 'p3'], 'unknown group last, alias as text');
+  const c = platformsMod().comparePlatformKeys;
+  [undefined, null, '', 'esp-idf:foo', 42].forEach((raw) => {
+    assert.ok(c(raw, 'arduino') > 0, JSON.stringify(raw) + ' sorts after arduino');
+    assert.equal(c(raw, 'unknown'), 0, JSON.stringify(raw) + ' is unknown');
+  });
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
