@@ -221,6 +221,7 @@ const iconButton = lazy(() => loadSfc('components/IconButton/IconButton.vue'));
 const dialog = lazy(() => loadSfc('components/BuildLogDialog/BuildLogDialog.vue', {
   buildLogText: logUtils().buildLogText,
   buildLogSearch: logUtils().buildLogSearch,
+  hasBuildLog: logUtils().hasBuildLog,
   IconButton: iconButton().def,
 }));
 
@@ -901,7 +902,8 @@ check('C3 sources: six !default tokens, one build-log import after settings-page
   assert.equal(theme[theme.indexOf("@import 'settings-pages';") + 1], "@import 'build-log';", 'right after settings-pages');
   assert.ok(fs.existsSync(path.join(SRC, 'styles/_build-log.scss')), '_build-log.scss exists');
   const { source } = dialog();
-  ['<style', 'build.id', 'text-muted', '>Retry<', 'v-html', 'innerHTML', '#1e1e1e', '#ddd', 'console.'].forEach((s) => {
+  // 47-REVIEW IN-03: the search field has no template ref (nothing reads it).
+  ['<style', 'build.id', 'text-muted', '>Retry<', 'v-html', 'innerHTML', '#1e1e1e', '#ddd', 'console.', 'ref="searchInput"'].forEach((s) => {
     assert.ok(!source.includes(s), 'BuildLogDialog.vue has no ' + s);
   });
 });
@@ -917,6 +919,7 @@ const namedStub = (name) => ({ name, render: (h) => h('div') });
 
 const visits = lazy(() => loadSfc('pages/Visits/Visits.vue', {
   buildStatusVariant: logUtils().buildStatusVariant,
+  hasBuildLog: logUtils().hasBuildLog,
   CheckinsTimeline: namedStub('CheckinsTimeline'),
   hostnameMixin: {},
   BuildLogDialog: namedStub('BuildLogDialog'),
@@ -946,6 +949,20 @@ const visitBuilds = () => [
   { build_id: 'b1', status: 'OK', name: 'zephyr-01', udid: 'udid-zephyr', date: Date.UTC(2026, 9, 14, 12) },
   { build_id: '', status: 'FAILED', udid: 'udid-x', date: Date.UTC(2026, 9, 14, 11) },
 ];
+
+// One row per candidate build_id (47-REVIEW WR-01): only the non-empty string counts as a
+// build log; '', a missing key, null, numbers, true, an object and an array never do.
+const NO_KEY = {};
+const idRows = () => ['b1', '', NO_KEY, null, 0, 42, true, { id: 'x' }, ['b1']].map((id, i) => Object.assign(
+  { name: 'n' + i, udid: 'udid-n' + i, date: Date.UTC(2026, 9, 14, 12) - i * 60000, status: 'FAILED', log: [] },
+  id === NO_KEY ? {} : { build_id: id },
+));
+const shown = (v) => (v === undefined ? 'undefined' : JSON.stringify(v));
+const predicate = () => {
+  const fn = logUtils().hasBuildLog;
+  assert.equal(typeof fn, 'function', 'hasBuildLog is exported from utils/buildLog.js');
+  return fn;
+};
 
 const buildsCardOf = (vnode) => one(byCy(vnode, 'recent-builds'), 'recent-builds card');
 const rowsOf = (card) => byTag(one(byTag(card, 'tbody'), 'tbody'), 'tr');
@@ -979,8 +996,9 @@ check('V2 a row with a build id: View (link, p-0, eye, aria-label) then Download
   assert.equal(a.size, 'sm');
   assert.equal(a.variant, 'link');
   assert.ok(classList(view).includes('p-0'), 'View has p-0');
-  assert.equal(a['aria-label'], 'Open build log b1');
+  assert.equal(a['aria-label'], 'View build log b1');
   assert.equal(textOf(view), 'View');
+  assert.ok(a['aria-label'].startsWith(textOf(view)), 'the aria-label starts with the visible text (WCAG 2.5.3)');
   const eye = one(byTag(view, 'i'), 'eye glyph');
   assert.ok(classList(eye).includes('la') && classList(eye).includes('la-eye'), 'la la-eye');
   assert.equal(attrsOf(eye)['aria-hidden'], 'true');
@@ -1065,11 +1083,65 @@ checkAsync('V6 end to end: View on a row with a build id makes one GET /logs/bui
   assert.equal(b.show, 0, 'the modal stays closed');
 });
 
+check('V8 dashboard agreement: View and Download exactly when hasBuildLog(row), the placeholder otherwise', () => {
+  const has = predicate();
+  const { vm, vnode } = renderVisits({ buildItems: idRows() });
+  const rows = rowsOf(buildsCardOf(vnode));
+  assert.equal(rows.length, 9, 'one row per candidate build id');
+  rows.forEach((row, i) => {
+    const item = vm.buildItems[i];
+    const what = 'row ' + i + ' (build_id ' + shown(item.build_id) + ')';
+    const cell = lastCellOf(row);
+    if (has(item)) {
+      one(byCy(cell, 'build-open-log'), what + ' View');
+      one(byCy(cell, 'build-download'), what + ' Download');
+      assert.equal(byCy(cell, 'build-no-log').length, 0, what + ' has no placeholder');
+    } else {
+      assert.equal(byCy(cell, 'build-open-log').length, 0, what + ' has no View');
+      assert.equal(byCy(cell, 'build-download').length, 0, what + ' has no Download');
+      one(byCy(cell, 'build-no-log'), what + ' placeholder');
+      nodesOf(cell).filter((n) => n.tag).forEach((n) => assert.ok(isInert(n), what + ' ' + n.tag + ' has no listener, tabindex or role'));
+    }
+  });
+});
+
+// ---------------------------------------------------------------- P: the shared build log predicate
+
+check('P1 hasBuildLog is true only for a non-empty string build_id and always returns a boolean', () => {
+  const has = predicate();
+  assert.strictEqual(has({ build_id: 'b1' }), true, '{ build_id: b1 }');
+  const no = [{ build_id: '' }, {}, null, undefined, { build_id: 0 }, { build_id: 42 }, { build_id: true },
+    { build_id: { id: 'x' } }, { build_id: ['b1'] }, { build_id: null, id: 'x' }, { id: '0' }, 'b1'];
+  no.forEach((b) => assert.strictEqual(has(b), false, shown(b) + ' has no build log'));
+});
+
+checkAsync('P2 open() agrees with hasBuildLog: modal and one fetchBuildDetail exactly for rows that pass it', async () => {
+  const has = predicate();
+  for (const row of [...idRows(), null, undefined, { id: '0' }]) {
+    const what = shown(row);
+    const h = dialogHarness({ buildId: 'keep', text: 'kept log', error: null, searchInput: 'abc', term: 'abc' });
+    const before = snapshot(h.vm);
+    let result;
+    assert.doesNotThrow(() => { result = h.vm.open(row); }, 'open(' + what + ') does not throw');
+    assert.ok(result && typeof result.then === 'function', 'open(' + what + ') returns a promise');
+    await result;
+    if (has(row)) {
+      assert.equal(h.calls.show, 1, 'modal shown once for ' + what);
+      assert.deepEqual(h.calls.dispatch, [['buildlog/fetchBuildDetail', row.build_id]], 'one fetchBuildDetail for ' + what);
+    } else {
+      assert.equal(h.calls.show, 0, 'modal not shown for ' + what);
+      assert.deepEqual(h.calls.dispatch, [], 'no fetchBuildDetail for ' + what);
+      assert.deepEqual(snapshot(h.vm), before, 'state unchanged for ' + what);
+    }
+  }
+});
+
 // ---------------------------------------------------------------- N: navbar rows and the status mapping
 
 const notifications = lazy(() => loadSfc('components/Notifications/Notifications.vue', {
   BuildLogDialog: namedStub('BuildLogDialog'),
   buildStatusVariant: logUtils().buildStatusVariant,
+  hasBuildLog: logUtils().hasBuildLog,
   Vue,
 }));
 
@@ -1149,12 +1221,14 @@ const history = lazy(() => loadSfc('pages/History/History.vue', {
   BuildLogDialog: namedStub('BuildLogDialog'),
   normPaging: (p) => p,
   buildStatusVariant: logUtils().buildStatusVariant,
+  hasBuildLog: logUtils().hasBuildLog,
 }));
 const deviceDetail = lazy(() => loadSfc('pages/Devices/DeviceDetail.vue', {
   BuildLogDialog: namedStub('BuildLogDialog'),
   moment: () => ({ fromNow: () => '' }),
   parseEnvironmentJSON: () => ({ ok: true }),
   buildStatusVariant: logUtils().buildStatusVariant,
+  hasBuildLog: logUtils().hasBuildLog,
   confirmLeave: async () => true,
 }));
 const regionOf = (source, start, end) => {

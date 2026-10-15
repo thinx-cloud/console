@@ -20,7 +20,7 @@ function load(file, extra = {}) {
     .replace(/export default /g, 'module.exports.default = ')
     .replace(/export function (\w+)/g, 'function $1');
   const mod = { exports: {} };
-  const deps = { mapGetters: () => ({}), mapActions: () => ({}), mapState: () => ({}), List: {}, BuildLogDialog: {}, Notifications: {}, codemirror: {}, moment: () => ({}), PAGE_SIZE: 100, normPaging: x => x, pagedPath: x => x, parseEnvironmentJSON: () => ({ok:true}), buildStatusVariant: status => logModule.exports.buildStatusVariant(status), ...extra };
+  const deps = { mapGetters: () => ({}), mapActions: () => ({}), mapState: () => ({}), List: {}, BuildLogDialog: {}, Notifications: {}, codemirror: {}, moment: () => ({}), PAGE_SIZE: 100, normPaging: x => x, pagedPath: x => x, parseEnvironmentJSON: () => ({ok:true}), buildStatusVariant: status => logModule.exports.buildStatusVariant(status), hasBuildLog: build => logModule.exports.hasBuildLog(build), ...extra };
   new Function('module', ...Object.keys(deps), code + '\n' + (file === 'store/buildlog.js' ? 'module.exports.normalizeStatus = normalizeStatus; module.exports.normalizeBuildItems = normalizeBuildItems;' : ''))(mod, ...Object.values(deps));
   return mod.exports.default || mod.exports;
 }
