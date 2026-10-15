@@ -362,6 +362,16 @@ small {
 
 .alert-danger {
   @include alert('danger');
+  color: $white;
+}
+
+// Phase 48 D-14 (UI-C15): white text and close button on the danger alert, 5.01:1 on #C93C3C
+// (was 3.98:1 text and 2.53:1 close button). After the generic .alert button.close rule, so it
+// wins at equal specificity. Transparent danger alerts and the other variants are unchanged.
+.alert-danger .close,
+.alert-danger button.close {
+  color: $white;
+  opacity: 1;
 }
 
 .alert-default {

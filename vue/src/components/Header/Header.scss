@@ -40,6 +40,12 @@
     }
   }
 
+  // Account menu glyph (D-16, UI-C07): 8px either side replaces the 7px px-2 utility; size and
+  // colours come from the navbar link rules.
+  .account-menu-icon {
+    padding: 0 8px;
+  }
+
 .search-group {
   .input-group-text {
     padding-left: .85rem;

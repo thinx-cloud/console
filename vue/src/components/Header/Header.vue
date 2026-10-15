@@ -42,8 +42,10 @@
         class="mr-2"
         menu-class="dropdown-menu-settings"
       >
+        <!-- D-16: bootstrap-vue 2.21.2 has no toggle attrs, so the toggle's accessible name is its link text. -->
         <template slot="button-content">
-          <i class="fi flaticon-settings-10 px-2" />
+          <i class="la la-user-circle account-menu-icon" title="Account" aria-hidden="true"></i>
+          <span class="sr-only">Account menu</span>
         </template>
         <b-dropdown-item to="/app/profile" data-cy="header-profile"><i class="la la-user" /> My Profile</b-dropdown-item>
         <b-dropdown-divider />
