@@ -85,7 +85,7 @@ export default {
       async fetchProfile({ state, commit }) {
         const result = await this.$api.$get('/profile');
         if (result.success) {
-          commit('saveProfile', result.response);
+          commit('saveProfile', result.response || {});
         }
         return state.profile;
       },

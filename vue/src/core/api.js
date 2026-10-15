@@ -70,11 +70,12 @@ export default class Api {
   parseResult(result) {
     if (result && typeof result.success !== 'undefined' && result.success) {
       let keys = Object.keys(result).filter( key => key !== 'success' && key !== 'paging' );
+      // 35 IN-01: no data key gives an undefined response (not {}), so empty states hold.
       const out = {
         'success': result.success,
         'response': Object.prototype.hasOwnProperty.call(result, 'response')
           ? result.response
-          : (keys.length === 1 ? result[keys[0]] : keys.reduce((doc, key) => { doc[key] = result[key]; return doc; }, {}))
+          : (keys.length === 0 ? undefined : keys.length === 1 ? result[keys[0]] : keys.reduce((doc, key) => { doc[key] = result[key]; return doc; }, {}))
       };
       // Paged log endpoints (phase 26, D-19) send `paging` next to `response`.
       if (result.paging && typeof result.paging === 'object') {

@@ -39,7 +39,7 @@ export default {
       async fetchItems({ state, commit }) {
         const result = await this.$api.$get('/device');
         if (result.success) {
-          commit('saveDevices', { items: result.response });
+          commit('saveDevices', { items: result.response || [] });
         }
         return state.items;
       },

@@ -81,7 +81,7 @@ export default {
       async fetchItems({ state, commit }) {
         const result = await this.$api.$get('/env');
         if (result.success) {
-          commit('saveSimpleArray', { items: result.response });
+          commit('saveSimpleArray', { items: result.response || [] });
         }
         return state.items;
       },

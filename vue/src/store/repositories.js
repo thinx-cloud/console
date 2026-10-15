@@ -55,7 +55,7 @@ export default {
       async fetchRepositories({ state, commit }) {
         const result = await this.$api.$get('/source');
         if (result.success) {
-          commit('saveItems', { items: result.response });
+          commit('saveItems', { items: result.response || [] });
         }
         return state.items;
       },
