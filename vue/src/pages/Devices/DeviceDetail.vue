@@ -8,165 +8,173 @@
       Device - <span class="fw-semi-bold">{{ device.alias }}</span>
     </h1>
 
-    <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
-    <b-alert v-if="message" variant="success" show dismissible @dismissed="message = null">{{ message }}</b-alert>
+    <!-- POL-01 D-18 (UI-C06): the content column is capped at 1140px, left-aligned under the title. -->
+    <div class="device-detail-content" data-cy="device-detail-content">
+      <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
+      <b-alert v-if="message" variant="success" show dismissible @dismissed="message = null">{{ message }}</b-alert>
 
-    <b-card title="Actions" class="mb-3" data-cy="card-actions">
-      <b-button variant="primary" @click="buildDevice" class="mr-2 mb-2"><i class="fa fa-cogs mr-1" aria-hidden="true" /> Build Firmware</b-button>
-      <b-button variant="danger" @click="revokeDevice" class="mr-2 mb-2"><i class="fa fa-trash mr-1" aria-hidden="true" /> Revoke Device</b-button>
-      <b-button variant="warning" data-cy="action-transfer" @click="$bvModal.show('transfer-modal')" class="mr-2 mb-2"><i class="fa fa-exchange mr-1" aria-hidden="true" /> Transfer Device</b-button>
-      <b-button variant="secondary" data-cy="action-environment" :disabled="envLoading" @click="openEnvironmentEditor" class="mr-2 mb-2"><i class="fa fa-sliders mr-1" aria-hidden="true" /> Environment</b-button>
-    </b-card>
+      <b-card title="Actions" class="mb-3" data-cy="card-actions">
+        <b-button ref="buildButton" variant="primary" class="mr-2 mb-2" data-cy="action-build" :disabled="buildPending" @click="buildDevice">
+          <b-spinner v-if="buildPending" small aria-hidden="true" data-cy="action-build-spinner"></b-spinner>
+          <i v-else class="fa fa-cogs" aria-hidden="true"></i>
+          <span class="button-text">Build Firmware</span>
+        </b-button>
+        <span class="sr-only" role="status" data-cy="action-build-status">{{ buildPending ? 'Requesting build…' : '' }}</span>
+        <b-button variant="danger" @click="revokeDevice" class="mr-2 mb-2"><i class="fa fa-trash mr-1" aria-hidden="true" /> Revoke Device</b-button>
+        <b-button variant="warning" data-cy="action-transfer" @click="$bvModal.show('transfer-modal')" class="mr-2 mb-2"><i class="fa fa-exchange mr-1" aria-hidden="true" /> Transfer Device</b-button>
+        <b-button variant="secondary" data-cy="action-environment" :disabled="envLoading" @click="openEnvironmentEditor" class="mr-2 mb-2"><i class="fa fa-sliders mr-1" aria-hidden="true" /> Environment</b-button>
+      </b-card>
 
-    <b-row>
-      <!-- Left: metadata -->
-      <b-col cols="12">
-        <b-card title="Device Info" class="mb-3" data-cy="card-device-info">
-          <table class="table table-sm table-borderless mb-0">
-            <tr><td class="text-muted" style="width:140px">UDID</td><td><code>{{ device.udid }}</code></td></tr>
-            <tr><td class="text-muted">MAC</td><td>{{ device.mac }}</td></tr>
-            <tr><td class="text-muted">Platform</td><td>{{ device.platform }}</td></tr>
-            <tr><td class="text-muted">Firmware</td><td>{{ device.firmware }}</td></tr>
-            <tr><td class="text-muted">Version</td><td>{{ device.version }}</td></tr>
-            <tr><td class="text-muted">Status</td><td>{{ device.status }}</td></tr>
-            <tr><td class="text-muted">Last seen</td><td>{{ device.lastupdate | fromNow }}</td></tr>
-            <tr><td class="text-muted">Commit</td><td><code>{{ device.commit }}</code></td></tr>
-          </table>
-        </b-card>
-
-        <b-card title="Network" class="mb-3">
-          <table class="table table-sm table-borderless mb-0">
-            <tr><td class="text-muted" style="width:140px">RSSI</td><td>{{ device.rssi }}</td></tr>
-            <tr><td class="text-muted">Station</td><td>{{ device.station }}</td></tr>
-            <tr><td class="text-muted">Lat/Lon</td><td>{{ device.lat }}, {{ device.lon }}</td></tr>
-          </table>
-        </b-card>
-      </b-col>
-
-      <!-- Right: editable fields + actions -->
-      <b-col cols="12">
-        <b-card title="Edit Device" class="mb-3">
-          <b-form-group label="Alias">
-            <b-input-group>
-              <b-form-input v-model="editForm.alias" />
-              <b-input-group-append>
-                <b-button variant="primary" @click="saveField('alias')">Save</b-button>
-              </b-input-group-append>
-            </b-input-group>
-          </b-form-group>
-          <b-form-group label="Description">
-            <b-input-group>
-              <b-form-input v-model="editForm.description" />
-              <b-input-group-append>
-                <b-button variant="primary" @click="saveField('description')">Save</b-button>
-              </b-input-group-append>
-            </b-input-group>
-          </b-form-group>
-        </b-card>
-
-        <b-card v-if="device.source" title="Linked Repository" class="mb-3">
-          <p class="mb-1">{{ linkedRepository ? linkedRepository.alias : 'Repository unavailable' }}</p>
-          <p v-if="linkedRepository" class="text-monospace text-break">
-            <a v-if="linkedRepositoryHref" :href="linkedRepositoryHref" target="_blank" rel="noopener noreferrer" data-cy="linked-repository-url">{{ linkedRepository.url }}</a>
-            <span v-else data-cy="linked-repository-url">{{ linkedRepository.url }}</span>
-          </p>
-        </b-card>
-
-        <b-card title="Environment Variables" class="mb-3" data-cy="card-enviros">
-          <div v-if="!envEditing">
-            <div v-if="device.environment && Object.keys(device.environment).length">
-              <table class="table table-sm table-borderless mb-2">
-                <tr v-for="(val, key) in device.environment" :key="key">
-                  <td class="text-muted" style="width:200px">{{ key }}</td>
-                  <td><code>{{ val }}</code></td>
-                </tr>
-              </table>
-              <p class="text-muted small">ssid and pass are masked here; Edit loads the stored values.</p>
-            </div>
-            <p v-else class="text-muted">No environment variables.</p>
-            <b-button variant="secondary" size="sm" data-cy="env-edit" :disabled="envLoading" @click="editEnvironment">
-              {{ envLoading ? 'Loading…' : 'Edit' }}
-            </b-button>
-          </div>
-
-          <div v-else>
-            <b-form-textarea
-              v-model="envDraft"
-              data-cy="env-draft"
-              rows="10"
-              spellcheck="false"
-              class="text-monospace mb-2"
-              aria-label="Device environment as JSON" />
-            <p v-if="envError" class="text-danger small" data-cy="env-error">{{ envError }}</p>
-            <p v-else-if="envConfirmClear" class="text-warning small" data-cy="env-confirm-clear">This empties the environment — {{ envLoadedCount }} variable(s) will be removed. Click again to confirm.</p>
-            <p v-else class="text-muted small">A JSON object of scalar values, for example <code>{ "ssid": "my-network", "interval": 300 }</code>.</p>
-            <b-button variant="primary" size="sm" class="mr-2" data-cy="env-save" :disabled="!!envError" @click="saveEnvironment">{{ envConfirmClear ? 'Confirm clear' : 'Save' }}</b-button>
-            <b-button variant="secondary" size="sm" data-cy="env-cancel" @click="cancelEnvironmentEdit">Cancel</b-button>
-          </div>
-        </b-card>
-
-        <!-- UI-T15/UI-T16: the note says when the ticks differ from the stored assignment; the
-             save result is reported inside this card, not in the page alerts. -->
-        <b-card class="mb-3" data-cy="card-transformers">
-          <div class="transformer-card-head">
-            <h4 class="card-title">Transformer Assignment</h4>
-            <span class="unsaved-note" role="status" data-cy="transformers-dirty">{{ transformersDirty ? 'Unsaved changes' : '' }}</span>
-          </div>
-          <b-form-group label="Assigned transformers">
-            <b-form-checkbox-group
-              v-if="assignmentOptions.length"
-              v-model="editForm.transformers"
-              :options="assignmentOptions"
-              :disabled="transformersSaving"
-              stacked
-              data-cy="transformer-checkboxes"
-              @change="onTransformersTicked"
-            />
-            <p v-else class="mb-0" data-cy="transformers-empty">No transformers yet. Use Create &amp; Assign to add one.</p>
-          </b-form-group>
-          <b-alert variant="success" dismissible class="transformer-card-alert" :show="!!transformersMessage" data-cy="transformers-saved" @dismissed="transformersMessage = null">{{ transformersMessage }}</b-alert>
-          <b-alert variant="danger" dismissible class="transformer-card-alert" :show="!!transformersError" data-cy="transformers-error" @dismissed="transformersError = null">{{ transformersError }}</b-alert>
-          <div class="transformer-card-actions">
-            <b-button variant="success" size="sm" data-cy="transformers-save" :disabled="!transformersDirty || transformersSaving" @click="saveTransformers">
-              <template v-if="transformersSaving"><i class="fa fa-spin fa-circle-o-notch" aria-hidden="true"></i><span class="button-text">Saving…</span></template>
-              <template v-else>Save Transformers</template>
-            </b-button>
-            <b-button variant="default" size="sm" :disabled="transformersSaving" @click="$bvModal.show('device-transformer-modal')">Create &amp; Assign</b-button>
-            <b-button variant="warning" size="sm" to="/app/transformers" data-cy="manage-transformers">Manage Transformers</b-button>
-          </div>
-        </b-card>
-
-        <b-card title="Build History" class="mb-3" data-cy="card-build-history">
-          <div v-if="buildHistory.length">
-            <table class="table table-striped table-sm">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Build ID</th>
-                  <th>Status</th>
-                  <th>Log</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- Rows are a summary only; the full log loads only from the row's View button (G-36-3). -->
-                <tr v-for="(build, i) in buildHistory" :key="i">
-                  <td>{{ build.date | fromNow }}</td>
-                  <td><code>{{ build.build_id }}</code></td>
-                  <td>
-                    <b-badge :variant="buildStatusVariant(build.status)">{{ build.status || '—' }}</b-badge>
-                  </td>
-                  <td>
-                    <b-button v-if="hasBuildLog(build)" size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'View build log ' + build.build_id" @click="openBuildLog(build)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
-                    <span v-else data-cy="build-no-log"><span aria-hidden="true">—</span><span class="sr-only">No build log</span></span>
-                  </td>
-                </tr>
-              </tbody>
+      <b-row>
+        <!-- Left: metadata -->
+        <b-col cols="12">
+          <b-card title="Device Info" class="mb-3" data-cy="card-device-info">
+            <table class="table table-sm table-borderless mb-0">
+              <tr><td class="text-muted" style="width:140px">UDID</td><td><code>{{ device.udid }}</code></td></tr>
+              <tr><td class="text-muted">MAC</td><td>{{ device.mac }}</td></tr>
+              <tr><td class="text-muted">Platform</td><td>{{ device.platform }}</td></tr>
+              <tr><td class="text-muted">Firmware</td><td>{{ device.firmware }}</td></tr>
+              <tr><td class="text-muted">Version</td><td>{{ device.version }}</td></tr>
+              <tr><td class="text-muted">Status</td><td>{{ device.status }}</td></tr>
+              <tr><td class="text-muted">Last seen</td><td>{{ device.lastupdate | fromNow }}</td></tr>
+              <tr><td class="text-muted">Commit</td><td><code>{{ device.commit }}</code></td></tr>
             </table>
-          </div>
-          <p v-else class="text-muted mb-0">No build history.</p>
-        </b-card>
-      </b-col>
-    </b-row>
+          </b-card>
+
+          <b-card title="Network" class="mb-3">
+            <table class="table table-sm table-borderless mb-0">
+              <tr><td class="text-muted" style="width:140px">RSSI</td><td>{{ device.rssi }}</td></tr>
+              <tr><td class="text-muted">Station</td><td>{{ device.station }}</td></tr>
+              <tr><td class="text-muted">Lat/Lon</td><td>{{ device.lat }}, {{ device.lon }}</td></tr>
+            </table>
+          </b-card>
+        </b-col>
+
+        <!-- Right: editable fields + actions -->
+        <b-col cols="12">
+          <b-card title="Edit Device" class="mb-3">
+            <b-form-group label="Alias">
+              <b-input-group>
+                <b-form-input v-model="editForm.alias" />
+                <b-input-group-append>
+                  <b-button variant="primary" @click="saveField('alias')">Save</b-button>
+                </b-input-group-append>
+              </b-input-group>
+            </b-form-group>
+            <b-form-group label="Description">
+              <b-input-group>
+                <b-form-input v-model="editForm.description" />
+                <b-input-group-append>
+                  <b-button variant="primary" @click="saveField('description')">Save</b-button>
+                </b-input-group-append>
+              </b-input-group>
+            </b-form-group>
+          </b-card>
+
+          <b-card v-if="device.source" title="Linked Repository" class="mb-3">
+            <p class="mb-1">{{ linkedRepository ? linkedRepository.alias : 'Repository unavailable' }}</p>
+            <p v-if="linkedRepository" class="text-monospace text-break">
+              <a v-if="linkedRepositoryHref" :href="linkedRepositoryHref" target="_blank" rel="noopener noreferrer" data-cy="linked-repository-url">{{ linkedRepository.url }}</a>
+              <span v-else data-cy="linked-repository-url">{{ linkedRepository.url }}</span>
+            </p>
+          </b-card>
+
+          <b-card title="Environment Variables" class="mb-3" data-cy="card-enviros">
+            <div v-if="!envEditing">
+              <div v-if="device.environment && Object.keys(device.environment).length">
+                <table class="table table-sm table-borderless mb-2">
+                  <tr v-for="(val, key) in device.environment" :key="key">
+                    <td class="text-muted" style="width:200px">{{ key }}</td>
+                    <td><code>{{ val }}</code></td>
+                  </tr>
+                </table>
+                <p class="text-muted small">ssid and pass are masked here; Edit loads the stored values.</p>
+              </div>
+              <p v-else class="text-muted">No environment variables.</p>
+              <b-button variant="secondary" size="sm" data-cy="env-edit" :disabled="envLoading" @click="editEnvironment">
+                {{ envLoading ? 'Loading…' : 'Edit' }}
+              </b-button>
+            </div>
+
+            <div v-else>
+              <b-form-textarea
+                v-model="envDraft"
+                data-cy="env-draft"
+                rows="10"
+                spellcheck="false"
+                class="text-monospace mb-2"
+                aria-label="Device environment as JSON" />
+              <p v-if="envError" class="text-danger small" data-cy="env-error">{{ envError }}</p>
+              <p v-else-if="envConfirmClear" class="text-warning small" data-cy="env-confirm-clear">This empties the environment — {{ envLoadedCount }} variable(s) will be removed. Click again to confirm.</p>
+              <p v-else class="text-muted small">A JSON object of scalar values, for example <code>{ "ssid": "my-network", "interval": 300 }</code>.</p>
+              <b-button variant="primary" size="sm" class="mr-2" data-cy="env-save" :disabled="!!envError" @click="saveEnvironment">{{ envConfirmClear ? 'Confirm clear' : 'Save' }}</b-button>
+              <b-button variant="secondary" size="sm" data-cy="env-cancel" @click="cancelEnvironmentEdit">Cancel</b-button>
+            </div>
+          </b-card>
+
+          <!-- UI-T15/UI-T16: the note says when the ticks differ from the stored assignment; the
+               save result is reported inside this card, not in the page alerts. -->
+          <b-card class="mb-3" data-cy="card-transformers">
+            <div class="transformer-card-head">
+              <h4 class="card-title">Transformer Assignment</h4>
+              <span class="unsaved-note" role="status" data-cy="transformers-dirty">{{ transformersDirty ? 'Unsaved changes' : '' }}</span>
+            </div>
+            <b-form-group label="Assigned transformers">
+              <b-form-checkbox-group
+                v-if="assignmentOptions.length"
+                v-model="editForm.transformers"
+                :options="assignmentOptions"
+                :disabled="transformersSaving"
+                stacked
+                data-cy="transformer-checkboxes"
+                @change="onTransformersTicked"
+              />
+              <p v-else class="mb-0" data-cy="transformers-empty">No transformers yet. Use Create &amp; Assign to add one.</p>
+            </b-form-group>
+            <b-alert variant="success" dismissible class="transformer-card-alert" :show="!!transformersMessage" data-cy="transformers-saved" @dismissed="transformersMessage = null">{{ transformersMessage }}</b-alert>
+            <b-alert variant="danger" dismissible class="transformer-card-alert" :show="!!transformersError" data-cy="transformers-error" @dismissed="transformersError = null">{{ transformersError }}</b-alert>
+            <div class="transformer-card-actions">
+              <b-button variant="success" size="sm" data-cy="transformers-save" :disabled="!transformersDirty || transformersSaving" @click="saveTransformers">
+                <template v-if="transformersSaving"><i class="fa fa-spin fa-circle-o-notch" aria-hidden="true"></i><span class="button-text">Saving…</span></template>
+                <template v-else>Save Transformers</template>
+              </b-button>
+              <b-button variant="default" size="sm" :disabled="transformersSaving" @click="$bvModal.show('device-transformer-modal')">Create &amp; Assign</b-button>
+              <b-button variant="warning" size="sm" to="/app/transformers" data-cy="manage-transformers">Manage Transformers</b-button>
+            </div>
+          </b-card>
+
+          <b-card title="Build History" class="mb-3" data-cy="card-build-history">
+            <div v-if="buildHistory.length">
+              <table class="table table-striped table-sm">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Build ID</th>
+                    <th>Status</th>
+                    <th>Log</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Rows are a summary only; the full log loads only from the row's View button (G-36-3). -->
+                  <tr v-for="(build, i) in buildHistory" :key="i">
+                    <td>{{ build.date | fromNow }}</td>
+                    <td><code>{{ build.build_id }}</code></td>
+                    <td>
+                      <b-badge :variant="buildStatusVariant(build.status)">{{ build.status || '—' }}</b-badge>
+                    </td>
+                    <td>
+                      <b-button v-if="hasBuildLog(build)" size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'View build log ' + build.build_id" @click="openBuildLog(build)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
+                      <span v-else data-cy="build-no-log"><span aria-hidden="true">—</span><span class="sr-only">No build log</span></span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p v-else class="text-muted mb-0">No build history.</p>
+          </b-card>
+        </b-col>
+      </b-row>
+    </div>
 
     <b-modal id="device-transformer-modal" title="Create & Assign Transformer" @ok="createTransformer" :ok-disabled="transformerSaving" ok-title="Create & Assign" cancel-title="Close without creating" cancel-variant="default">
       <b-alert v-if="transformerError" variant="danger" show>{{ transformerError }}</b-alert>
@@ -220,6 +228,8 @@ export default {
       loading: true,
       error: null,
       message: null,
+      // POL-01 D-17: set from the Build Firmware click until POST /build settles; not the build itself.
+      buildPending: false,
       editForm: { alias: '', description: '', transformers: [] },
       transformerForm: { alias: '', body: 'var transformer = function(status, device) { return status; };' },
       transformerSaving: false,
@@ -363,10 +373,39 @@ export default {
         this.error = result.message || 'Failed to save.';
       }
     },
+    // One POST /build per click (D-17, UI-C05): a second click, a double click or a key repeat
+    // while the request is in flight returns at once. The flag is reset however the request
+    // settles; the build itself is not tracked. A button that had focus gets it back, because
+    // the disabled button drops focus to the body; a mouse user's focus is never moved.
     async buildDevice() {
-      const result = await this.buildFirmware({ udid: this.device.udid, source_id: this.device.source });
-      if (result.success) this.message = 'Build triggered.';
-      else this.error = result.message || 'Build failed.';
+      if (this.buildPending) return;
+      const ref = this.$refs.buildButton;
+      const button = ref && ref.$el ? ref.$el : ref;
+      const hadFocus = !!button && typeof document !== 'undefined' && document.activeElement === button;
+      this.message = null;
+      this.error = null;
+      this.buildPending = true;
+      let result;
+      try {
+        result = await this.buildFirmware({ udid: this.device.udid, source_id: this.device.source });
+      } catch (e) {
+        result = { success: false };
+      } finally {
+        this.buildPending = false;
+      }
+      if (result && result.success) this.message = 'Build triggered.';
+      else this.error = this.buildFailure(result);
+      if (hadFocus) {
+        this.$nextTick(() => {
+          if (typeof button.focus === 'function') button.focus();
+        });
+      }
+    },
+    // The API answers a failed /build with { success: false, response: <reason> }; the reason
+    // is shown as text when it is a non-blank string, else Build failed. (44 IN-01).
+    buildFailure(result) {
+      const text = (v) => (typeof v === 'string' && v.trim() !== '' ? v : null);
+      return (result && (text(result.message) || text(result.response))) || 'Build failed.';
     },
     async revokeDevice() {
       const confirmed = await this.$bvModal.msgBoxConfirm('Revoke this device? This cannot be undone.', {

@@ -1,0 +1,7 @@
+// Phase 48 Device Detail (UI-SPEC UI-C06, D-18).
+
+// Content column (POL-01): the alerts, the Actions card and the card row stop at the Bootstrap xl
+// container width. No auto margin, so the column stays left-aligned under the full-width title.
+.device-detail-content {
+  max-width: 1140px;
+}

@@ -877,7 +877,8 @@ checkAsync('F5 empty and non-string reasons give Build failed.; a usable reason 
   const markup = '<img src=x onerror=alert(1)>';
   const r = detailPage();
   await runBuild(r.vm, { success: false, response: markup });
-  const alert = one(byTag(rerender(r.vm), 'b-alert').filter((n) => attrsOf(n).variant === 'danger'), 'danger alert');
+  // The page alert; the Transformer Assignment card's own danger alert carries data-cy.
+  const alert = one(byTag(rerender(r.vm), 'b-alert').filter((n) => attrsOf(n).variant === 'danger' && !cyOf(n)), 'page danger alert');
   assert.equal(textOf(alert), markup, 'the reason reaches the alert as text');
   assert.ok(!(alert.data.domProps && 'innerHTML' in alert.data.domProps), 'never as HTML');
 });
