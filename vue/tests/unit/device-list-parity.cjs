@@ -170,7 +170,18 @@ function nodesOf(top) {
   return out;
 }
 
-const attrsOf = (n) => (n && n.data && n.data.attrs) || {};
+// b-button is a plain element here, so its attrs are what the template passed, not what BButton
+// renders. Mirror bootstrap-vue 2.21.2 BButton computeAttrs (button.js): a boolean `pressed` prop
+// is toggle mode and renders aria-pressed="true|false"; otherwise no aria-pressed is rendered, and a
+// passed-through aria-pressed is overwritten either way (48-05, D-14).
+const attrsOf = (n) => {
+  const attrs = (n && n.data && n.data.attrs) || {};
+  if (!n || n.tag !== 'b-button') return attrs;
+  const out = Object.assign({}, attrs);
+  delete out['aria-pressed'];
+  if (typeof attrs.pressed === 'boolean') out['aria-pressed'] = String(attrs.pressed);
+  return out;
+};
 const cyOf = (n) => attrsOf(n)['data-cy'] || null;
 const byCy = (top, cy) => nodesOf(top).filter((n) => cyOf(n) === cy);
 

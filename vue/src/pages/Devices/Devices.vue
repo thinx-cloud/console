@@ -27,7 +27,7 @@
         size="sm"
         data-cy="view-list"
         :variant="viewMode === 'list' ? 'light' : 'outline-light'"
-        :aria-pressed="String(viewMode === 'list')"
+        :pressed="viewMode === 'list'"
         aria-label="List view"
         title="List view"
         @click="viewMode = 'list'"
@@ -38,7 +38,7 @@
         size="sm"
         data-cy="view-grid"
         :variant="viewMode === 'grid' ? 'light' : 'outline-light'"
-        :aria-pressed="String(viewMode === 'grid')"
+        :pressed="viewMode === 'grid'"
         aria-label="Grid view"
         title="Grid view"
         @click="viewMode = 'grid'"
@@ -52,7 +52,7 @@
           :data-cy="'platform-pill-' + pill.key"
           size="sm"
           :variant="activePlatform === pill.key ? 'light' : 'outline-light'"
-          :aria-pressed="String(activePlatform === pill.key)"
+          :pressed="activePlatform === pill.key"
           @click="platformFilter = pill.key"
         >{{ pill.label }}</b-button>
       </div>
