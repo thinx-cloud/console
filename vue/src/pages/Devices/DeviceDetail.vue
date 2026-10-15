@@ -148,7 +148,7 @@
                 </tr>
               </thead>
               <tbody>
-                <!-- Rows are a summary only; the full log loads only from the row's Open build log button (G-36-3). -->
+                <!-- Rows are a summary only; the full log loads only from the row's View button (G-36-3). -->
                 <tr v-for="(build, i) in buildHistory" :key="i">
                   <td>{{ build.date | fromNow }}</td>
                   <td><code>{{ build.build_id }}</code></td>
@@ -156,7 +156,7 @@
                     <b-badge :variant="buildStatusVariant(build.status)">{{ build.status || '—' }}</b-badge>
                   </td>
                   <td>
-                    <b-button v-if="build.build_id" size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'Open build log ' + build.build_id" @click="openBuildLog(build)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
+                    <b-button v-if="hasBuildLog(build)" size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'View build log ' + build.build_id" @click="openBuildLog(build)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
                     <span v-else data-cy="build-no-log"><span aria-hidden="true">—</span><span class="sr-only">No build log</span></span>
                   </td>
                 </tr>
@@ -202,7 +202,7 @@ import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import { mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
 import { parseEnvironmentJSON } from '@/utils/envJson';
-import { buildStatusVariant } from '@/utils/buildLog';
+import { buildStatusVariant, hasBuildLog } from '@/utils/buildLog';
 import { confirmLeave } from '@/utils/confirmLeave';
 
 export default {
@@ -308,6 +308,7 @@ export default {
   },
   methods: {
     buildStatusVariant,
+    hasBuildLog,
     openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
     ...mapGetters({ getByUdid: 'devices/getByUdid', getBuildItems: 'buildlog/getItems', getTransformers: 'transformers/getItems', getRepositories: 'repositories/getItems' }),
     ...mapActions({
