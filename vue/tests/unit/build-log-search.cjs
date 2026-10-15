@@ -1065,6 +1065,181 @@ checkAsync('V6 end to end: View on a row with a build id makes one GET /logs/bui
   assert.equal(b.show, 0, 'the modal stays closed');
 });
 
+// ---------------------------------------------------------------- N: navbar rows and the status mapping
+
+const notifications = lazy(() => loadSfc('components/Notifications/Notifications.vue', {
+  BuildLogDialog: namedStub('BuildLogDialog'),
+  buildStatusVariant: logUtils().buildStatusVariant,
+  Vue,
+}));
+
+const navBuilds = () => [
+  { build_id: 'b1', status: 'OK', date: 3 },
+  { build_id: '', status: 'TIMEOUT', date: 2, udid: 'udid-abcdefgh' },
+  { build_id: 'b3', status: '', date: 1, name: 'n3' },
+];
+
+// Render the navbar list; openBuildLog is replaced with a recorder before the render.
+function renderNav(buildItems = navBuilds()) {
+  const { def } = notifications();
+  const vm = new Vue({
+    render: def.render,
+    staticRenderFns: def.staticRenderFns,
+    data: def.data,
+    computed: def.computed,
+    methods: def.methods,
+    components: Object.assign({}, def.components),
+  });
+  Object.assign(vm, { loading: false, buildItems });
+  const opened = record(vm, 'openBuildLog');
+  const vnode = rerender(vm);
+  const rows = byCy(vnode, 'recent-build');
+  return { vm, vnode, rows, opened };
+}
+
+check('N1 navbar rows: buttons with a click listener only with a build id; a row without one is static and inert', () => {
+  const { vm, rows, opened } = renderNav();
+  assert.equal(rows.length, 3, 'three recent-build rows');
+  rows.forEach((row) => assert.equal(row.tag, 'b-list-group-item'));
+  const [b1, idless, b3] = rows;
+  [[b1, 0], [b3, 2]].forEach(([row, i]) => {
+    assert.ok(attrsOf(row).button, 'row ' + i + ' has a truthy button attribute');
+    click(row);
+    assert.equal(opened[opened.length - 1][0], vm.recentBuilds[i], 'row ' + i + ' opens its own build');
+  });
+  assert.equal(opened.length, 2, 'two opens');
+  assert.ok(!attrsOf(idless).button, 'the row without a build id has no button attribute');
+  assert.ok(!hasListener(idless), 'the row without a build id has no listener (on and nativeOn empty)');
+  assert.ok(!('tabindex' in attrsOf(idless)), 'no tabindex');
+  assert.ok(!('role' in attrsOf(idless)), 'no role');
+  assert.ok(classList(idless).includes('listGroupItem') && classList(idless).includes('listGroupItem--static'), 'listGroupItem listGroupItem--static');
+  [b1, b3].forEach((row, i) => assert.ok(!classList(row).includes('listGroupItem--static'), 'button row ' + i + ' is not static'));
+});
+
+check('N2 navbar row markup: no h6 or p; one title span and one meta span holding the status and short udid', () => {
+  const { vm, rows } = renderNav();
+  const titles = ['—', 'udid-abc...', 'n3'];
+  rows.forEach((row, i) => {
+    assert.equal(byTag(row, 'h6').length + byTag(row, 'p').length, 0, 'row ' + i + ' has no h6 or p');
+    const title = one(byClass(row, 'notification-title'), 'notification-title');
+    assert.equal(title.tag, 'span');
+    assert.ok(classList(title).includes('text-ellipsis'), 'title text-ellipsis');
+    assert.equal(textOf(title), titles[i]);
+    const meta = one(byClass(row, 'notification-meta'), 'notification-meta');
+    assert.equal(meta.tag, 'span');
+    assert.ok(classList(meta).includes('deemphasize') && classList(meta).includes('text-ellipsis'), 'meta deemphasize text-ellipsis');
+    const status = elementsOf(meta)[0];
+    assert.ok(classList(status).includes(vm.statusTextClass(vm.recentBuilds[i])), 'meta starts with the coloured status');
+  });
+  assert.equal(textOf(byClass(rows[1], 'notification-meta')[0]), 'TIMEOUT · udid-abc...');
+});
+
+check('N3 a missing status reads an em dash with the danger circle and the cross glyph', () => {
+  const { rows } = renderNav();
+  const meta = one(byClass(rows[2], 'notification-meta'), 'notification-meta');
+  assert.equal(textOf(elementsOf(meta)[0]), '—');
+  const icon = one(byClass(rows[2], 'circle'), 'status circle');
+  assert.equal(classList(icon).join(' '), 'circle circle-lg bg-danger');
+  assert.equal(classList(one(byTag(icon, 'i'), 'status glyph')).join(' '), 'fa fa-times text-white');
+});
+
+const STATUS_VARIANTS = [['OK', 'success', 'fa-check'], ['TIMEOUT', 'warning', 'fa-clock-o'], ['RUNNING', 'info', 'fa-circle-o-notch'], ['FAILED', 'danger', 'fa-times']];
+const LIST_FILES = ['pages/Visits/Visits.vue', 'components/Notifications/Notifications.vue', 'pages/History/History.vue', 'pages/Devices/DeviceDetail.vue'];
+const history = lazy(() => loadSfc('pages/History/History.vue', {
+  BuildLogDialog: namedStub('BuildLogDialog'),
+  normPaging: (p) => p,
+  buildStatusVariant: logUtils().buildStatusVariant,
+}));
+const deviceDetail = lazy(() => loadSfc('pages/Devices/DeviceDetail.vue', {
+  BuildLogDialog: namedStub('BuildLogDialog'),
+  moment: () => ({ fromNow: () => '' }),
+  parseEnvironmentJSON: () => ({ ok: true }),
+  buildStatusVariant: logUtils().buildStatusVariant,
+  confirmLeave: async () => true,
+}));
+const regionOf = (source, start, end) => {
+  const at = source.indexOf(start);
+  assert.ok(at !== -1, 'region start ' + start);
+  const stop = source.indexOf(end, at);
+  assert.ok(stop !== -1, 'region end ' + end);
+  return source.slice(at, stop + end.length);
+};
+
+check('N4 status mapping lock: OK, TIMEOUT, RUNNING, FAILED are success, warning, info, danger on all four lists', () => {
+  const { vm } = renderNav();
+  STATUS_VARIANTS.forEach(([status, v, glyph]) => {
+    const b = { status };
+    assert.equal(vm.statusIconClass(b), 'circle circle-lg bg-' + v, 'navbar circle ' + status);
+    assert.equal(vm.statusTextClass(b), 'text-' + v, 'navbar text ' + status);
+    assert.equal(vm.statusGlyph(b), 'fa ' + glyph + ' text-white', 'navbar glyph ' + status);
+  });
+  const builds = STATUS_VARIANTS.map(([status], i) => ({ build_id: 'b' + i, status, name: 'd' + i }));
+  const card = buildsCardOf(renderVisits({ buildItems: builds }).vnode);
+  assert.deepEqual(byTag(card, 'b-badge').map((n) => attrsOf(n).variant), STATUS_VARIANTS.map((s) => s[1]), 'dashboard badges');
+  [['History', history(), 'data-cy="build-row"', '</tr>'], ['DeviceDetail', deviceDetail(), 'data-cy="card-build-history"', '</b-card>']].forEach(([name, page, start, end]) => {
+    assert.equal(page.def.methods.buildStatusVariant, logUtils().buildStatusVariant, name + ' uses the shared helper');
+    STATUS_VARIANTS.forEach(([status, v]) => assert.equal(page.def.methods.buildStatusVariant(status), v, name + ' ' + status));
+    const badges = regionOf(page.source, start, end).match(/<b-badge\b[^>]*>/g) || [];
+    assert.equal(badges.length, 1, name + ' has one build status badge');
+    assert.ok(badges[0].includes(':variant="buildStatusVariant('), name + ' badge binds buildStatusVariant');
+  });
+});
+
+check('N5 sources: no OK comparison or literal badge variant on any list; no OK-only helper, h6, p or UNKNOWN in the navbar rows', () => {
+  LIST_FILES.forEach((rel) => {
+    const source = read(rel);
+    assert.ok(!/===? *'OK'/.test(source), rel + ' compares no status with OK');
+    assert.ok(!/<b-badge[^>]* variant="/.test(source), rel + ' gives no b-badge a literal variant');
+  });
+  const { source, def } = notifications();
+  assert.ok(!('isSuccess' in def.methods), 'no isSuccess method');
+  assert.ok(!source.includes('isSuccess'), 'no isSuccess in the source');
+  assert.ok(!source.includes("'UNKNOWN'"), 'no UNKNOWN status word');
+  const loop = regionOf(source, 'v-for="build in recentBuilds"', '</b-list-group-item>');
+  assert.ok(!/<h6\b|<p\b/.test(loop), 'no h6 or p inside the row loop');
+});
+
+const notificationRules = lazy(() => cssRules(sass.compile(path.join(SRC, 'components/Notifications/Notifications.scss'), {
+  style: 'compressed',
+  quietDeps: true,
+  logger: sass.Logger.silent,
+}).css));
+
+function expectRule(rules, selector, want) {
+  const target = loose(selector);
+  const bodies = rules.filter((r) => r.media === '' && r.selectors.some((s) => loose(s) === target)).map((r) => r.body);
+  assert.ok(bodies.length, selector + ' has a rule');
+  Object.keys(want).forEach((p) => assert.equal(value(bodies, p), want[p], selector + ' ' + p));
+}
+
+check('N6 compiled Notifications.scss: title and meta lines, static rows without pointer or hover highlight', () => {
+  const rules = notificationRules();
+  expectRule(rules, '.notification-title', { display: 'block', 'margin-bottom': '4px', 'font-size': '1rem', 'font-weight': '300' });
+  expectRule(rules, '.notification-meta', { display: 'block', 'font-size': '.875rem', 'font-weight': '400' });
+  expectRule(rules, '.listGroupItem.listGroupItem--static', { cursor: 'default' });
+  expectRule(rules, '.listGroupItem.listGroupItem--static:hover', { 'background-color': 'transparent' });
+});
+
+// ---------------------------------------------------------------- H: History and Device Detail
+
+check('H1 History build row: View has p-0 and @click.stop; the date cell is text-nowrap without inline style', () => {
+  const row = regionOf(read('pages/History/History.vue'), 'data-cy="build-row"', '</tr>');
+  const view = (row.match(/<b-button\b[^>]*data-cy="build-open-log"[^>]*>/) || [])[0];
+  assert.ok(view, 'History build row has a View button');
+  assert.ok(view.includes('class="p-0"'), 'View has class p-0');
+  assert.ok(view.includes('@click.stop="openBuildLog(item)"'), 'View keeps @click.stop');
+  const date = (row.match(/<td\b[^>]*>/) || [])[0];
+  assert.equal(date, '<td class="text-nowrap">', 'the date cell is <td class="text-nowrap">');
+  assert.ok(!row.includes('white-space:nowrap'), 'no inline nowrap in the build row');
+});
+
+check('H2 Device Build History: one No build log placeholder and no muted dash', () => {
+  const card = regionOf(read('pages/Devices/DeviceDetail.vue'), 'data-cy="card-build-history"', '</b-card>');
+  assert.equal(card.split('data-cy="build-no-log"').length - 1, 1, 'exactly one build-no-log placeholder');
+  assert.ok(card.includes('<span v-else data-cy="build-no-log"><span aria-hidden="true">—</span><span class="sr-only">No build log</span></span>'), 'UI-B15 placeholder markup');
+  assert.ok(!card.includes('class="text-muted">—<'), 'no muted dash');
+});
+
 // Referenced by the checks that 47-02 adds; kept so the harness stays whole.
 void [expand, renderPage];
 
