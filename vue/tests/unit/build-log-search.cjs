@@ -1,0 +1,563 @@
+// Unit test for the Phase 47 build log search (v1.18 Phase 47: BUILD-03, POL-02, FIX-02;
+// UI-SPEC UI-B01..UI-B19).
+//
+// Plain-node checks for buildLogSearch() in src/utils/buildLog.js (plain-text, case-insensitive,
+// capped at 1000 matches, segments that rebuild the log exactly) and for
+// src/components/BuildLogDialog/BuildLogDialog.vue: the sticky search bar, the highlighted
+// text-only segments (log HTML stays inert), the debounce, the count and its spoken form,
+// stepping with the Phase 44 IconButtons, Enter / Shift+Enter, the centred scroll inside the
+// log box, the id-only open(), the loading reset on close, the error and empty states, and
+// the Phase 47 rules compiled from src/styles/theme.scss.
+// Check prefixes: S (helper), D (dialog search), T (stepping), L (lifecycle and states),
+// C (compiled styles). 47-02 adds V (dashboard), N (navbar and status mapping) and
+// H (History, Device Detail).
+//
+// SFC templates are compiled with vue-template-compiler (whitespace: 'condense', as
+// vue-cli does) and rendered with vue.runtime.common; bootstrap-vue elements (b-*) stay
+// plain vnodes. The harness is copied from transformers-enviros.cjs (not required from it).
+//
+// Plain node, offline, no browser: npm run test:unit
+
+const fs = require('fs');
+const path = require('path');
+const assert = require('node:assert/strict');
+const compiler = require('vue-template-compiler');
+const Vue = require('vue/dist/vue.runtime.common.js');
+
+Vue.config.productionTip = false;
+Vue.config.devtools = false;
+Vue.config.ignoredElements = [/^b-/];
+let renderError = null;
+Vue.config.errorHandler = (err) => { renderError = err; };
+
+const SRC = path.join(__dirname, '..', '..', 'src');
+
+let failures = 0;
+
+function check(name, fn) {
+  try {
+    const detail = fn();
+    console.log('ok   ' + name + (typeof detail === 'string' ? ' (' + detail + ')' : ''));
+  } catch (err) {
+    failures++;
+    console.log('FAIL ' + name + ' (' + String(err && err.message ? err.message : err).split('\n')[0] + ')');
+  }
+}
+
+// Async checks run in order after every synchronous check.
+const asyncChecks = [];
+function checkAsync(name, fn) { asyncChecks.push([name, fn]); }
+
+function lazy(fn) {
+  let done = false;
+  let value;
+  return () => {
+    if (!done) { value = fn(); done = true; }
+    return value;
+  };
+}
+
+const read = (rel) => fs.readFileSync(path.join(SRC, rel), 'utf8');
+
+// ---------------------------------------------------------------- loaders
+
+// Load an SFC: the template must compile without errors; the script is evaluated
+// with its import lines stripped and the named dependencies in scope. The compiled
+// render functions are attached so the definition can be mounted as a component.
+function loadSfc(rel, deps = {}) {
+  const source = read(rel);
+  const sfc = compiler.parseComponent(source);
+  const template = sfc.template.content;
+  assert.deepEqual(compiler.compile(template, { whitespace: 'condense' }).errors, [], rel + ' template compiles');
+  const code = sfc.script.content
+    .replace(/^import .*;?$/gm, '')
+    .replace(/export default /g, 'module.exports.default = ');
+  const all = {
+    mapGetters: () => ({}),
+    mapActions: () => ({}),
+    ...deps,
+  };
+  const mod = { exports: {} };
+  new Function('module', ...Object.keys(all), code)(mod, ...Object.values(all));
+  const def = mod.exports.default;
+  const compiled = compiler.compileToFunctions(template, { whitespace: 'condense' });
+  def.render = compiled.render;
+  def.staticRenderFns = compiled.staticRenderFns;
+  return { def, source, template };
+}
+
+// Evaluate a plain ES module from src/ and return its named exports.
+function loadModule(rel, transform = (s) => s) {
+  const names = [];
+  const code = transform(read(rel))
+    .replace(/^import .*;?$/gm, '')
+    .replace(/export (const|let|function|async function) (\w+)/g, (m, kind, name) => { names.push(name); return kind + ' ' + name; });
+  return new Function(code + '\nreturn { ' + names.join(', ') + ' };')();
+}
+
+function withWarnings(fn) {
+  const warnings = [];
+  const prev = Vue.config.warnHandler;
+  Vue.config.warnHandler = (msg) => warnings.push(msg);
+  renderError = null;
+  let out;
+  try { out = fn(); } finally { Vue.config.warnHandler = prev; }
+  const err = renderError;
+  renderError = null;
+  return { out, warnings, error: err };
+}
+
+// Render a page definition with the given state and component overrides.
+function renderPage(def, state = {}, components = {}) {
+  const vm = new Vue({
+    render: def.render,
+    staticRenderFns: def.staticRenderFns,
+    data: def.data,
+    computed: def.computed,
+    methods: def.methods,
+    filters: def.filters,
+    watch: def.watch,
+    components: Object.assign({}, def.components, components),
+  });
+  vm.$route = { params: {} };
+  Object.assign(vm, { loading: false }, state);
+  const { out, warnings, error } = withWarnings(() => vm._render());
+  return { vm, vnode: out, warnings, error };
+}
+
+// Render an existing vm again after its state changed.
+function rerender(vm) {
+  const { out, warnings, error } = withWarnings(() => vm._render());
+  assert.equal(error, null, 'page re-renders without error');
+  assert.deepEqual(warnings, [], 'page re-renders without Vue warnings');
+  return out;
+}
+
+// Render a component vnode one level down, resolving props, $attrs and scoped slots.
+function expand(vnode, parentVm) {
+  const opts = vnode.componentOptions;
+  assert.ok(opts, 'not a component vnode');
+  const child = new opts.Ctor({ propsData: opts.propsData, _parentVnode: vnode, _parentListeners: opts.listeners, parent: parentVm });
+  const { out, warnings, error } = withWarnings(() => child._render());
+  return { vm: child, vnode: out, warnings, error };
+}
+
+// ---------------------------------------------------------------- vnode walkers
+
+function nodesOf(top) {
+  const out = [];
+  (function walk(n) {
+    if (!n) return;
+    if (Array.isArray(n)) { n.forEach(walk); return; }
+    out.push(n);
+    (n.children || []).forEach(walk);
+    const slots = n.data && n.data.scopedSlots;
+    if (slots && !n.componentOptions) {
+      Object.keys(slots).filter((k) => k[0] !== '$' && typeof slots[k] === 'function').forEach((k) => walk(slots[k]({})));
+    }
+  })(top);
+  return out;
+}
+
+const attrsOf = (n) => (n && n.data && n.data.attrs) || {};
+const cyOf = (n) => attrsOf(n)['data-cy'] || null;
+const byCy = (top, cy) => nodesOf(top).filter((n) => cyOf(n) === cy);
+
+function classList(n) {
+  const out = [];
+  const add = (c) => {
+    if (!c) return;
+    if (typeof c === 'string') c.split(/\s+/).filter(Boolean).forEach((x) => out.push(x));
+    else if (Array.isArray(c)) c.forEach(add);
+    else if (typeof c === 'object') Object.keys(c).filter((k) => c[k]).forEach((k) => out.push(k));
+  };
+  if (n && n.data) { add(n.data.staticClass); add(n.data.class); }
+  return out;
+}
+
+const byClass = (top, cls) => nodesOf(top).filter((n) => classList(n).includes(cls));
+const byTag = (top, tag) => nodesOf(top).filter((n) => n.tag === tag);
+const isComponent = (n, name) => !!(n && n.componentOptions && n.componentOptions.Ctor.options.name === name);
+const componentsOf = (top, name) => nodesOf(top).filter((n) => isComponent(n, name));
+const textOf = (top) => nodesOf(top).filter((n) => !n.tag && n.text).map((n) => n.text).join(' ').replace(/\s+/g, ' ').trim();
+const propsOf = (n) => (n && n.componentOptions && n.componentOptions.propsData) || {};
+// Exact text under a node: text vnodes joined with nothing added.
+const rawTextOf = (top) => nodesOf(top).filter((n) => !n.tag && typeof n.text === 'string').map((n) => n.text).join('');
+const elementsOf = (n) => (n.children || []).filter((c) => c.tag);
+const one = (list, what) => { assert.equal(list.length, 1, 'exactly one ' + what + ' (found ' + list.length + ')'); return list[0]; };
+
+// Call the click handler bound on an element vnode or a component vnode.
+function click(n, evt = {}) {
+  const on = n.componentOptions ? n.componentOptions.listeners : (n.data && n.data.on);
+  const handler = on && on.click;
+  assert.ok(handler, 'element has a click handler');
+  (Array.isArray(handler) ? handler : [handler]).forEach((fn) => fn(evt));
+}
+
+// A promise whose settlement the test controls.
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+const tick = () => new Promise((resolve) => setImmediate(resolve));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// ---------------------------------------------------------------- fixtures
+
+const ELLIPSIS = String.fromCharCode(0x2026);
+const PLACEHOLDER = 'Search log (3+ characters)';
+const LABEL = 'Search this build log';
+
+const logUtils = lazy(() => loadModule('utils/buildLog.js'));
+const search = (...args) => {
+  const fn = logUtils().buildLogSearch;
+  assert.equal(typeof fn, 'function', 'buildLogSearch is exported from utils/buildLog.js');
+  return fn(...args);
+};
+const iconButton = lazy(() => loadSfc('components/IconButton/IconButton.vue'));
+const dialog = lazy(() => loadSfc('components/BuildLogDialog/BuildLogDialog.vue', {
+  buildLogText: logUtils().buildLogText,
+  buildLogSearch: logUtils().buildLogSearch,
+  IconButton: iconButton().def,
+}));
+
+// A dialog vm with $refs.modal, $store.dispatch and every call recorded. `dispatch` answers
+// buildlog/fetchBuildDetail; the default answers an empty log.
+function dialogHarness(state = {}, dispatch) {
+  const { def } = dialog();
+  const vm = new Vue({
+    render: def.render,
+    staticRenderFns: def.staticRenderFns,
+    data: def.data,
+    computed: def.computed,
+    methods: def.methods,
+    watch: def.watch,
+    beforeDestroy: def.beforeDestroy,
+    components: Object.assign({}, def.components),
+  });
+  const calls = { show: 0, dispatch: [] };
+  vm.$refs.modal = { show: () => { calls.show++; } };
+  vm.$store = {
+    dispatch: (...args) => {
+      calls.dispatch.push(args);
+      return dispatch ? dispatch(...args) : Promise.resolve({ success: true, response: { contents: '' } });
+    },
+  };
+  Object.assign(vm, state);
+  return { vm, calls };
+}
+
+// Render a dialog vm with the given state; no Vue warning and no render error allowed.
+function renderDialog(state = {}) {
+  const h = dialogHarness(state);
+  return { ...h, vnode: rerender(h.vm) };
+}
+
+const barOf = (vnode) => byCy(vnode, 'build-log-search-bar');
+const preOf = (vnode) => one(byCy(vnode, 'full-build-log'), 'full-build-log');
+const marksOf = (vnode) => byCy(vnode, 'build-log-match');
+const countOf = (vnode) => one(byCy(vnode, 'build-log-search-count'), 'build-log-search-count');
+const fieldOf = (vnode) => one(byCy(vnode, 'build-log-search'), 'build-log-search field');
+const repeat = (word, n) => Array.from({ length: n }, () => word).join(' ');
+
+// ---------------------------------------------------------------- S: buildLogSearch
+
+const joined = (r) => r.segments.map((s) => s.text).join('');
+const matchesOf = (r) => r.segments.filter((s) => s.match);
+
+check('S1 plain, case-insensitive: error finds Error, error and ERROR in order, segments rebuild the text', () => {
+  const input = 'Error error ERROR';
+  const r = search(input, 'error');
+  assert.equal(r.count, 3);
+  assert.equal(r.capped, false);
+  assert.deepEqual(matchesOf(r).map((s) => s.text), ['Error', 'error', 'ERROR']);
+  assert.deepEqual(matchesOf(r).map((s) => s.index), [0, 1, 2]);
+  assert.equal(joined(r), input);
+  assert.ok(r.segments.filter((s) => !s.match).every((s) => s.match === false && s.text.length > 0), 'plain segments are non-empty and match: false');
+});
+
+check('S2 regex characters match only themselves; no term throws', () => {
+  const cases = [['abc a.c', 'a.c'], ['f(x) fx', '(x)'], ['a[b] ab', 'a[b'], ['12 \\d+', '\\d+']];
+  cases.forEach(([text, term]) => {
+    const r = search(text, term);
+    assert.equal(r.count, 1, JSON.stringify(term) + ' in ' + JSON.stringify(text));
+    assert.equal(matchesOf(r)[0].text, term, 'the literal ' + term);
+    assert.equal(joined(r), text);
+  });
+  const meta = '^$.*+?()[]{}|/\\';
+  for (let i = 0; i + 3 <= meta.length; i++) {
+    const term = meta.slice(i, i + 3);
+    const r = search('x' + meta + 'y', term);
+    assert.equal(r.count, 1, JSON.stringify(term) + ' is matched literally');
+  }
+  assert.equal(search('aaa', '.*.').count, 0, '.*. does not act as a pattern');
+});
+
+check('S3 thresholds: 2 characters or a blank term search nothing; 3 characters (spaces count) search', () => {
+  assert.deepEqual(search('abc ab', 'ab'), { segments: [{ text: 'abc ab', match: false }], count: 0, capped: false });
+  assert.deepEqual(search('a   b', '   '), { segments: [{ text: 'a   b', match: false }], count: 0, capped: false });
+  assert.deepEqual(search('a\t\n b', ' \t\n'), { segments: [{ text: 'a\t\n b', match: false }], count: 0, capped: false });
+  assert.equal(search('ab x ab ', 'ab ').count, 2, 'a trailing space counts as a character');
+  assert.deepEqual(search('', 'abc'), { segments: [], count: 0, capped: false });
+  [undefined, null, 42, {}, ['abc']].forEach((bad) => {
+    assert.deepEqual(search(bad, 'abc'), { segments: [], count: 0, capped: false }, 'text ' + String(bad));
+    assert.deepEqual(search('abc', bad), { segments: [{ text: 'abc', match: false }], count: 0, capped: false }, 'term ' + String(bad));
+  });
+});
+
+check('S4 cap: 1000 matches are all highlighted; the 1001st sets capped and the rest stays one plain segment', () => {
+  const t1000 = repeat('abc', 1000);
+  const r1 = search(t1000, 'abc');
+  assert.equal(r1.count, 1000);
+  assert.equal(r1.capped, false);
+  assert.equal(matchesOf(r1).length, 1000);
+  assert.equal(joined(r1), t1000);
+  const t1001 = repeat('abc', 1001) + ' tail';
+  const r2 = search(t1001, 'abc');
+  assert.equal(r2.count, 1000);
+  assert.equal(r2.capped, true);
+  assert.equal(matchesOf(r2).length, 1000);
+  assert.equal(matchesOf(r2)[999].index, 999);
+  assert.equal(joined(r2), t1001);
+  const last = r2.segments[r2.segments.length - 1];
+  assert.equal(last.match, false);
+  assert.equal(last.text, ' abc tail', 'the text from the 1001st match on is one plain segment');
+});
+
+check('S5 non-overlapping, left to right: aaa in aaaaaa is 2 matches', () => {
+  const r = search('aaaaaa', 'aaa');
+  assert.equal(r.count, 2);
+  assert.deepEqual(r.segments, [{ text: 'aaa', match: true, index: 0 }, { text: 'aaa', match: true, index: 1 }]);
+});
+
+check('S6 indices stay aligned after a character that changes length when lower-cased (U+0130)', () => {
+  const input = 'İ ERROR x';
+  assert.notEqual(input.toLowerCase().length, input.length, 'fixture: lower-casing changes the length');
+  const r = search(input, 'error');
+  assert.equal(r.count, 1);
+  assert.equal(matchesOf(r)[0].text, 'ERROR');
+  assert.equal(joined(r), input);
+});
+
+// ---------------------------------------------------------------- D: dialog search
+
+check('D1 with log text the dialog renders one search bar before the log: field with addon, count with live text', () => {
+  const { vnode } = renderDialog({ text: 'line one\nline two', term: 'xyz' });
+  const bar = one(barOf(vnode), 'build-log-search-bar');
+  assert.equal(bar.tag, 'div');
+  assert.ok(classList(bar).includes('build-log-search'), 'class build-log-search');
+  assert.equal(attrsOf(bar).role, 'search');
+  assert.equal(attrsOf(bar)['aria-label'], LABEL);
+  const top = elementsOf(vnode);
+  const pre = preOf(vnode);
+  assert.ok(top.indexOf(bar) !== -1 && top.indexOf(bar) < top.indexOf(pre), 'the bar comes before the log box');
+  const group = one(byTag(bar, 'b-input-group'), 'b-input-group');
+  assert.ok(classList(group).includes('build-log-search__field'), 'group class build-log-search__field');
+  const prepend = one(byTag(group, 'b-input-group-prepend'), 'b-input-group-prepend');
+  assert.ok('is-text' in attrsOf(prepend), 'prepend is-text');
+  const glyph = one(byTag(prepend, 'i'), 'search glyph');
+  assert.ok(classList(glyph).includes('fa') && classList(glyph).includes('fa-search'), 'fa fa-search');
+  assert.equal(attrsOf(glyph)['aria-hidden'], 'true');
+  const input = one(byTag(group, 'b-form-input'), 'b-form-input');
+  assert.equal(cyOf(input), 'build-log-search');
+  const a = attrsOf(input);
+  assert.equal(a.type, 'text');
+  assert.equal(a['aria-label'], LABEL);
+  assert.equal(a.placeholder, PLACEHOLDER);
+  assert.equal(a.autocomplete, 'off');
+  assert.equal(a.spellcheck, 'false');
+  assert.equal(input.data.model && input.data.model.expression, 'searchInput', 'v-model searchInput');
+  const count = countOf(bar);
+  assert.equal(count.tag, 'span');
+  assert.ok(classList(count).includes('build-log-search__count'), 'class build-log-search__count');
+  const spans = elementsOf(count);
+  assert.equal(spans.length, 2, 'visible text and live text');
+  assert.equal(attrsOf(spans[0])['aria-hidden'], 'true');
+  assert.equal(textOf(spans[0]), 'No matches');
+  assert.ok(classList(spans[1]).includes('sr-only'), 'live text is sr-only');
+  assert.equal(attrsOf(spans[1])['aria-live'], 'polite');
+  assert.equal(attrsOf(spans[1])['aria-atomic'], 'true');
+  assert.equal(textOf(spans[1]), 'No matches');
+});
+
+check('D2 the bar is absent while loading, with an error and with no log text', () => {
+  assert.equal(barOf(renderDialog({ text: 'abc', loading: true }).vnode).length, 0, 'loading');
+  assert.equal(barOf(renderDialog({ text: 'abc', error: 'Could not load this build log.' }).vnode).length, 0, 'error');
+  assert.equal(barOf(renderDialog({ text: '' }).vnode).length, 0, 'empty');
+  assert.equal(barOf(renderDialog({ text: 'abc' }).vnode).length, 1, 'shown with text');
+});
+
+check('D3 the log box holds exactly the log text: one text node without a term, segments without added whitespace with one', () => {
+  const text = '  first line\n\tsecond ERROR line  \n\nlast error\n';
+  const plain = preOf(renderDialog({ text }).vnode);
+  assert.equal(plain.tag, 'pre');
+  assert.ok(classList(plain).includes('build-log-text'), 'class build-log-text');
+  assert.equal(plain.children.length, 1, 'one child');
+  assert.equal(plain.children[0].tag, undefined, 'a text node');
+  assert.equal(plain.children[0].text, text);
+  const short = preOf(renderDialog({ text, term: 'er' }).vnode);
+  assert.equal(rawTextOf(short), text);
+  assert.equal(nodesOf(short).filter((n) => n.tag && n !== short).length, 0, 'no element under a short term');
+  const found = renderDialog({ text, term: 'error' }).vnode;
+  assert.equal(rawTextOf(preOf(found)), text, 'segments rebuild the text exactly');
+  assert.equal(marksOf(found).length, 2);
+  const none = renderDialog({ text, term: 'zzz' }).vnode;
+  assert.equal(preOf(none).children.length, 1, 'no hit: one plain interpolation');
+  assert.equal(preOf(none).children[0].text, text);
+});
+
+check('D4 log text that looks like HTML stays text: one mark around abc, no element or innerHTML from the log', () => {
+  const text = '<b>x</b> abc <script>';
+  const { vnode } = renderDialog({ text, term: 'abc' });
+  const mark = one(marksOf(vnode), 'build-log-match');
+  assert.equal(mark.tag, 'mark');
+  assert.ok(classList(mark).includes('build-log-match'), 'class build-log-match');
+  assert.equal(mark.children.length, 1);
+  assert.equal(mark.children[0].tag, undefined);
+  assert.equal(mark.children[0].text, 'abc');
+  const texts = nodesOf(preOf(vnode)).filter((n) => !n.tag).map((n) => n.text);
+  assert.ok(texts.includes('<b>x</b> '), 'leading markup is a text node');
+  assert.ok(texts.includes(' <script>'), 'trailing markup is a text node');
+  assert.equal(nodesOf(vnode).filter((n) => n.data && n.data.domProps && 'innerHTML' in n.data.domProps).length, 0, 'no innerHTML domProp');
+  ['b', 'script', 'img'].forEach((tag) => assert.equal(byTag(vnode, tag).length, 0, 'no ' + tag + ' element'));
+  const { source } = dialog();
+  assert.ok(!/v-html|innerHTML|outerHTML|insertAdjacentHTML|domProps/.test(source), 'no raw-HTML binding or DOM HTML property in the dialog');
+});
+
+check('D5 count and spoken count: 3 / 17, 1 / 1000+, No matches, empty under 3 characters', () => {
+  const at = (text, term, current) => {
+    const { vm, vnode } = renderDialog({ text, term, current });
+    const spans = elementsOf(countOf(vnode));
+    assert.equal(textOf(spans[0]), vm.countText, 'visible text renders countText');
+    assert.equal(textOf(spans[1]), vm.countSpeech, 'live text renders countSpeech');
+    return [vm.countText, vm.countSpeech];
+  };
+  assert.deepEqual(at(repeat('abc', 17), 'abc', 2), ['3 / 17', 'Match 3 of 17']);
+  assert.deepEqual(at(repeat('abc', 1001), 'abc', 0), ['1 / 1000+', 'Match 1 of more than 1000']);
+  assert.deepEqual(at(repeat('abc', 3), 'xyz', 0), ['No matches', 'No matches']);
+  assert.deepEqual(at(repeat('abc', 3), 'ab', 0), ['', '']);
+  assert.deepEqual(at(repeat('abc', 3), '   ', 0), ['', '']);
+});
+
+checkAsync('D6 debounce: the typed term reaches the search 200 ms after the last keystroke', async () => {
+  const a = dialogHarness({ text: 'some err text' });
+  a.vm.searchInput = 'err';
+  await sleep(50);
+  assert.equal(a.vm.term, '', 'not applied after 50 ms');
+  await sleep(250);
+  assert.equal(a.vm.term, 'err', 'applied after 300 ms');
+  const b = dialogHarness({ text: 'abcd abc' });
+  b.vm.searchInput = 'abc';
+  await sleep(120);
+  b.vm.searchInput = 'abcd';
+  await sleep(120);
+  assert.equal(b.vm.term, '', 'a second value restarts the 200 ms window');
+  await sleep(150);
+  assert.equal(b.vm.term, 'abcd', 'only the last value is applied');
+});
+
+checkAsync('D7 open, load, type: the log arrives, the term is applied and two matches are counted 1 / 2', async () => {
+  const h = dialogHarness({}, () => Promise.resolve({ success: true, response: { contents: 'ok\nERROR one\nerror two' } }));
+  await h.vm.open({ build_id: 'b1' });
+  assert.equal(h.calls.show, 1, 'modal shown once');
+  assert.deepEqual(h.calls.dispatch, [['buildlog/fetchBuildDetail', 'b1']]);
+  assert.equal(h.vm.text, 'ok\nERROR one\nerror two');
+  h.vm.searchInput = 'error';
+  await sleep(300);
+  const vnode = rerender(h.vm);
+  assert.deepEqual(marksOf(vnode).map((m) => m.children[0].text), ['ERROR', 'error']);
+  assert.equal(textOf(elementsOf(countOf(vnode))[0]), '1 / 2');
+});
+
+// ---------------------------------------------------------------- compiled theme
+
+const sass = require('sass');
+
+const compiledCss = lazy(() => sass.compileString('@import "theme";\n', {
+  loadPaths: [path.join(SRC, 'styles')],
+  style: 'compressed',
+  quietDeps: true,
+  logger: sass.Logger.silent,
+}).css);
+
+// Flat list of { media, selectors, body } for every style rule.
+function cssRules(text) {
+  const rules = [];
+  (function parse(chunk, media) {
+    let i = 0;
+    while (i < chunk.length) {
+      const open = chunk.indexOf('{', i);
+      if (open === -1) break;
+      const prelude = chunk.slice(i, open).replace(/^[;\s]+/, '').trim();
+      let depth = 0;
+      let end = open;
+      for (; end < chunk.length; end++) {
+        const ch = chunk[end];
+        if (ch === '"' || ch === "'") { const q = ch; end++; while (end < chunk.length && chunk[end] !== q) { if (chunk[end] === '\\') end++; end++; } continue; }
+        if (ch === '{') depth++;
+        else if (ch === '}') { depth--; if (depth === 0) break; }
+      }
+      const body = chunk.slice(open + 1, end);
+      if (/^@media/.test(prelude)) parse(body, prelude);
+      else if (prelude[0] !== '@') rules.push({ media, selectors: prelude.split(',').map((x) => x.trim()), body });
+      i = end + 1;
+    }
+  }(text, ''));
+  return rules;
+}
+
+const allRules = lazy(() => cssRules(compiledCss()));
+
+const loose = (sel) => sel.replace(/\s*([>+~])\s*/g, '$1').replace(/\s+/g, ' ').trim();
+function decls(selector, media = '') {
+  const want = loose(selector);
+  return allRules().filter((r) => r.media === media && r.selectors.some((s) => loose(s) === want)).map((r) => r.body);
+}
+
+function value(bodies, prop) {
+  let found;
+  bodies.forEach((body) => body.split(';').forEach((d) => {
+    const at = d.indexOf(':');
+    if (at !== -1 && d.slice(0, at).trim() === prop) found = d.slice(at + 1).trim();
+  }));
+  return found;
+}
+
+function expectDecls(selector, want) {
+  const bodies = decls(selector);
+  assert.ok(bodies.length, selector + ' has a rule');
+  Object.keys(want).forEach((p) => assert.equal(value(bodies, p), want[p], selector + ' ' + p));
+  return bodies;
+}
+
+// Referenced by the checks that later tasks and 47-02 add; kept so the harness stays whole.
+void [expand, renderPage, propsOf, componentsOf, byClass, click, deferred, tick, ELLIPSIS, expectDecls];
+
+// ---------------------------------------------------------------- run
+
+// An async check that never settles would otherwise let node drain its event loop
+// and exit 0 with the remaining checks unreported.
+let running = null;
+process.on('beforeExit', () => {
+  if (running === null) return;
+  console.log('FAIL ' + running + ' (never settled)');
+  process.exit(1);
+});
+
+(async () => {
+  for (const [name, fn] of asyncChecks) {
+    running = name;
+    try {
+      const detail = await fn();
+      console.log('ok   ' + name + (typeof detail === 'string' ? ' (' + detail + ')' : ''));
+    } catch (err) {
+      failures++;
+      console.log('FAIL ' + name + ' (' + String(err && err.message ? err.message : err).split('\n')[0] + ')');
+    }
+  }
+  running = null;
+  process.exit(failures ? 1 : 0);
+})();
