@@ -1,0 +1,65 @@
+// Phase 47 build log search and lists (UI-SPEC UI-B01..UI-B19). 47-02 appends .build-actions.
+
+// Search bar above the log box (UI-B01): stays visible while the log scrolls, on the modal
+// surface. The flex gap alone spaces field, count and both step buttons 8px apart.
+.build-log-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: $modal-content-bg;
+}
+
+.build-log-search__field {
+  flex: 1 1 200px;
+  max-width: 320px;
+  width: auto;
+}
+
+// Match count (UI-B05): fixed minimum width and tabular digits, so the step buttons do not
+// move as `3 / 17` turns into `No matches`.
+.build-log-search__count {
+  min-width: 88px;
+  white-space: nowrap;
+  font-size: .875rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+// Reset the inherited 4px IconButton margin (_platforms.scss) inside the bar.
+.build-log-search .icon-button {
+  margin-right: 0;
+}
+
+// Log box (UI-B07): scrolls itself; position relative makes it the offsetParent of the marks
+// the dialog centres (UI-B06).
+.build-log-text {
+  position: relative;
+  max-height: 70vh;
+  overflow: auto;
+  margin: 0;
+  padding: 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  background: $build-log-bg;
+  color: $build-log-color;
+}
+
+// Matches keep the log's font and box, so highlighting never shifts a column (D-08).
+.build-log-text .build-log-match {
+  padding: 0;
+  border-radius: 0;
+  font: inherit;
+  background-color: $build-log-match-bg;
+  color: $build-log-match-color;
+}
+
+.build-log-text .build-log-match--current {
+  background-color: $build-log-current-bg;
+  color: $build-log-current-color;
+}

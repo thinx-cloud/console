@@ -53,6 +53,14 @@ $dark:     #040620 !default;
 $violet:   #333867 !default;
 $default:  #474D84 !default;
 
+// Build log box and search highlights (Phase 47 D-08; WCAG ratios in 47-UI-SPEC Color).
+$build-log-bg: #1E1E1E !default;
+$build-log-color: #DDDDDD !default;
+$build-log-match-bg: #806600 !default;
+$build-log-match-color: #FFFFFF !default;
+$build-log-current-bg: #FFC94D !default;
+$build-log-current-color: #1E1E1E !default;
+
 $theme-colors: (
   primary: $blue,
   secondary: rgba(#3461C1, .9),

@@ -1,5 +1,5 @@
 <template>
-  <b-modal ref="modal" :title="'Build Log — ' + buildId" size="xl" ok-only ok-title="Close" @hidden="requestId++">
+  <b-modal ref="modal" :title="'Build Log — ' + buildId" size="xl" ok-only ok-title="Close" @hidden="onHidden">
     <div v-if="text && !loading && !error" class="build-log-search" role="search" aria-label="Search this build log" data-cy="build-log-search-bar">
       <b-input-group class="build-log-search__field">
         <b-input-group-prepend is-text><i class="fa fa-search" aria-hidden="true"></i></b-input-group-prepend>
@@ -10,10 +10,10 @@
       <IconButton icon="fa fa-chevron-right" label="Next match" :disabled="!result.count" data-cy="build-log-next" @click="step(1)" />
     </div>
     <div v-if="loading" role="status"><b-spinner small /> Loading build log…</div>
-    <b-alert v-else-if="error" variant="danger" show>{{ error }} <b-button size="sm" @click="load">Retry</b-button></b-alert>
+    <b-alert v-else-if="error" variant="danger" show data-cy="build-log-error">Could not load this build log. <b-button size="sm" variant="default" data-cy="build-log-retry" @click="load"><i class="fa fa-refresh" aria-hidden="true"></i><span class="button-text">Try again</span></b-button></b-alert>
     <!-- Keep the <pre> and its children on one line: whitespace inside <pre> would become log text. -->
     <pre v-else-if="text" ref="log" class="build-log-text" data-cy="full-build-log"><template v-if="result.count"><template v-for="(seg, n) in result.segments"><mark v-if="seg.match" :key="n" class="build-log-match" :class="{ 'build-log-match--current': seg.index === current }" :aria-current="seg.index === current ? 'true' : null" data-cy="build-log-match">{{ seg.text }}</mark><span v-else :key="n">{{ seg.text }}</span></template></template><template v-else>{{ text }}</template></pre>
-    <p v-else class="text-muted">No log output is available for this build yet.</p>
+    <p v-else class="mb-0" data-cy="build-log-empty">No log output is available for this build yet.</p>
   </b-modal>
 </template>
 
@@ -47,8 +47,7 @@ export default {
   },
   watch: {
     searchInput(value) {
-      clearTimeout(this.debounceTimer);
-      this.debounceTimer = null;
+      this.cancelDebounce();
       if (value === this.term) return;
       this.debounceTimer = setTimeout(() => {
         this.debounceTimer = null;
@@ -57,6 +56,9 @@ export default {
     },
     term() { this.selectFirst(); },
     text() { this.selectFirst(); },
+  },
+  beforeDestroy() {
+    this.cancelDebounce();
   },
   methods: {
     selectFirst() {
@@ -71,8 +73,7 @@ export default {
     // Escape is not handled here: it bubbles to the modal, which closes.
     onSearchEnter(event) {
       if (this.debounceTimer) {
-        clearTimeout(this.debounceTimer);
-        this.debounceTimer = null;
+        this.cancelDebounce();
         this.applyTerm();
         return;
       }
@@ -94,12 +95,30 @@ export default {
       if (!mark) return;
       log.scrollTop = mark.offsetTop - (log.clientHeight - mark.offsetHeight) / 2;
     },
+    // Only the row's own build_id is used (D-15): a row without one never shows the dialog
+    // or requests /logs/build/<list index>. Each open forgets the previous search (D-12).
     open(build) {
-      this.buildId = build.build_id || build.id || '';
+      const buildId = build && build.build_id;
+      if (typeof buildId !== 'string' || buildId === '') return Promise.resolve();
+      this.cancelDebounce();
+      this.searchInput = '';
+      this.term = '';
+      this.current = 0;
+      this.buildId = buildId;
       this.text = '';
       this.error = null;
       this.$refs.modal.show();
       return this.load();
+    },
+    // Closing drops a pending response and the loading state (35 IN-07) and the debounce.
+    onHidden() {
+      this.requestId++;
+      this.loading = false;
+      this.cancelDebounce();
+    },
+    cancelDebounce() {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
     },
     async load() {
       const request = ++this.requestId;
@@ -119,6 +138,3 @@ export default {
   },
 };
 </script>
-<style scoped>
-.build-log-text { max-height: 70vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #1e1e1e; color: #ddd; padding: 1rem; }
-</style>
