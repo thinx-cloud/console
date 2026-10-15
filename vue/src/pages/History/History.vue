@@ -107,7 +107,7 @@
             <!-- Row click is a mouse shortcut only. Keyboard and screen-reader users get the row's
                  "View" (Open build log) button, so the row keeps its table semantics (35 WR-01). -->
             <tr v-for="(item, i) in filteredBuilds" :key="i" data-cy="build-row" class="build-row" @click="onBuildRowClick(item, $event)">
-              <td style="white-space:nowrap">{{ item.date | formatDate }}</td>
+              <td class="text-nowrap">{{ item.date | formatDate }}</td>
               <td>{{ item.name }}</td>
               <td>
                 <b-badge :variant="buildStatusVariant(item.status)">{{ item.status || '—' }}</b-badge>
@@ -127,7 +127,7 @@
                   data-cy="build-expand"
                   @click.stop="toggleExpand(item)"
                 >{{ isExpanded(item) ? 'Collapse' : 'Expand' }}</b-button>
-                <b-button v-if="item.build_id" size="sm" variant="link" data-cy="build-open-log" :aria-label="'Open build log ' + (item.build_id || item.name || '')" @click.stop="openBuildLog(item)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
+                <b-button v-if="item.build_id" size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'Open build log ' + (item.build_id || item.name || '')" @click.stop="openBuildLog(item)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
               </td>
             </tr>
           </tbody>

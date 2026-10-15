@@ -157,7 +157,7 @@
                   </td>
                   <td>
                     <b-button v-if="build.build_id" size="sm" variant="link" class="p-0" data-cy="build-open-log" :aria-label="'Open build log ' + build.build_id" @click="openBuildLog(build)"><i class="la la-eye" aria-hidden="true"></i> View</b-button>
-                    <span v-else class="text-muted">—</span>
+                    <span v-else data-cy="build-no-log"><span aria-hidden="true">—</span><span class="sr-only">No build log</span></span>
                   </td>
                 </tr>
               </tbody>

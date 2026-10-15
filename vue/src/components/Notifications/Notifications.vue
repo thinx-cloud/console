@@ -8,12 +8,14 @@
       <b-list-group-item v-if="!recentBuilds.length" class="listGroupItem">
         <p class="m-0 text-muted">No recent builds.</p>
       </b-list-group-item>
+      <!-- A row is a button only with a build id; without one it is static text (D-14). -->
       <b-list-group-item
         v-for="build in recentBuilds"
         :key="build.id || `${build.date}-${build.name || build.udid}`"
-        class="listGroupItem"
-        button
-        @click="openBuildLog(build)"
+        :class="['listGroupItem', { 'listGroupItem--static': !build.build_id }]"
+        :button="!!build.build_id"
+        data-cy="recent-build"
+        v-on="rowListeners(build)"
       >
         <span class="notificationIcon thumb-sm">
           <span :class="statusIconClass(build)">
@@ -21,11 +23,11 @@
           </span>
         </span>
         <time class="text-link help float-right">{{ formatDate(build.date) }}</time>
-        <h6 class="m-0 mb-1 text-ellipsis">{{ build.name || shortUdid(build.udid) }}</h6>
-        <p class="deemphasize text-ellipsis m-0">
-          <span :class="statusTextClass(build)">{{ build.status || 'UNKNOWN' }}</span>
+        <span class="notification-title text-ellipsis">{{ build.name || shortUdid(build.udid) }}</span>
+        <span class="notification-meta deemphasize text-ellipsis">
+          <span :class="statusTextClass(build)">{{ build.status || '—' }}</span>
           <span v-if="build.udid"> · {{ shortUdid(build.udid) }}</span>
-        </p>
+        </span>
       </b-list-group-item>
     </b-list-group>
     <BuildLogDialog ref="buildLogDialog" />
@@ -72,6 +74,11 @@ export default {
   },
   methods: {
     openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
+    // Only a row with a build id gets a click listener; a row without one sends no request.
+    rowListeners(build) {
+      if (typeof build.build_id === 'string' && build.build_id) return { click: () => this.openBuildLog(build) };
+      return {};
+    },
     ...mapGetters({ getBuildLog: 'buildlog/getItems' }),
     ...mapActions({ fetchBuildLog: 'buildlog/fetchBuildLog' }),
     async loadNotifications() {
@@ -97,9 +104,6 @@ export default {
     shortUdid(value) {
       if (!value) return '—';
       return `${value.substring(0, 8)}...`;
-    },
-    isSuccess(build) {
-      return (build.status || '').toUpperCase() === 'OK';
     },
     statusGlyph(build) {
       const glyph = { success: 'fa-check', warning: 'fa-clock-o', info: 'fa-circle-o-notch' }[buildStatusVariant(build.status)];

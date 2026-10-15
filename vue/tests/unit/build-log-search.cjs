@@ -1217,7 +1217,10 @@ check('N6 compiled Notifications.scss: title and meta lines, static rows without
   expectRule(rules, '.notification-title', { display: 'block', 'margin-bottom': '4px', 'font-size': '1rem', 'font-weight': '300' });
   expectRule(rules, '.notification-meta', { display: 'block', 'font-size': '.875rem', 'font-weight': '400' });
   expectRule(rules, '.listGroupItem.listGroupItem--static', { cursor: 'default' });
-  expectRule(rules, '.listGroupItem.listGroupItem--static:hover', { 'background-color': 'transparent' });
+  // Compressed Dart Sass writes transparent as rgba(0,0,0,0); both are the same colour.
+  const hover = rules.filter((r) => r.media === '' && r.selectors.some((s) => loose(s) === '.listGroupItem.listGroupItem--static:hover')).map((r) => r.body);
+  assert.ok(hover.length, '.listGroupItem.listGroupItem--static:hover has a rule');
+  assert.ok(['transparent', 'rgba(0,0,0,0)'].includes(value(hover, 'background-color')), 'static row hover background is transparent');
 });
 
 // ---------------------------------------------------------------- H: History and Device Detail
