@@ -374,10 +374,11 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   assert.equal(devPage.buttons.length, 2, 'each Build History row has one Open build log button');
   devPage.buttons.forEach((btn, i) => {
     assert.equal(btn.tag, 'b-button', 'Open build log control is a b-button');
-    assert.equal(attrsOf(btn)['aria-label'], 'Open build log build-' + (i + 1), 'Open build log button names its build');
+    assert.equal(attrsOf(btn)['aria-label'], 'View build log build-' + (i + 1), 'View button names its build');
     assert.equal(devPage.textOf(btn), 'View', 'Open build log button reads View');
+    assert.ok(attrsOf(btn)['aria-label'].startsWith(devPage.textOf(btn)), 'the aria-label starts with the visible text (WCAG 2.5.3)');
     assert.ok(devPage.under(btn, n => n.tag === 'i' && /\bla-eye\b/.test((n.data && n.data.staticClass) || '')).length === 1, 'View button has an eye icon');
-    assert.ok(/^Open build log /.test((btn.data && btn.data.attrs && btn.data.attrs['aria-label']) || ''), 'View button keeps a descriptive aria-label');
+    assert.ok(/^View build log /.test((btn.data && btn.data.attrs && btn.data.attrs['aria-label']) || ''), 'View button keeps a descriptive aria-label');
     assert.equal(typeof ((btn.data && btn.data.on) || {}).click, 'function', 'Open build log button has a click handler');
   });
   devPage.buttons[1].data.on.click({ stopPropagation() {}, preventDefault() {} });
@@ -405,6 +406,20 @@ assert.ok(sshUrlCard.text.includes('ssh://git@github.com/org/repo.git'), 'ssh://
   assert.equal(noLog.length, 1, 'the row without a build id has one build-no-log placeholder');
   assert.ok(idlessPage.textOf(noLog[0]).includes('No build log'), 'the placeholder reads No build log for screen readers');
   assert.equal(idlessPage.under(idlessPage.rows[1], n => attrsOf(n)['data-cy'] === 'build-open-log').length, 0, 'the row without a build id has no View button');
+  // 47-REVIEW WR-01: a truthy non-string build_id (number, object) is not a build log either.
+  const oddPage = await renderDeviceDetail([
+    { build_id: 'build-1', udid: 'udid-z', status: 'OK', date: NOW, log: [] },
+    { build_id: 42, udid: 'udid-z', status: 'FAILED', date: NOW - 60000, log: [] },
+    { build_id: { id: 'x' }, udid: 'udid-z', status: 'FAILED', date: NOW - 120000, log: [] },
+  ], zDev);
+  assert.equal(oddPage.rows.length, 3, 'all three builds are listed');
+  assert.equal(oddPage.buttons.length, 1, 'only the string build id gets a View button');
+  assert.equal(oddPage.under(oddPage.rows[0], n => attrsOf(n)['data-cy'] === 'build-open-log').length, 1, 'row 0 holds the View button');
+  for (const i of [1, 2]) {
+    assert.equal(oddPage.under(oddPage.rows[i], n => attrsOf(n)['data-cy'] === 'build-no-log').length, 1, 'non-string id row ' + i + ' has one build-no-log placeholder');
+    assert.equal(oddPage.under(oddPage.rows[i], n => attrsOf(n)['data-cy'] === 'build-open-log').length, 0, 'non-string id row ' + i + ' has no View button');
+  }
+  assert.deepEqual(buildHistoryViolations(oddPage), [], 'Build History with non-string ids: nothing interactive but the one View button');
   // Mutation checks: each change must alter the template, and the walk must report it.
   const mutate = (from, to) => t => {
     assert.equal(t.split(from).length - 1, 1, 'mutation anchor found once: ' + from);

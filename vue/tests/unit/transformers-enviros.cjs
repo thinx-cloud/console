@@ -1796,6 +1796,7 @@ const devicePage = lazy(() => loadSfc('pages/Devices/DeviceDetail.vue', Object.a
   moment: () => ({ fromNow: () => 'just now' }),
   parseEnvironmentJSON: () => ({ ok: true, value: {} }),
   buildStatusVariant: () => 'success',
+  hasBuildLog: loadModule('utils/buildLog.js').hasBuildLog,
 }, confirmLeaveDeps())));
 const editorPage = lazy(() => loadSfc('pages/Transformers/TransformerEditor.vue', Object.assign({
   codemirror: stubComponent('codemirror'),

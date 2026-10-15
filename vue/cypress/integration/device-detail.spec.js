@@ -94,7 +94,7 @@ describe('Device Detail feature', function() {
       cy.get('[data-cy=card-build-history] tbody tr').first().should('not.have.attr', 'role');
       cy.get('[data-cy=card-build-history] tbody tr').first().should('not.have.attr', 'tabindex');
       cy.get('[data-cy=card-build-history] [data-cy=build-open-log]')
-        .should('have.attr', 'aria-label', 'Open build log build-1');
+        .should('have.attr', 'aria-label', 'View build log build-1');
       cy.get('[data-cy=card-build-history] [data-cy=build-open-log]').should('contain', 'View');
     });
 

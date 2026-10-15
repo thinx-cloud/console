@@ -1314,11 +1314,41 @@ check('H1 History build row: View gated by hasBuildLog with p-0, @click.stop and
   assert.ok(!row.includes('white-space:nowrap'), 'no inline nowrap in the build row');
 });
 
-check('H2 Device Build History: one No build log placeholder and no muted dash', () => {
+check('H2 Device Build History: View gated by hasBuildLog with the View build log label; one placeholder; no muted dash', () => {
   const card = regionOf(read('pages/Devices/DeviceDetail.vue'), 'data-cy="card-build-history"', '</b-card>');
+  const view = (card.match(/<b-button\b[^>]*data-cy="build-open-log"[^>]*>/) || [])[0];
+  assert.ok(view, 'Device Build History has a View button');
+  assert.ok(view.includes('v-if="hasBuildLog(build)"'), 'View is gated by hasBuildLog(build)');
+  assert.ok(view.includes(':aria-label="\'View build log \' + build.build_id"'), 'View aria-label is View build log <id>');
   assert.equal(card.split('data-cy="build-no-log"').length - 1, 1, 'exactly one build-no-log placeholder');
   assert.ok(card.includes('<span v-else data-cy="build-no-log"><span aria-hidden="true">—</span><span class="sr-only">No build log</span></span>'), 'UI-B15 placeholder markup');
   assert.ok(!card.includes('class="text-muted">—<'), 'no muted dash');
+});
+
+// The old View aria-label wording (47-VERIFICATION gap UI E6, superseded by View build log).
+const OLD_LABEL = 'Open build log';
+
+// Every .vue and .js file under src/, relative to src/.
+const srcFiles = () => fs.readdirSync(SRC, { recursive: true })
+  .map(String)
+  .filter((rel) => /\.(vue|js)$/.test(rel) && fs.statSync(path.join(SRC, rel)).isFile());
+
+check('P3 sources: the five components decide only through hasBuildLog; no old label under src; View binds View build log', () => {
+  [...LIST_FILES, 'components/BuildLogDialog/BuildLogDialog.vue'].forEach((rel) => {
+    const source = read(rel);
+    assert.ok(source.includes('hasBuildLog('), rel + ' calls hasBuildLog');
+    assert.ok(!/v-if="(item|build)\.build_id"/.test(source), rel + ' has no truthy build_id v-if');
+    assert.ok(!/!!?build\.build_id/.test(source), rel + ' has no negated build.build_id test');
+    assert.ok(!/typeof (build\.build_id|buildId)/.test(source), rel + ' has no typeof build id test');
+  });
+  const files = srcFiles();
+  assert.ok(files.length > 20, 'src/ walk found the sources (' + files.length + ')');
+  files.forEach((rel) => assert.ok(!read(rel).includes(OLD_LABEL), rel + ' has no ' + OLD_LABEL));
+  ['pages/Visits/Visits.vue', 'pages/History/History.vue', 'pages/Devices/DeviceDetail.vue'].forEach((rel) => {
+    const views = read(rel).match(/<b-button\b[^>]*data-cy="build-open-log"[^>]*>/g) || [];
+    assert.equal(views.length, 1, rel + ' has one View button');
+    assert.ok(views[0].includes('data-cy="build-open-log" :aria-label="\'View build log \' + '), rel + ' View binds View build log');
+  });
 });
 
 // History rendered with the real paging helper; openBuildLog is replaced with a recorder.
