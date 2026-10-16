@@ -620,6 +620,70 @@ checkAsync('I8 audited callers take an empty envelope without throwing and keep 
   return done.join(', ');
 });
 
+// core/api.js with the real utils/cookies.js inlined, so the CSRF prime and retry are the
+// shipped code. Each call returns a fresh module (its own in-flight prime).
+function apiWithCookies() {
+  const strip = (s) => s
+    .replace(/^import .*;?$/gm, '')
+    .replace(/^export default \{[^}]*\};?$/m, '')
+    .replace(/export (const|let|function|async function) (\w+)/g, '$1 $2');
+  const code = strip(read('utils/cookies.js')) + '\n'
+    + strip(read('core/api.js')).replace('export default class Api', 'const Api = class Api')
+    + '\nreturn Api;';
+  return new Function(code)();
+}
+
+// A fetch Response stand-in with the members api.js and cookies.js read.
+function fakeResponse(status, body) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(body),
+    json: async () => body,
+    clone() { return fakeResponse(status, body); },
+  };
+}
+
+// 48-08 (CI-07, NOTIF-04): a request that fails in the network (Cypress failing an in-flight
+// request at a test boundary, a page unload, an offline client) used to reject out of
+// Api.request() with TypeError: Failed to fetch, and a caller without a catch (Header.vue
+// mounted fetchProfile) left an unhandled rejection that ended the next deep-link test.
+checkAsync('I9 a rejected fetch resolves { success: false, status: 0, response: null } for $get and $post; a response and the csrf_token_invalid retry are unchanged', async () => {
+  const Api = apiWithCookies();
+  const saved = globalThis.fetch;
+  try {
+    globalThis.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
+    const api = new Api('https://api.test');
+    for (const [label, call] of [['$get', () => api.$get('/profile')], ['$post', () => api.$post('/session/token')]]) {
+      let out;
+      try {
+        out = await call();
+      } catch (err) {
+        throw new Error(label + ' rejects with ' + (err && err.message) + ' instead of resolving { success: false }');
+      }
+      assert.deepEqual(out, { success: false, status: 0, response: null }, label + ' resolves the failure envelope');
+    }
+
+    globalThis.fetch = async () => fakeResponse(200, { success: true, response: { owner: 'o' } });
+    assert.deepEqual(await new Api('https://api.test').$get('/profile'), { success: true, response: { owner: 'o' } }, 'a response keeps its envelope');
+
+    const calls = [];
+    let posts = 0;
+    globalThis.fetch = async (url, init) => {
+      calls.push(((init && init.method) || 'GET') + ' ' + String(url).replace('https://api.test/api/v2', ''));
+      if (String(url).endsWith('/csrf-token')) return fakeResponse(200, { success: true, csrf_token: 't' + calls.length });
+      posts += 1;
+      return posts === 1
+        ? fakeResponse(403, { success: false, response: 'csrf_token_invalid' })
+        : fakeResponse(200, { success: true, response: 'ok' });
+    };
+    assert.deepEqual(await Api.prototype.$post.call(new Api('https://api.test'), '/device', '{}'), { success: true, response: 'ok' }, 'the retried POST result');
+    assert.deepEqual(calls, ['GET /csrf-token', 'POST /device', 'GET /csrf-token', 'POST /device'], 'one re-prime and one retry');
+  } finally {
+    globalThis.fetch = saved;
+  }
+});
+
 // ================================================================ H: Header and auth logout (35 IN-08, D-13)
 
 checkAsync('H1 Header logout() dispatches auth/logout once and pushes /login only after it resolves', async () => {
