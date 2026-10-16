@@ -134,7 +134,9 @@ angular.module( "RTM" ).controller( "DevicesController", [ "$rootScope", "$scope
           $scope.$apply();
         } else {
           console.log( response );
-          toastr.error( response.status, "<ENV::loginPageTitle>", { timeOut: 5000 } );
+          // A refused build replies { success: false, response: "<reason>" } with no status
+          // field: one fixed sentence, no reply value reaches toastr (48-REVIEW WR-04).
+          toastr.error( "Build failed.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
         }
       } else {
         console.log( "error" );

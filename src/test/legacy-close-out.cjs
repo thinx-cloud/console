@@ -2,7 +2,8 @@
 // 43-UI-REVIEW fix 3).
 //
 // - DevicesController: the THiNX Builder toast after a build reads Build queued. / Build started.
-//   and never carries a reply field (the build reply has no status field).
+//   and never carries a reply field (the build reply has no status field); a refused build shows
+//   Build failed. (48-REVIEW WR-04).
 // - LogviewController: a Build Status frame for a device with no build history does not throw; a socket
 //   first opened from the log overlay sends {init} before the logtail; wsstailLog does not send on a
 //   connecting socket.
@@ -203,6 +204,18 @@ check('G2 any other reply: Build started. toast without undefined or a reply val
   }
 });
 
+check('G9 refused build: one Build failed. error toast, never undefined or a reply value (48-REVIEW WR-04)', () => {
+  for (const reply of [{ success: false }, { success: false, response: '<img src=x onerror=alert(1)>' }, { success: false, status: 'x' }]) {
+    const r = loadDevices(reply);
+    assert.equal(r.toasts.length, 1, 'exactly one toast');
+    const toast = r.toasts[0];
+    assert.equal(toast.method, 'error');
+    assert.equal(toast.args[0], 'Build failed.');
+    assert.equal(toast.args[1], '<ENV::loginPageTitle>');
+    assert.equal(toast.args[2].timeOut, 5000);
+  }
+});
+
 check('G3 Build Status frame for a device with no history: array initialised, toast shown', () => {
   const other = [{ build_id: 'b0' }];
   const env = loadLogview({ deviceBuilds: { 'u-old': other } });
@@ -284,6 +297,7 @@ check('G7 updateDeploykeys records the goal only for a non-empty goals array, nu
 
 check('G8 source: no status-field toast, {init} always on open, goals.length > 0', () => {
   assert.ok(!devicesSource.includes('response.status + "<br>'), 'DevicesController builds the toast from response.status');
+  assert.ok(!/toastr\.error\(\s*response\./.test(devicesSource), 'DevicesController passes a reply field to toastr.error');
   assert.ok(devicesSource.includes('Build queued.'), 'Build queued. in DevicesController');
   const onopen = logviewSource.match(/\$rootScope\.wss\.onopen = function\(\) \{([\s\S]*?)\n {8}\};/);
   assert.ok(onopen, 'wss.onopen found');
