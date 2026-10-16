@@ -98,9 +98,21 @@ export default class Api {
       // SEC-CSRF-01 (21-REVIEW CR-01): mutating calls await the shared XSRF prime
       // and retry once on a csrf_token_invalid rejection. GETs are never checked.
       const options = this.composeOptions(method, body);
-      const response = (method === 'GET')
-        ? await fetch(this.composePath(path), options)
-        : await fetchWithCsrf(this.csrfBase(), this.composePath(path), options);
+      let response;
+      try {
+        response = (method === 'GET')
+          ? await fetch(this.composePath(path), options)
+          : await fetchWithCsrf(this.csrfBase(), this.composePath(path), options);
+      } catch (_networkError) {
+        // A request that never got a response (offline, aborted by a page unload)
+        // resolves like an empty reply instead of rejecting, so a caller without a
+        // catch never leaves an unhandled rejection (48-08, CI-07).
+        return {
+          success: false,
+          status: 0,
+          response: null,
+        };
+      }
       const text = await response.text();
 
       if (!text) {
