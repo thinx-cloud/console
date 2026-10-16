@@ -33,6 +33,11 @@ describe('Deep link reload (NOTIF-04)', function() {
   it('Should send a logged-in hard load of /#/ to the dashboard', function() {
     cy.visitApp('/#/', { session: true });
     cy.location('hash').should('eq', '#/app/dashboard');
+    // The dashboard's eight reads (logs/build three times: Visits, Header and
+    // Notifications) settle inside this test. A read still in flight when the next
+    // test resets the intercepts is failed by Cypress, and that failure used to end
+    // the logged-out test below (48-08).
+    cy.wait(['@getStats', '@getStatsToday', '@getAuditLog', '@getDevices', '@getProfile', '@getBuildLog', '@getBuildLog', '@getBuildLog']);
   });
 
   it('Should send a logged-out hard load of /#/app/history to the login page', function() {
