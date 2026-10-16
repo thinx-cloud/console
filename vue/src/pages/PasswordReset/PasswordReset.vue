@@ -136,6 +136,9 @@ export default {
         if (result && result.success === true) {
           this.successMessage = "Reset email sent. Check your inbox.";
           this.email = "";
+        } else if (result && result.networkError) {
+          // The request never got a response (48-REVIEW CR-01).
+          this.errorMessage = "Network error. Please try again.";
         } else if (isCsrfRejectedPayload(result)) {
           reportCsrfRejection(this.$rollbar, "POST /password/reset");
           this.errorMessage = CSRF_REJECTED_MESSAGE;
@@ -177,6 +180,8 @@ export default {
           this.successMessage = "Password set. You can now log in.";
           this.password = "";
           this.rpassword = "";
+        } else if (result && result.networkError) {
+          this.errorMessage = "Network error. Please try again.";
         } else if (isCsrfRejectedPayload(result)) {
           reportCsrfRejection(this.$rollbar, "POST /password/set");
           this.errorMessage = CSRF_REJECTED_MESSAGE;

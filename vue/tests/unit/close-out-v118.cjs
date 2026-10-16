@@ -648,7 +648,7 @@ function fakeResponse(status, body) {
 // request at a test boundary, a page unload, an offline client) used to reject out of
 // Api.request() with TypeError: Failed to fetch, and a caller without a catch (Header.vue
 // mounted fetchProfile) left an unhandled rejection that ended the next deep-link test.
-checkAsync('I9 a rejected fetch resolves { success: false, status: 0, response: null } for $get and $post; a response and the csrf_token_invalid retry are unchanged', async () => {
+checkAsync('I9 a rejected fetch resolves { success: false, status: 0, response: null, networkError: true } for $get and $post; a response and the csrf_token_invalid retry are unchanged', async () => {
   const Api = apiWithCookies();
   const saved = globalThis.fetch;
   try {
@@ -661,11 +661,14 @@ checkAsync('I9 a rejected fetch resolves { success: false, status: 0, response: 
       } catch (err) {
         throw new Error(label + ' rejects with ' + (err && err.message) + ' instead of resolving { success: false }');
       }
-      assert.deepEqual(out, { success: false, status: 0, response: null }, label + ' resolves the failure envelope');
+      assert.deepEqual(out, { success: false, status: 0, response: null, networkError: true }, label + ' resolves the failure envelope');
     }
 
     globalThis.fetch = async () => fakeResponse(200, { success: true, response: { owner: 'o' } });
     assert.deepEqual(await new Api('https://api.test').$get('/profile'), { success: true, response: { owner: 'o' } }, 'a response keeps its envelope');
+    // A refused reply is not a network failure (48-REVIEW CR-01).
+    globalThis.fetch = async () => fakeResponse(502, { error: 'bad gateway' });
+    assert.equal((await new Api('https://api.test').$get('/profile')).networkError, undefined, 'a 502 reply carries no networkError');
 
     const calls = [];
     let posts = 0;
@@ -682,6 +685,114 @@ checkAsync('I9 a rejected fetch resolves { success: false, status: 0, response: 
   } finally {
     globalThis.fetch = saved;
   }
+});
+
+// 48-REVIEW CR-01: the non-rejecting client marks a request that never got a response with
+// networkError, and the callers whose only error path was the old rejection act on it again.
+// Each store action runs against the real Api with a fetch that rejects.
+async function runStoreOffline(rel, action, items) {
+  const Api = apiWithCookies();
+  const mod = loadStore(rel);
+  const state = mod.state;
+  if (items) state.items = items;
+  const ctx = {
+    state,
+    commit: (type, payload) => mod.mutations[type](state, payload),
+    dispatch: (type) => mod.actions[type].call({ $api }, ctx),
+  };
+  const $api = new Api('https://api.test');
+  const saved = globalThis.fetch;
+  globalThis.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
+  try {
+    return { state, outcome: await mod.actions[action].call({ $api }, ctx).then((v) => ({ value: v }), (e) => ({ error: e })) };
+  } finally {
+    globalThis.fetch = saved;
+  }
+}
+
+checkAsync('I10 a network failure throws from devices/fetchItems, enviros/fetchItems and admin/fetchUsers; a refused reply still does not', async () => {
+  const kept = [{ udid: 'd1', id: 'd1' }];
+  for (const [rel, action] of [['store/devices.js', 'fetchItems'], ['store/enviros.js', 'fetchItems'], ['store/admin.js', 'fetchUsers']]) {
+    const { state, outcome } = await runStoreOffline(rel, action, rel === 'store/admin.js' ? null : kept.slice());
+    assert.ok(outcome.error instanceof Error, rel + ' ' + action + ' rejects on a network failure');
+    if (rel !== 'store/admin.js') assert.deepEqual(state.items, kept, rel + ' keeps the current list');
+  }
+  for (const rel of ['store/devices.js', 'store/enviros.js']) {
+    const out = await runStore(rel, 'fetchItems', { success: false, status: 502, response: null });
+    assert.deepEqual(out.state.items, [], rel + ' resolves a refused reply with the current list');
+  }
+  const mod = loadStore('store/admin.js');
+  const refused = await mod.actions.fetchUsers.call({ $api: { $get: async () => ({ success: false, status: 403, response: 'forbidden' }) } }, { commit() {} });
+  assert.equal(refused.success, false, 'admin/fetchUsers resolves a refused reply');
+});
+
+checkAsync('I11 devices/revokeDevices stays a success when only the follow-up list read hits a network failure', async () => {
+  const mod = loadStore('store/devices.js');
+  const state = mod.state;
+  const ctx = {
+    state,
+    commit: (type, payload) => mod.mutations[type](state, payload),
+    dispatch: () => Promise.reject(new Error('Could not reach the server.')),
+  };
+  const result = await mod.actions.revokeDevices.call({ $api: { $delete: async () => ({ success: true, response: 'ok' }) } }, ctx, ['d1']);
+  assert.equal(result.success, true, 'the revoke is still reported as done');
+  assert.equal(result.refreshed, false, 'refreshed: false');
+});
+
+checkAsync('I12 Devices.vue shows LOAD_ERROR and AdminUsers.vue shows Failed to load users. on a network failure', async () => {
+  const { def } = devicesPage();
+  const offline = () => runStoreOffline('store/devices.js', 'fetchItems').then((r) => { if (r.outcome.error) throw r.outcome.error; return r.outcome.value; });
+  const vm = {
+    error: null,
+    loading: false,
+    fetchItems: offline,
+    fetchEnviros: () => Promise.resolve([]),
+    fetchBuildLog: () => Promise.resolve(),
+    getItems: () => [],
+    getEnviros: () => [],
+    getBuildItems: () => [],
+  };
+  await def.methods.loadData.call(vm);
+  assert.equal(vm.error, 'Could not load devices. Refresh to retry.', 'Devices shows its load error');
+  assert.equal(vm.loading, false, 'Loading is cleared');
+
+  const admin = adminUsers().def;
+  const avm = { error: '', loading: true, fetchUsers: () => runStoreOffline('store/admin.js', 'fetchUsers').then((r) => { if (r.outcome.error) throw r.outcome.error; return r.outcome.value; }) };
+  await admin.created.call(avm);
+  assert.equal(avm.error, 'Failed to load users.', 'AdminUsers shows its load error');
+  assert.equal(avm.loading, false, 'Loading is cleared');
+});
+
+const passwordReset = lazy(() => loadSfc('pages/PasswordReset/PasswordReset.vue', {
+  Widget: { name: 'Widget', render: (h) => h('div') },
+  AppFooter: { name: 'AppFooter', render: (h) => h('div') },
+  hostnameMixin: {},
+  ensureCsrfToken: () => Promise.resolve(''),
+  isCsrfRejectedPayload: (r) => !!(r && r.response === 'csrf_token_invalid'),
+  reportCsrfRejection: () => {},
+  CSRF_REJECTED_MESSAGE: 'csrf',
+}));
+
+checkAsync('I13 PasswordReset shows Network error. Please try again. for a network failure and the server copy for a refused reply', async () => {
+  const { def } = passwordReset();
+  const NETWORK = { success: false, status: 0, response: null, networkError: true };
+  const REFUSED = { success: false, status: 502, response: null };
+  const run = async (method, reply) => {
+    const vm = {
+      email: 'a@b.c', password: 'secret', rpassword: 'secret', errorMessage: '', successMessage: '', submitting: false,
+      $route: { query: { owner: 'o', reset_key: 'k' } },
+      $rollbar: null,
+      requestPasswordReset: async () => reply,
+      confirmPasswordReset: async () => reply,
+    };
+    await def.methods[method].call(vm);
+    assert.equal(vm.submitting, false, method + ' clears submitting');
+    return vm.errorMessage;
+  };
+  assert.equal(await run('submitInitiate', NETWORK), 'Network error. Please try again.');
+  assert.equal(await run('submitInitiate', REFUSED), 'Could not initiate reset.');
+  assert.equal(await run('submitConfirm', NETWORK), 'Network error. Please try again.');
+  assert.equal(await run('submitConfirm', REFUSED), 'Could not set password.');
 });
 
 // ================================================================ H: Header and auth logout (35 IN-08, D-13)

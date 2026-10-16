@@ -105,12 +105,15 @@ export default class Api {
           : await fetchWithCsrf(this.csrfBase(), this.composePath(path), options);
       } catch (_networkError) {
         // A request that never got a response (offline, aborted by a page unload)
-        // resolves like an empty reply instead of rejecting, so a caller without a
-        // catch never leaves an unhandled rejection (48-08, CI-07).
+        // resolves instead of rejecting, so a caller without a catch never leaves an
+        // unhandled rejection (48-08, CI-07). networkError tells it apart from an empty
+        // or refused reply, so a page can still show its load or network error
+        // (48-REVIEW CR-01).
         return {
           success: false,
           status: 0,
           response: null,
+          networkError: true,
         };
       }
       const text = await response.text();

@@ -78,16 +78,20 @@ export default {
       }
     },
     actions: {
+      // A refused or empty reply keeps the current list; a network failure throws, so
+      // Devices.vue shows its load error (48-REVIEW CR-01). refreshAfter catches it.
       async fetchItems({ state, commit }) {
         const result = await this.$api.$get('/env');
         if (result.success) {
           commit('saveSimpleArray', { items: result.response || [] });
+        } else if (result.networkError) {
+          throw new Error('Could not reach the server.');
         }
         return state.items;
       },
       // The Environment Globals page load (UI-T25): like fetchItems, but a rejected request
-      // or a failed answer throws, so the page can show its load error instead of a stuck
-      // Loading line. fetchItems keeps its non-throwing behaviour for Devices.vue.
+      // or any failed answer throws, so the page can show its load error instead of a stuck
+      // Loading line. fetchItems throws only on a network failure.
       async loadItems({ state, commit }) {
         const result = await this.$api.$get('/env');
         if (!result || !result.success || !Array.isArray(result.response)) {
