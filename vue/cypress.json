@@ -9,6 +9,7 @@
   "responseTimeout": 30000,
   "slowTestThreshold": 10000,
   "chromeWebSecurity": false,
+  "blockHosts": ["fonts.googleapis.com", "fonts.gstatic.com", "*.gvt1.com"],
 
   "component": {
     "componentFolder": "src",
