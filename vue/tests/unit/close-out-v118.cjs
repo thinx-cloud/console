@@ -648,7 +648,7 @@ function fakeResponse(status, body) {
 // request at a test boundary, a page unload, an offline client) used to reject out of
 // Api.request() with TypeError: Failed to fetch, and a caller without a catch (Header.vue
 // mounted fetchProfile) left an unhandled rejection that ended the next deep-link test.
-checkAsync('I9 a rejected fetch resolves { success: false, status: 0, response: null, networkError: true } for $get and $post; a response and the csrf_token_invalid retry are unchanged', async () => {
+checkAsync('I9 a rejected fetch resolves { success: false, status: 0, response: null, networkError: true } for $get and $post, a failed body read resolves too; a response and the csrf_token_invalid retry are unchanged', async () => {
   const Api = apiWithCookies();
   const saved = globalThis.fetch;
   try {
@@ -669,6 +669,15 @@ checkAsync('I9 a rejected fetch resolves { success: false, status: 0, response: 
     // A refused reply is not a network failure (48-REVIEW CR-01).
     globalThis.fetch = async () => fakeResponse(502, { error: 'bad gateway' });
     assert.equal((await new Api('https://api.test').$get('/profile')).networkError, undefined, 'a 502 reply carries no networkError');
+    // A body that fails after the headers arrived resolves the same way (48-REVIEW WR-01).
+    globalThis.fetch = async () => Object.assign(fakeResponse(200, {}), { text: () => Promise.reject(new TypeError('network error')) });
+    let aborted;
+    try {
+      aborted = await new Api('https://api.test').$get('/profile');
+    } catch (err) {
+      throw new Error('a failed body read rejects with ' + (err && err.message) + ' instead of resolving');
+    }
+    assert.deepEqual(aborted, { success: false, status: 200, response: null, networkError: true }, 'a failed body read resolves the failure envelope');
 
     const calls = [];
     let posts = 0;

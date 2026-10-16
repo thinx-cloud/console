@@ -99,10 +99,15 @@ export default class Api {
       // and retry once on a csrf_token_invalid rejection. GETs are never checked.
       const options = this.composeOptions(method, body);
       let response;
+      let text;
       try {
         response = (method === 'GET')
           ? await fetch(this.composePath(path), options)
           : await fetchWithCsrf(this.csrfBase(), this.composePath(path), options);
+        // The body is read inside the same guard: a stream that fails after the headers
+        // arrived (connection reset, page unload, an aborted intercept) fails the same
+        // way as a request that never got a response (48-REVIEW WR-01).
+        text = await response.text();
       } catch (_networkError) {
         // A request that never got a response (offline, aborted by a page unload)
         // resolves instead of rejecting, so a caller without a catch never leaves an
@@ -111,12 +116,11 @@ export default class Api {
         // (48-REVIEW CR-01).
         return {
           success: false,
-          status: 0,
+          status: response ? response.status : 0,
           response: null,
           networkError: true,
         };
       }
-      const text = await response.text();
 
       if (!text) {
         return {
