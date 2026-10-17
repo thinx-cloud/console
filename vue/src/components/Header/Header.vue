@@ -122,6 +122,9 @@ export default {
     //this.profile = this.getProfile();
     this.fetchProfile().then(() => {
       this.profile = this.getProfile();
+    }).catch(() => {
+      // A profile read that failed in the network leaves the name blank; the next mount
+      // retries. Without this catch the rejection was unhandled (48-08, audit W2).
     });
     // Populate the buildlog store so the recent-builds badge reflects reality.
     this.$store.dispatch("buildlog/fetchBuildLog");

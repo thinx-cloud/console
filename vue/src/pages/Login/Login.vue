@@ -212,7 +212,11 @@ export default {
       }
 
       if (this.isAuthenticated()) {
-        await this.fetchProfile();
+        try {
+          await this.fetchProfile();
+        } catch (profileError) {
+          // A failed profile read must not block sign-in; the Header retries (audit W2).
+        }
         this.$store.commit("auth/setUser", this.getProfile());
         await this.pushIfNeeded("/app/dashboard");
       } else {

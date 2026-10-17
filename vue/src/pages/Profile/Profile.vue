@@ -9,6 +9,7 @@
     <b-alert v-if="message" variant="success" show dismissible @dismissed="message = null">{{ message }}</b-alert>
 
     <div v-if="loading">Loading...</div>
+    <b-alert v-else-if="loadFailed" variant="danger" show data-cy="profile-load-error">Could not load your profile. Refresh to retry.</b-alert>
     <b-tabs v-else content-class="mt-3">
 
       <!-- Profile Tab -->
@@ -212,6 +213,7 @@ export default {
   data() {
     return {
       loading: true,
+      loadFailed: false,
       saving: false,
       error: null,
       message: null,
@@ -256,29 +258,47 @@ export default {
   methods: {
     ...mapGetters({ getProfile: 'profile/getProfile' }),
     ...mapActions({ fetchProfile: 'profile/fetchProfile', updateProfile: 'profile/updateProfile', deleteAccount: 'profile/deleteAccount', uploadAvatar: 'profile/uploadAvatar', linkGitHubToken: 'profile/linkGitHubToken', clearSession: 'auth/clearSession' }),
+    // A network failure throws out of profile/fetchProfile (audit W2): show one load error in
+    // place of the tabs and a blank form, so nothing stale is saved. A refused reply resolves
+    // with the current profile, as before.
     async loadProfile() {
       this.loading = true;
-      await this.fetchProfile();
-      this.profile = this.getProfile();
-      if (this.profile && this.profile.info) {
-        const info = this.profile.info;
-        this.form.first_name = info.first_name || '';
-        this.form.last_name = info.last_name || '';
-        this.form.mobile_phone = info.mobile_phone || '';
-        // Read `timezone_abbr` (canonical); fall back to the bare `timezone` key
-        // for accounts whose only timezone value came from the earlier broken
-        // Vue saveProfile path.
-        this.form.timezone_abbr = info.timezone_abbr || info.timezone || '';
-        const notif = info.notifications || {};
-        this.notifForm.all = !!notif.all;
-        this.notifForm.important = !!notif.important;
-        this.notifForm.info = !!notif.info;
-        if (this.notifForm.all) {
-          this.notifForm.important = false;
-          this.notifForm.info = false;
+      try {
+        await this.fetchProfile();
+        this.profile = this.getProfile();
+        if (this.profile && this.profile.info) {
+          const info = this.profile.info;
+          this.form.first_name = info.first_name || '';
+          this.form.last_name = info.last_name || '';
+          this.form.mobile_phone = info.mobile_phone || '';
+          // Read `timezone_abbr` (canonical); fall back to the bare `timezone` key
+          // for accounts whose only timezone value came from the earlier broken
+          // Vue saveProfile path.
+          this.form.timezone_abbr = info.timezone_abbr || info.timezone || '';
+          const notif = info.notifications || {};
+          this.notifForm.all = !!notif.all;
+          this.notifForm.important = !!notif.important;
+          this.notifForm.info = !!notif.info;
+          if (this.notifForm.all) {
+            this.notifForm.important = false;
+            this.notifForm.info = false;
+          }
         }
+        this.loadFailed = false;
+      } catch (e) {
+        this.profile = null;
+        this.form.first_name = '';
+        this.form.last_name = '';
+        this.form.mobile_phone = '';
+        this.form.timezone_abbr = '';
+        this.notifForm.all = false;
+        this.notifForm.important = false;
+        this.notifForm.info = false;
+        this.loadFailed = true;
+        this.error = null;
+      } finally {
+        this.loading = false;
       }
-      this.loading = false;
     },
     async saveProfile() {
       this.saving = true;
@@ -301,8 +321,11 @@ export default {
       this.saving = false;
       if (result.success) {
         // Refresh the local copy so the form re-hydrates from the just-saved info
-        // on the next visit/reload without a fetchProfile round-trip.
-        this.profile = this.getProfile();
+        // on the next visit/reload without a fetchProfile round-trip. When only the
+        // store's follow-up read failed (refreshed: false), reload instead, so the page
+        // shows the load error rather than a stale copy (audit W2).
+        if (result.refreshed === false) await this.loadProfile();
+        else this.profile = this.getProfile();
         this.message = 'Profile updated.';
       } else {
         this.error = result.message || 'Failed to update profile.';
@@ -349,7 +372,9 @@ export default {
       const result = await this.uploadAvatar(this.avatarB64);
       this.avatarUploading = false;
       if (result && result.success) {
-        this.profile = this.getProfile();
+        // refreshed: false — the avatar was stored but the follow-up read failed (audit W2).
+        if (result.refreshed === false) await this.loadProfile();
+        else this.profile = this.getProfile();
         this.message = 'Avatar updated.';
         this.avatarB64 = null;
       } else {

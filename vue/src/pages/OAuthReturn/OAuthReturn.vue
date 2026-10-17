@@ -188,7 +188,11 @@ export default {
       }
 
       if (this.isAuthenticated()) {
-        await this.fetchProfile();
+        try {
+          await this.fetchProfile();
+        } catch (profileError) {
+          // A failed profile read must not block sign-in; the Header retries (audit W2).
+        }
         this.setUser(this.getProfile());
         this.$router.push("/app/dashboard");
       } else {
