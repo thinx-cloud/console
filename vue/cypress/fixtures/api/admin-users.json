@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "response": [
+    {
+      "owner": "test-owner-0000",
+      "username": "cypress-test",
+      "email": "cypress@example.test",
+      "admin": true,
+      "last_login": "2026-10-16T08:12:00.000Z",
+      "device_count": 4
+    },
+    {
+      "owner": "test-owner-0001",
+      "username": "alpha-user",
+      "email": "alpha@example.test",
+      "admin": false,
+      "last_login": "2026-10-15T19:40:00.000Z",
+      "device_count": 2
+    },
+    {
+      "owner": "test-owner-0002",
+      "username": "bravo-user",
+      "email": "bravo@example.test",
+      "admin": false,
+      "last_login": "2026-09-30T06:05:00.000Z",
+      "device_count": 0
+    }
+  ]
+}

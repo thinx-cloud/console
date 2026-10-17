@@ -46,4 +46,33 @@ describe('Deep link reload (NOTIF-04)', function() {
     cy.get('@getStats.all').should('have.length', 0);
   });
 
+  // Audit W1: on a cold reload the profile store is empty, so the admin guard used to send
+  // an admin to the dashboard. The guard now loads the profile first (Routes.js). Every
+  // request is stubbed (profile-admin.json, admin-users.json); @unstubbed staying empty
+  // proves nothing reached the dev-server proxy. Each test settles its reads by alias
+  // before it ends (48-08): two profile reads (guard and Header), two build-log reads
+  // (Header and Notifications) and one user-list read per load.
+  describe('Deep link reload on an admin route (NOTIF-04, audit W1)', function() {
+
+    beforeEach(function() {
+      cy.stubThinxApi({ profile: 'api/profile-admin.json' });
+    });
+
+    function expectAdminUsers() {
+      cy.location('hash').should('eq', '#/app/admin/users');
+      cy.get('.page-top-line h1').should('contain', 'Users');
+      cy.get('.table.table-striped tbody tr').should('have.length', 3);
+      cy.wait(['@getProfile', '@getProfile', '@getBuildLog', '@getBuildLog', '@getAdminUsers']);
+    }
+
+    it('Should keep a logged-in admin hard load of /#/app/admin/users on the user list', function() {
+      cy.visitApp('/#/app/admin/users', { session: true });
+      expectAdminUsers();
+      cy.get('@getStats.all').should('have.length', 0);
+      cy.get('@getStatsToday.all').should('have.length', 0);
+      cy.get('@unstubbed.all').should('have.length', 0);
+    });
+
+  });
+
 });

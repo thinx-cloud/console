@@ -22,6 +22,8 @@
 //   - audit-log.json    — dashboard.spec.js + history.spec.js. Exactly one
 //     entry carries the `danger` flag, and the oldest entry is 2026-09-10 —
 //     both are asserted on directly by name/count, not just "some rows exist".
+//   - admin-users.json  — deep-link.spec.js. Three rows, exactly one admin row
+//     (cypress-test, the profile-admin.json owner); asserted by row count.
 
 import { forgeJwt } from './session';
 
@@ -35,6 +37,7 @@ const DEFAULT_FIXTURES = {
   statsToday: 'api/stats-today.json',
   auditLog: 'api/audit-log.json',
   buildLog: 'api/build-log.json',
+  adminUsers: 'api/admin-users.json',
 };
 
 const ok = (response) => ({ statusCode: 200, body: { success: true, response } });
@@ -69,6 +72,7 @@ Cypress.Commands.add('stubThinxApi', (overrides = {}) => {
   cy.intercept({ method: 'GET', pathname: `${API}/stats/today` }, { fixture: fixtures.statsToday }).as('getStatsToday');
   cy.intercept({ method: 'GET', pathname: `${API}/logs/audit` }, { fixture: fixtures.auditLog }).as('getAuditLog');
   cy.intercept({ method: 'GET', pathname: `${API}/logs/build` }, { fixture: fixtures.buildLog }).as('getBuildLog');
+  cy.intercept({ method: 'GET', pathname: `${API}/admin/users` }, { fixture: fixtures.adminUsers }).as('getAdminUsers');
 
   // Writes. Specs assert request.body; the side effect never happens.
   cy.intercept({ method: 'DELETE', pathname: `${API}/device` }, ok('devices_revoked')).as('revokeDevices');
