@@ -34,6 +34,15 @@
 //     rename so the page's reload shows the new name.
 //   - rsakeys-after-delete.json — rsakeys.spec.js. The list without the first
 //     key (Staging key only). Served after the delete.
+//   - profile-transformers.json — transformers.spec.js (48.1-03), passed as the
+//     `profile` override. The non-admin profile with three transformers whose
+//     utids and aliases the spec asserts: utid-1 passthrough, utid-2 battery,
+//     utid-3 sigfox (same body string). devices.json lets exactly one device,
+//     udid-z, use utid-1, so deleting passthrough and battery yields the usage
+//     sentence "1 device will stop applying them."
+//   - profile-transformers-after-delete.json — transformers.spec.js. The same
+//     profile keeping only utid-3 (sigfox); served by the spec's stateful GET
+//     /profile handler once its POST /profile handler has seen the write.
 
 import { forgeJwt } from './session';
 
@@ -100,6 +109,9 @@ Cypress.Commands.add('stubThinxApi', (overrides = {}) => {
   // DELETE { filenames }. The page reloads GET /rsakey itself after either.
   cy.intercept({ method: 'PATCH', pathname: `${API}/rsakey` }, ok('key_renamed')).as('renameRsakey');
   cy.intercept({ method: 'DELETE', pathname: `${API}/rsakey` }, ok('key_deleted')).as('deleteRsakeys');
+  // Environment globals (48.1-03, ENV-01): one PUT { key, value } replaces a value; the
+  // store re-reads GET /env afterwards (store/enviros.js refreshAfter).
+  cy.intercept({ method: 'PUT', pathname: `${API}/env` }, ok('env_saved')).as('putEnv');
 });
 
 // The CI login (D-02): the Vue login form posts { username, password } to

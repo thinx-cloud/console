@@ -302,6 +302,8 @@ check('Y1 deep-link.spec.js is stub-only, has no skip/only/retries/numeric wait/
 // their pinned test counts (plan 48.1-03 interface contract).
 const W3_SPECS = [
   ['integration/rsakeys.spec.js', 3],
+  ['integration/transformers.spec.js', 2],
+  ['integration/enviros.spec.js', 2],
 ];
 for (const [rel, tests] of W3_SPECS) {
   check('Y1 ' + path.basename(rel) + ' is stub-only, has no skip/only/retries/numeric wait/credentials, ' + tests + ' tests, each asserting an empty catch-all', () =>
@@ -310,9 +312,12 @@ for (const [rel, tests] of W3_SPECS) {
 
 // The default stubs and the opt-in command 48.1-03 adds to api-stubs.js, and the fixtures
 // its header comment map must name.
-const W3_STUB_ALIASES = ['getRsakeys', 'renameRsakey', 'deleteRsakeys'];
+const W3_STUB_ALIASES = ['getRsakeys', 'renameRsakey', 'deleteRsakeys', 'putEnv'];
 const W3_STUB_COMMANDS = [];
-const W3_FIXTURES = ['rsakeys.json', 'rsakeys-after-rename.json', 'rsakeys-after-delete.json'];
+const W3_FIXTURES = [
+  'rsakeys.json', 'rsakeys-after-rename.json', 'rsakeys-after-delete.json',
+  'profile-transformers.json', 'profile-transformers-after-delete.json',
+];
 
 check('Y2 api-stubs.js registers the 48.1-03 aliases and commands and its comment map names every 48.1-03 fixture', () => {
   const text = readSpec('support/api-stubs.js');
