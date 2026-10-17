@@ -18,8 +18,10 @@
     </p>
 
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
+    <b-alert v-if="loadFailed" variant="danger" show data-cy="apikeys-load-error">Could not load API keys. Refresh to retry.</b-alert>
 
     <List
+      v-if="!loadFailed"
       @selection-update="selectionUpdated"
       :datasource="items"
       :dataheaders="headers"
@@ -57,6 +59,7 @@ export default {
       items: [],
       headers: [],
       loading: true,
+      loadFailed: false,
       error: null,
       createdKey: null,
       form: { alias: '' },
@@ -89,7 +92,16 @@ export default {
         .map(item => item.hash);
       if (!hashes.length) return;
       const result = await this.deleteItems(hashes);
-      if (!result.success) this.error = result.message || 'Failed to delete API keys.';
+      if (!result.success) {
+        this.error = result.message || 'Failed to delete API keys.';
+      } else if (result.refreshed === false) {
+        // The delete was stored but the follow-up read failed: reload, so the page shows
+        // the load error instead of the deleted rows (audit W2).
+        await this.loadData();
+      } else {
+        // The store re-read the list after the delete; show it (PD-09).
+        this.items = this.getItems();
+      }
       this.selectedIds = [];
       this.isSelected = false;
       this.selectedCount = 0;
@@ -99,13 +111,26 @@ export default {
       this.selectedCount = value.count;
       this.selectedIds = value.items || [];
     },
-    loadData() {
+    // A network failure throws out of apikeys/fetchItems (audit W2): show one load error and
+    // no stale rows or selection, so nothing stale can be deleted. A refused reply resolves
+    // with the current list, as before.
+    async loadData() {
       this.loading = true;
-      this.fetchItems().then(() => {
+      try {
+        await this.fetchItems();
         this.items = this.getItems();
         this.headers = this.getHeaders();
+        this.loadFailed = false;
+      } catch (e) {
+        this.items = [];
+        this.selectedIds = [];
+        this.isSelected = false;
+        this.selectedCount = 0;
+        this.loadFailed = true;
+        this.error = null;
+      } finally {
         this.loading = false;
-      });
+      }
     },
     copyToClipboard(value) {
       navigator.clipboard.writeText(value).catch(() => {
