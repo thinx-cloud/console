@@ -561,7 +561,25 @@ const LIST_SUBJECTS = [
 LIST_SUBJECTS.forEach((s) => { s.load = lazy(() => loadSfc(s.page, Object.assign({}, LIST_STUB, s.pageDeps))); });
 
 const subjectsOf = (list) => list.map((s) => s.name).join(', ');
-const STORE_SUBJECTS = LIST_SUBJECTS.slice();
+// The profile store joins the S checks: one object instead of a list, the same contract.
+const PROFILE = () => ({
+  owner: 'o'.repeat(64), username: 'cypress-test', avatar: '', admin: false,
+  info: { first_name: 'Ada', last_name: 'Lovelace', mobile_phone: '+1 555 0100', timezone_abbr: 'Europe/Prague', notifications: { all: false, important: true, info: false } },
+});
+const PROFILE_SUBJECT = {
+  name: 'profile',
+  store: 'store/profile.js',
+  fetch: 'fetchProfile',
+  refresh: 'fetchProfile',
+  key: 'profile',
+  empty: {},                      // an empty success envelope saves result.response || {}
+  rows: PROFILE,
+  writes: [
+    { action: 'updateProfile', arg: { first_name: 'Grace' } },
+    { action: 'uploadAvatar', arg: 'QUJD' },
+  ],
+};
+const STORE_SUBJECTS = LIST_SUBJECTS.concat([PROFILE_SUBJECT]);
 
 checkAsync('S1 a network failure throws Could not reach the server. and leaves the store state untouched: ' + subjectsOf(STORE_SUBJECTS), async () => {
   for (const s of STORE_SUBJECTS) {
@@ -782,6 +800,227 @@ checkAsync('P4 deleteSelected: a stored delete re-syncs the rows from the store 
     assert.equal(message.vm.error, 'server says', s.name + ' failure with message: the result message');
   }
   return subjectsOf(LIST_SUBJECTS);
+});
+
+// ---------------------------------------------------------------- Profile page (P5) and fetchProfile callers (K)
+//
+// profile/fetchProfile can now reject (PD-04), so every caller must absorb it (PD-06): the
+// Profile page shows one load error, Header keeps a blank name and retries on the next mount,
+// Login and OAuthReturn still reach the dashboard (an unhandled rejection from the Header's
+// fetchProfile is what ended deep-link test 4 in 48-08), DeviceDetail reads repositories through
+// allSettled.
+
+const profilePage = lazy(() => loadSfc('pages/Profile/Profile.vue', {
+  avatarDataUri: () => null,
+  require: () => 'default_avatar_sm.png',
+}));
+
+checkAsync('P5 Profile: a failed read resolves loadProfile with a blank form and one profile-load-error alert in place of the tabs; a working read fills the form; saveProfile and saveAvatar reload on refreshed: false and keep the store copy otherwise', async () => {
+  const { def } = profilePage();
+  const COPY = 'Could not load your profile. Refresh to retry.';
+  const blankForm = { first_name: '', last_name: '', mobile_phone: '', timezone_abbr: '' };
+
+  const failed = pageVm(def, { fetchProfile: () => Promise.reject(new Error('Could not reach the server.')), getProfile: () => ({}) });
+  failed.profile = PROFILE();
+  Object.assign(failed.form, { first_name: 'stale', last_name: 'stale', mobile_phone: 'stale', timezone_abbr: 'stale' });
+  Object.assign(failed.notifForm, { all: false, important: true, info: true });
+  failed.error = 'Failed to update profile.';
+  const r = await withUnhandled(() => def.methods.loadProfile.call(failed));
+  assert.deepEqual(r.unhandled.map((e) => String(e && e.message)), [], 'failed read: no unhandled rejection');
+  assert.equal(r.settled, 'resolved', 'failed read: loadProfile resolves');
+  assert.equal(failed.loadFailed, true, 'failed read: loadFailed true');
+  assert.equal(failed.loading, false, 'failed read: loading false');
+  assert.equal(failed.profile, null, 'failed read: profile null');
+  assert.deepEqual(failed.form, blankForm, 'failed read: the form is blank');
+  assert.deepEqual(failed.notifForm, { all: false, important: false, info: false }, 'failed read: notification flags cleared');
+  assert.equal(failed.error, null, 'failed read: action error cleared');
+
+  const page = renderPage(def, { loading: false, loadFailed: true, profile: null, error: null, message: null });
+  assert.equal(page.error, null, 'failed page renders without error');
+  assert.deepEqual(page.warnings, [], 'failed page renders without Vue warnings');
+  const alerts = byCy(page.vnode, 'profile-load-error');
+  assert.equal(alerts.length, 1, 'exactly one profile-load-error element');
+  assert.equal(attrsOf(alerts[0]).variant, 'danger', 'the alert is a danger alert');
+  assert.equal(textOf(alerts[0]), COPY, 'the alert copy');
+  assert.equal(nodesOf(page.vnode).filter((n) => n.tag === 'b-tabs').length, 0, 'no tabs while loadFailed');
+  assert.equal(dangerAlerts(page.vnode).length, 1, 'no other danger alert');
+
+  const ok = pageVm(def, { fetchProfile: () => Promise.resolve(PROFILE()), getProfile: () => PROFILE() });
+  await def.methods.loadProfile.call(ok);
+  assert.deepEqual(ok.profile, PROFILE(), 'working read: profile from the store');
+  assert.deepEqual(ok.form, { first_name: 'Ada', last_name: 'Lovelace', mobile_phone: '+1 555 0100', timezone_abbr: 'Europe/Prague' }, 'working read: the form fills from profile.info');
+  assert.deepEqual(ok.notifForm, { all: false, important: true, info: false }, 'working read: notification flags');
+  assert.equal(ok.loadFailed, false, 'working read: loadFailed false');
+  assert.equal(ok.loading, false, 'working read: loading false');
+  const okPage = renderPage(def, { loading: false, loadFailed: false, profile: PROFILE(), error: null, message: null });
+  assert.equal(okPage.error, null, 'loaded page renders without error');
+  assert.equal(nodesOf(okPage.vnode).filter((n) => n.tag === 'b-tabs').length, 1, 'loaded page shows the tabs');
+  assert.equal(byCy(okPage.vnode, 'profile-load-error').length, 0, 'loaded page has no load-error alert');
+
+  const saves = [
+    ['saveProfile', () => {}, 'Profile updated.', 'Failed to update profile.'],
+    ['saveAvatar', (vm) => { vm.avatarB64 = 'QUJD'; }, 'Avatar updated.', 'Failed to upload avatar.'],
+  ];
+  for (const [method, setup, successMessage, failureMessage] of saves) {
+    const run = async (result) => {
+      const loads = [];
+      const vm = pageVm(def, {
+        profile: PROFILE(),
+        updateProfile: async () => clone(result),
+        uploadAvatar: async () => clone(result),
+        getProfile: () => ({ fromStore: true }),
+        loadProfile: async () => { loads.push(1); },
+      });
+      setup(vm);
+      await def.methods[method].call(vm);
+      return { vm, loads };
+    };
+    const plain = await run({ success: true });
+    assert.deepEqual(plain.loads, [], method + ' success: no loadProfile');
+    assert.deepEqual(plain.vm.profile, { fromStore: true }, method + ' success: profile from the store');
+    assert.equal(plain.vm.message, successMessage, method + ' success: the message');
+    const off = await run({ success: true, refreshed: false });
+    assert.deepEqual(off.loads, [1], method + ' refreshed: false: one loadProfile');
+    assert.equal(off.vm.message, successMessage, method + ' refreshed: false: the success message');
+    assert.equal(off.vm.error, null, method + ' refreshed: false: no error');
+    const refused = await run({ success: false });
+    assert.equal(refused.vm.error, failureMessage, method + ' failure: the failure message');
+    assert.deepEqual(refused.loads, [], method + ' failure: no loadProfile');
+  }
+  return 'loadProfile, render, saveProfile, saveAvatar';
+});
+
+const headerPage = lazy(() => loadSfc('components/Header/Header.vue', {
+  mapState: () => ({}),
+  Notifications: { name: 'Notifications', render: (h) => h('div') },
+  avatarDataUri: () => null,
+  require: () => 'default_avatar_sm.png',
+}));
+
+checkAsync('K1 Header mounted absorbs a rejected fetchProfile (no unhandled rejection, profile stays {}) and still fetches the build log; a working read fills profile', async () => {
+  const { def } = headerPage();
+  const run = async (fetchProfile) => {
+    const dispatched = [];
+    const vm = pageVm(def, { fetchProfile, getProfile: () => PROFILE(), $store: { dispatch: (t) => { dispatched.push(t); return Promise.resolve(); } } });
+    const r = await withUnhandled(() => def.mounted.call(vm));
+    return { vm, dispatched, r };
+  };
+  const off = await run(() => Promise.reject(new Error('Could not reach the server.')));
+  assert.deepEqual(off.r.unhandled.map((e) => String(e && e.message)), [], 'rejected read: no unhandled rejection');
+  assert.deepEqual(off.vm.profile, {}, 'rejected read: profile stays {}');
+  assert.deepEqual(off.dispatched, ['buildlog/fetchBuildLog'], 'rejected read: the build log is still fetched');
+  const ok = await run(() => Promise.resolve(PROFILE()));
+  assert.deepEqual(ok.r.unhandled, [], 'working read: no unhandled rejection');
+  assert.deepEqual(ok.vm.profile, PROFILE(), 'working read: profile from the store');
+  assert.deepEqual(ok.dispatched, ['buildlog/fetchBuildLog'], 'working read: the build log is fetched');
+});
+
+const SIGN_IN_REPLY = { success: true, access_token: 'a'.repeat(40), refresh_token: 'r'.repeat(40) };
+const PROFILE_READS = [
+  ['rejecting', () => Promise.reject(new Error('Could not reach the server.'))],
+  ['resolving', () => Promise.resolve(PROFILE())],
+];
+
+const loginPage = lazy(() => loadSfc('pages/Login/Login.vue', {
+  Widget: { name: 'Widget', render: (h) => h('div') },
+  AppFooter: { name: 'AppFooter', render: (h) => h('div') },
+  hostnameMixin: {},
+  fetchWithCsrf: async () => fakeResponse(200, SIGN_IN_REPLY),
+  isCsrfRejection: () => false,
+  reportCsrfRejection: () => {},
+  CSRF_REJECTED_MESSAGE: 'csrf',
+}));
+
+checkAsync('K2 Login login() with a successful reply still commits auth/setUser and reaches /app/dashboard when fetchProfile rejects, as when it resolves', async () => {
+  const { def } = loginPage();
+  for (const [label, fetchProfile] of PROFILE_READS) {
+    const commits = [];
+    const pushes = [];
+    const vm = pageVm(def, {
+      $refs: { username: { value: 'cypress-test' }, password: { value: 'secret' } },
+      $hostnames: { API: 'https://api.test/api/v2' },
+      $rollbar: null,
+      isTokenValid: async () => true,
+      persistSession: async () => {},
+      isAuthenticated: () => true,
+      fetchProfile,
+      getProfile: () => PROFILE(),
+      $store: { commit: (t, p) => commits.push([t, p]) },
+      pushIfNeeded: async (location) => { pushes.push(location); },
+    });
+    const r = await withUnhandled(() => def.methods.login.call(vm, { preventDefault() {} }));
+    assert.equal(r.settled, 'resolved', label + ': login() resolves');
+    assert.deepEqual(r.unhandled, [], label + ': no unhandled rejection');
+    assert.deepEqual(commits, [['auth/setUser', PROFILE()]], label + ': auth/setUser committed with getProfile()');
+    assert.deepEqual(pushes, ['/app/dashboard'], label + ': /app/dashboard pushed');
+    assert.equal(vm.errorMessage, null, label + ': no error message');
+  }
+  return PROFILE_READS.map((p) => p[0]).join(', ');
+});
+
+const oauthReturnPage = lazy(() => loadSfc('pages/OAuthReturn/OAuthReturn.vue', {
+  mapMutations: () => ({}),
+  hostnameMixin: {},
+  ensureCsrfToken: async () => '',
+  fetchWithCsrf: async () => fakeResponse(200, SIGN_IN_REPLY),
+}));
+
+checkAsync('K3 OAuthReturn complete() with a valid sign-in reply still calls setUser and pushes /app/dashboard when fetchProfile rejects, as when it resolves', async () => {
+  const { def } = oauthReturnPage();
+  for (const [label, fetchProfile] of PROFILE_READS) {
+    const users = [];
+    const pushes = [];
+    const vm = pageVm(def, {
+      $route: { query: { t: 'one-shot-token' } },
+      $hostnames: { API: 'https://api.test/api/v2' },
+      isTokenValid: async () => true,
+      persistSession: async () => {},
+      isAuthenticated: () => true,
+      fetchProfile,
+      getProfile: () => PROFILE(),
+      setUser: (p) => users.push(p),
+      $router: { push: (location) => { pushes.push(location); return Promise.resolve(); } },
+    });
+    const r = await withUnhandled(() => def.methods.complete.call(vm));
+    assert.equal(r.settled, 'resolved', label + ': complete() resolves');
+    assert.deepEqual(r.unhandled, [], label + ': no unhandled rejection');
+    assert.deepEqual(users, [PROFILE()], label + ': setUser(getProfile()) once');
+    assert.deepEqual(pushes, ['/app/dashboard'], label + ': /app/dashboard pushed');
+    assert.equal(vm.errorMessage, null, label + ': no error message');
+  }
+  return PROFILE_READS.map((p) => p[0]).join(', ');
+});
+
+const deviceDetailPage = lazy(() => loadSfc('pages/Devices/DeviceDetail.vue', {
+  BuildLogDialog: { name: 'BuildLogDialog', render: (h) => h('div') },
+  moment: () => ({ format: () => '', fromNow: () => '' }),
+  parseEnvironmentJSON: () => ({ ok: true }),
+  buildStatusVariant: () => 'secondary',
+  hasBuildLog: () => false,
+  confirmLeave: async () => true,
+}));
+
+checkAsync('K4 DeviceDetail loadDevice() resolves and shows the generic banner when only the repositories read (real store, network failure) rejects', async () => {
+  const { def } = deviceDetailPage();
+  const udid = 'd'.repeat(64);
+  const device = { udid, alias: 'dev', description: '', transformers: [] };
+  const vm = pageVm(def, {
+    $route: { params: { udid } },
+    transformersDirty: false,
+    loadDevices: async () => [device],
+    fetchBuildLog: async () => {},
+    fetchTransformers: async () => [],
+    fetchRepositories: () => storeRun('store/repositories.js', 'fetchItems', { fetchImpl: NETWORK_FAIL })
+      .then((r) => { if (r.outcome.error) throw r.outcome.error; return r.outcome.value; }),
+    getByUdid: () => (id) => (id === udid ? device : null),
+    getBuildItems: () => [],
+  });
+  const r = await withUnhandled(() => def.methods.loadDevice.call(vm));
+  assert.equal(r.settled, 'resolved', 'loadDevice resolves');
+  assert.deepEqual(r.unhandled, [], 'no unhandled rejection');
+  assert.equal(vm.error, 'Some device details could not be loaded. Refresh to retry.', 'the generic banner');
+  assert.deepEqual(vm.device, device, 'the device is shown');
+  assert.equal(vm.loading, false, 'loading cleared');
 });
 
 // ---------------------------------------------------------------- run
