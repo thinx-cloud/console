@@ -18,10 +18,12 @@
     </p>
 
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
+    <b-alert v-if="loadFailed" variant="danger" show data-cy="channels-load-error">Could not load mesh channels. Refresh to retry.</b-alert>
 
     <p>Mesh channels allow groups of devices to communicate with each other.</p>
 
     <List
+      v-if="!loadFailed"
       @selection-update="selectionUpdated"
       :datasource="items"
       :dataheaders="headers"
@@ -55,6 +57,7 @@ export default {
       items: [],
       headers: [],
       loading: true,
+      loadFailed: false,
       error: null,
       form: { mesh_id: '', alias: '' },
     };
@@ -88,7 +91,16 @@ export default {
         .map(item => item.mesh_id);
       if (!mesh_ids.length) return;
       const result = await this.deleteItems(mesh_ids);
-      if (!result.success) this.error = result.message || 'Failed to delete mesh channels.';
+      if (!result.success) {
+        this.error = result.message || 'Failed to delete mesh channels.';
+      } else if (result.refreshed === false) {
+        // The delete was stored but the follow-up read failed: reload, so the page shows
+        // the load error instead of the deleted rows (audit W2).
+        await this.loadData();
+      } else {
+        // The store re-read the list after the delete; show it (PD-09).
+        this.items = this.getItems();
+      }
       this.selectedIds = [];
       this.isSelected = false;
       this.selectedCount = 0;
@@ -98,13 +110,26 @@ export default {
       this.selectedCount = value.count;
       this.selectedIds = value.items || [];
     },
-    loadData() {
+    // A network failure throws out of channels/fetchItems (audit W2): show one load error and
+    // no stale rows or selection, so nothing stale can be deleted. A refused reply resolves
+    // with the current list, as before.
+    async loadData() {
       this.loading = true;
-      this.fetchItems().then(() => {
+      try {
+        await this.fetchItems();
         this.items = this.getItems();
         this.headers = this.getHeaders();
+        this.loadFailed = false;
+      } catch (e) {
+        this.items = [];
+        this.selectedIds = [];
+        this.isSelected = false;
+        this.selectedCount = 0;
+        this.loadFailed = true;
+        this.error = null;
+      } finally {
         this.loading = false;
-      });
+      }
     },
   },
 };
