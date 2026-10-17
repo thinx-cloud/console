@@ -255,18 +255,76 @@ const SPEC_FORBIDDEN = [
 ];
 
 // A stub-only spec: calls cy.stubThinxApi(, carries none of SPEC_FORBIDDEN, and holds
-// exactly `tests` it( tests.
-function specHygiene(rel, { tests }) {
+// exactly `tests` it( tests. With `unstubbed` (48.1-03, PD-08) every test must also assert
+// that the catch-all recorded nothing (`@unstubbed.all` has length 0), so a request that
+// would otherwise reach the dev-server proxy fails the spec; deep-link.spec.js keeps it off
+// because its logged-out tests legitimately reach the catch-all.
+function specHygiene(rel, { tests, unstubbed = false }) {
   const text = readSpec(rel);
   assert.ok(text.includes('cy.stubThinxApi('), rel + ' stubs the API');
   for (const [re, label] of SPEC_FORBIDDEN) assert.ok(!re.test(text), rel + ' has no ' + label);
   const count = (text.match(/^[ \t]*it\(/gm) || []).length;
   assert.equal(count, tests, rel + ' holds exactly ' + tests + ' tests');
-  return count + ' tests';
+  if (unstubbed) {
+    const bodies = text.split(/^[ \t]*it\(/m).slice(1);
+    bodies.forEach((body, i) => {
+      assert.ok(/@unstubbed\.all'\)\.should\('have\.length',\s*0\)/.test(body), rel + ' test ' + (i + 1) + ' asserts @unstubbed.all has length 0');
+    });
+  }
+  return count + ' tests' + (unstubbed ? ', each asserting an empty catch-all' : '');
+}
+
+// Fixtures the 48.1-03 specs add (T-48.1-11): each parses as JSON and none carries key
+// material, a token header or an e-mail address outside example.test.
+const FIXTURE_FORBIDDEN = [
+  [/PRIVATE KEY/, 'PRIVATE KEY'],
+  [/BEGIN/, 'BEGIN'],
+  [/Bearer/, 'Bearer'],
+  [/Authorization/, 'Authorization'],
+];
+function fixtureHygiene(files) {
+  for (const rel of files) {
+    const text = readSpec(path.join('fixtures', 'api', rel));
+    JSON.parse(text);
+    for (const [re, label] of FIXTURE_FORBIDDEN) assert.ok(!re.test(text), rel + ' has no ' + label);
+    const emails = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || [];
+    for (const address of emails) {
+      assert.equal(address.slice(address.indexOf('@') + 1), 'example.test', rel + ': e-mail domain of ' + address);
+    }
+  }
+  return files.length + ' fixtures';
 }
 
 check('Y1 deep-link.spec.js is stub-only, has no skip/only/retries/numeric wait/credentials, 8 tests', () =>
   specHygiene('integration/deep-link.spec.js', { tests: 8 }));
+
+// 48.1-03 (audit W3): the specs that cover the Phase 45-47 pages in the gating suite, with
+// their pinned test counts (plan 48.1-03 interface contract).
+const W3_SPECS = [
+  ['integration/rsakeys.spec.js', 3],
+];
+for (const [rel, tests] of W3_SPECS) {
+  check('Y1 ' + path.basename(rel) + ' is stub-only, has no skip/only/retries/numeric wait/credentials, ' + tests + ' tests, each asserting an empty catch-all', () =>
+    specHygiene(rel, { tests, unstubbed: true }));
+}
+
+// The default stubs and the opt-in command 48.1-03 adds to api-stubs.js, and the fixtures
+// its header comment map must name.
+const W3_STUB_ALIASES = ['getRsakeys', 'renameRsakey', 'deleteRsakeys'];
+const W3_STUB_COMMANDS = [];
+const W3_FIXTURES = ['rsakeys.json', 'rsakeys-after-rename.json', 'rsakeys-after-delete.json'];
+
+check('Y2 api-stubs.js registers the 48.1-03 aliases and commands and its comment map names every 48.1-03 fixture', () => {
+  const text = readSpec('support/api-stubs.js');
+  const header = text.slice(0, text.indexOf('\nimport '));
+  for (const alias of W3_STUB_ALIASES) assert.ok(text.includes(".as('" + alias + "')"), 'alias ' + alias);
+  for (const command of W3_STUB_COMMANDS) assert.ok(text.includes("Cypress.Commands.add('" + command + "'"), 'command ' + command);
+  for (const fixture of W3_FIXTURES) assert.ok(header.includes(fixture), 'comment map names ' + fixture);
+  return W3_STUB_ALIASES.concat(W3_STUB_COMMANDS).join(', ') + '; ' + W3_FIXTURES.length + ' fixtures mapped';
+});
+
+check('Y3 the 48.1-03 fixtures parse as JSON and hold no key material, token header or e-mail outside example.test', () =>
+  fixtureHygiene(W3_FIXTURES));
 
 // ---------------------------------------------------------------- loaders (48.1-02)
 // Copied from close-out-v118.cjs, not required from it.

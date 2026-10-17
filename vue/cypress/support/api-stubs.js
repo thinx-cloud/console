@@ -24,6 +24,16 @@
 //     both are asserted on directly by name/count, not just "some rows exist".
 //   - admin-users.json  — deep-link.spec.js. Three rows, exactly one admin row
 //     (cypress-test, the profile-admin.json owner); asserted by row count.
+//   - rsakeys.json      — rsakeys.spec.js (48.1-03). Two keys, newest first by
+//     `date` (Firmware repo key 2026-09-18 before Staging key 2026-09-10); the
+//     filenames fixture-key-one and fixture-key-two are what the PATCH and
+//     DELETE request bodies carry. Fictional pubkeys (FIXTURE-PUBKEY-*), low-
+//     entropy fingerprints, example.test addresses only.
+//   - rsakeys-after-rename.json — rsakeys.spec.js. The same list; only the
+//     first name differs (Renamed key). Served by a bespoke intercept after the
+//     rename so the page's reload shows the new name.
+//   - rsakeys-after-delete.json — rsakeys.spec.js. The list without the first
+//     key (Staging key only). Served after the delete.
 
 import { forgeJwt } from './session';
 
@@ -38,6 +48,7 @@ const DEFAULT_FIXTURES = {
   auditLog: 'api/audit-log.json',
   buildLog: 'api/build-log.json',
   adminUsers: 'api/admin-users.json',
+  rsakeys: 'api/rsakeys.json',
 };
 
 const ok = (response) => ({ statusCode: 200, body: { success: true, response } });
@@ -73,6 +84,7 @@ Cypress.Commands.add('stubThinxApi', (overrides = {}) => {
   cy.intercept({ method: 'GET', pathname: `${API}/logs/audit` }, { fixture: fixtures.auditLog }).as('getAuditLog');
   cy.intercept({ method: 'GET', pathname: `${API}/logs/build` }, { fixture: fixtures.buildLog }).as('getBuildLog');
   cy.intercept({ method: 'GET', pathname: `${API}/admin/users` }, { fixture: fixtures.adminUsers }).as('getAdminUsers');
+  cy.intercept({ method: 'GET', pathname: `${API}/rsakey` }, { fixture: fixtures.rsakeys }).as('getRsakeys');
 
   // Writes. Specs assert request.body; the side effect never happens.
   cy.intercept({ method: 'DELETE', pathname: `${API}/device` }, ok('devices_revoked')).as('revokeDevices');
@@ -84,6 +96,10 @@ Cypress.Commands.add('stubThinxApi', (overrides = {}) => {
   // saveNotifications and uploadAvatar share the route (store/profile.js:93,98).
   cy.intercept({ method: 'POST', pathname: `${API}/profile` }, ok('profile_updated')).as('postProfile');
   cy.intercept({ method: 'DELETE', pathname: `${API}/user` }, ok('user_deleted')).as('deleteAccount');
+  // Deploy keys (48.1-03, KEY-04/KEY-05): rename is PATCH { filename, name }, delete is
+  // DELETE { filenames }. The page reloads GET /rsakey itself after either.
+  cy.intercept({ method: 'PATCH', pathname: `${API}/rsakey` }, ok('key_renamed')).as('renameRsakey');
+  cy.intercept({ method: 'DELETE', pathname: `${API}/rsakey` }, ok('key_deleted')).as('deleteRsakeys');
 });
 
 // The CI login (D-02): the Vue login form posts { username, password } to

@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "response": [
+    {
+      "name": "Renamed key",
+      "fingerprint": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "date": "2026-09-18T10:15:00.000Z",
+      "pubkey": "ssh-rsa FIXTURE-PUBKEY-ONE cypress@example.test",
+      "filename": "fixture-key-one"
+    },
+    {
+      "name": "Staging key",
+      "fingerprint": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+      "date": "2026-09-10T08:00:00.000Z",
+      "pubkey": "ssh-rsa FIXTURE-PUBKEY-TWO cypress@example.test",
+      "filename": "fixture-key-two"
+    }
+  ]
+}
