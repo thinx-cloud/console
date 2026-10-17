@@ -250,6 +250,420 @@ function specHygiene(rel, { tests }) {
 check('Y1 deep-link.spec.js is stub-only, has no skip/only/retries/numeric wait/credentials, 8 tests', () =>
   specHygiene('integration/deep-link.spec.js', { tests: 8 }));
 
+// ---------------------------------------------------------------- loaders (48.1-02)
+// Copied from close-out-v118.cjs, not required from it.
+
+// Load an SFC: the template must compile without errors; the script is evaluated
+// with its import lines stripped and the named dependencies in scope. The compiled
+// render functions are attached so the definition can be mounted as a component.
+function loadSfc(rel, deps = {}) {
+  const source = read(rel);
+  const sfc = compiler.parseComponent(source);
+  const template = sfc.template.content;
+  assert.deepEqual(compiler.compile(template, { whitespace: 'condense' }).errors, [], rel + ' template compiles');
+  const code = sfc.script.content
+    .replace(/^import .*;?$/gm, '')
+    .replace(/export default /g, 'module.exports.default = ');
+  const all = {
+    mapGetters: () => ({}),
+    mapActions: () => ({}),
+    ...deps,
+  };
+  const mod = { exports: {} };
+  new Function('module', ...Object.keys(all), code)(mod, ...Object.values(all)); // eslint-disable-line no-new-func
+  const def = mod.exports.default;
+  const compiled = compiler.compileToFunctions(template, { whitespace: 'condense' });
+  def.render = compiled.render;
+  def.staticRenderFns = compiled.staticRenderFns;
+  return { def, source, template };
+}
+
+// Evaluate a plain ES module from src/ and return its named exports.
+function loadModule(rel, transform = (s) => s) {
+  const names = [];
+  const code = transform(read(rel))
+    .replace(/^import .*;?$/gm, '')
+    .replace(/export (const|let|function|async function) (\w+)/g, (m, kind, name) => { names.push(name); return kind + ' ' + name; });
+  return new Function(code + '\nreturn { ' + names.join(', ') + ' };')(); // eslint-disable-line no-new-func
+}
+void loadModule;
+
+// A store module's default export (a fresh object per call).
+const loadStore = (rel) => new Function(read(rel).replace(/^import .*;?$/gm, '').replace(/export default /, 'return '))(); // eslint-disable-line no-new-func
+
+function withWarnings(fn) {
+  const warnings = [];
+  const prev = Vue.config.warnHandler;
+  Vue.config.warnHandler = (msg) => warnings.push(msg);
+  renderError = null;
+  let out;
+  try { out = fn(); } finally { Vue.config.warnHandler = prev; }
+  const err = renderError;
+  renderError = null;
+  return { out, warnings, error: err };
+}
+
+// Render a page definition with the given state and component overrides.
+function renderPage(def, state = {}, components = {}) {
+  const vm = new Vue({
+    render: def.render,
+    staticRenderFns: def.staticRenderFns,
+    data: def.data,
+    computed: def.computed,
+    methods: def.methods,
+    filters: def.filters,
+    watch: def.watch,
+    components: Object.assign({}, def.components, components),
+  });
+  vm.$route = { params: {} };
+  Object.assign(vm, { loading: false }, state);
+  const { out, warnings, error } = withWarnings(() => vm._render());
+  return { vm, vnode: out, warnings, error };
+}
+
+// ---------------------------------------------------------------- vnode walkers
+
+function nodesOf(top) {
+  const out = [];
+  (function walk(n) {
+    if (!n) return;
+    if (Array.isArray(n)) { n.forEach(walk); return; }
+    out.push(n);
+    (n.children || []).forEach(walk);
+    const slots = n.data && n.data.scopedSlots;
+    if (slots && !n.componentOptions) {
+      Object.keys(slots).filter((k) => k[0] !== '$' && typeof slots[k] === 'function').forEach((k) => walk(slots[k]({})));
+    }
+  })(top);
+  return out;
+}
+
+// b-button is a plain element here; mirror bootstrap-vue 2.21.2 BButton computeAttrs for
+// aria-pressed (48-05, D-14). Every other element reports the attrs the template passed.
+const attrsOf = (n) => {
+  const attrs = (n && n.data && n.data.attrs) || {};
+  if (!n || n.tag !== 'b-button') return attrs;
+  const out = Object.assign({}, attrs);
+  delete out['aria-pressed'];
+  if (typeof attrs.pressed === 'boolean') out['aria-pressed'] = String(attrs.pressed);
+  return out;
+};
+const cyOf = (n) => attrsOf(n)['data-cy'] || null;
+const byCy = (top, cy) => nodesOf(top).filter((n) => cyOf(n) === cy);
+
+function classList(n) {
+  const out = [];
+  const add = (c) => {
+    if (!c) return;
+    if (typeof c === 'string') c.split(/\s+/).filter(Boolean).forEach((x) => out.push(x));
+    else if (Array.isArray(c)) c.forEach(add);
+    else if (typeof c === 'object') Object.keys(c).filter((k) => c[k]).forEach((k) => out.push(k));
+  };
+  if (n && n.data) { add(n.data.staticClass); add(n.data.class); }
+  return out;
+}
+void classList;
+
+const isComponent = (n, name) => !!(n && n.componentOptions && n.componentOptions.Ctor.options.name === name);
+const componentsOf = (top, name) => nodesOf(top).filter((n) => isComponent(n, name));
+const textOf = (top) => nodesOf(top).filter((n) => !n.tag && n.text).map((n) => n.text).join(' ').replace(/\s+/g, ' ').trim();
+const propsOf = (n) => (n && n.componentOptions && n.componentOptions.propsData) || {};
+const dangerAlerts = (top) => nodesOf(top).filter((n) => n.tag === 'b-alert' && attrsOf(n).variant === 'danger');
+
+// core/api.js with the real utils/cookies.js inlined, so the CSRF prime and retry are the
+// shipped code. Each call returns a fresh module (its own in-flight prime).
+function apiWithCookies() {
+  const strip = (s) => s
+    .replace(/^import .*;?$/gm, '')
+    .replace(/^export default \{[^}]*\};?$/m, '')
+    .replace(/export (const|let|function|async function) (\w+)/g, '$1 $2');
+  const code = strip(read('utils/cookies.js')) + '\n'
+    + strip(read('core/api.js')).replace('export default class Api', 'const Api = class Api')
+    + '\nreturn Api;';
+  return new Function(code)(); // eslint-disable-line no-new-func
+}
+
+// A fetch Response stand-in with the members api.js and cookies.js read.
+function fakeResponse(status, body) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(body),
+    json: async () => body,
+    clone() { return fakeResponse(status, body); },
+  };
+}
+
+const clone = (v) => JSON.parse(JSON.stringify(v));
+const NETWORK_FAIL = () => Promise.reject(new TypeError('Failed to fetch'));
+const REPLY = (status, body) => async () => fakeResponse(status, body);
+
+// Run one store action against the real Api (core/api.js with utils/cookies.js inlined) over
+// a temporarily replaced globalThis.fetch. commit goes to the module's mutations and dispatch
+// to the module's own actions with the same context, so a follow-up read inside an action
+// runs the shipped code path. fetch is always restored. Returns the module state and how the
+// action settled: { value } or { error }.
+async function storeRun(rel, action, { fetchImpl, state: seed = {}, args = [] } = {}) {
+  const Api = apiWithCookies();
+  const mod = loadStore(rel);
+  const state = typeof mod.state === 'function' ? mod.state() : mod.state;
+  Object.assign(state, seed);
+  const $api = new Api('https://api.test');
+  const ctx = {
+    state,
+    commit: (type, payload) => mod.mutations[type](state, payload),
+    dispatch: (type, payload) => mod.actions[type].call({ $api }, ctx, payload),
+  };
+  const saved = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  try {
+    const outcome = await mod.actions[action].call({ $api }, ctx, ...args).then((v) => ({ value: v }), (e) => ({ error: e }));
+    return { state, outcome, mod };
+  } finally {
+    globalThis.fetch = saved;
+  }
+}
+
+// Run fn while listening for unhandled rejections; report how its return value settled and
+// every rejection nobody handled within a few event-loop turns. The listener is removed
+// afterwards, so a later unhandled rejection still ends the process as usual.
+async function withUnhandled(fn) {
+  const unhandled = [];
+  const onUnhandled = (reason) => { unhandled.push(reason); };
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    const returned = fn();
+    const settled = await settledWithin(Promise.resolve(returned));
+    for (let i = 0; i < 5; i++) await tick();
+    return { returned, settled, unhandled };
+  } finally {
+    process.off('unhandledRejection', onUnhandled);
+  }
+}
+
+// A page instance for driving methods: the page's data() plus its methods plus overrides
+// (store getter/action stubs and recorders), so `this.x()` inside a method finds `x`.
+const pageVm = (def, over = {}) => Object.assign(def.data(), def.methods, over);
+
+// ---------------------------------------------------------------- store network contract (S) and page load errors (P)
+//
+// Audit gap W2 (48.1-02, PD-04, PD-05, PD-09): a request that never got a response
+// (result.networkError) throws `Could not reach the server.` out of the store's fetch action
+// and leaves the store state untouched; a refused reply or an empty success envelope resolves
+// as before. The page shows exactly one load-error alert and no stale rows. A write the
+// server stored stays a success when only its follow-up read fails (refreshed: false).
+// The checks are table-driven: each title lists the subjects it covers.
+
+const LIST_STUB = { List: { name: 'List', props: ['datasource', 'dataheaders', 'showLoading'], render: (h) => h('div') } };
+
+const LIST_SUBJECTS = [
+  {
+    name: 'apikeys',
+    store: 'store/apikeys.js',
+    fetch: 'fetchItems',      // the action that throws on a network failure
+    refresh: 'fetchItems',    // the follow-up read a stored write dispatches
+    key: 'items',
+    empty: [],
+    rows: () => [
+      { id: '0', display: '…' + 'a'.repeat(10), name: 'a'.repeat(20), hash: 'h'.repeat(64), alias: 'one' },
+      { id: '1', display: '…' + 'b'.repeat(10), name: 'b'.repeat(20), hash: 'i'.repeat(64), alias: 'two' },
+    ],
+    writes: [
+      { action: 'createItem', arg: 'alias' },
+      { action: 'deleteItems', arg: ['h'.repeat(64)] },
+    ],
+    page: 'pages/Apikeys/Apikeys.vue',
+    pageDeps: {},
+    cy: 'apikeys-load-error',
+    copy: 'Could not load API keys. Refresh to retry.',
+    deleteFailure: 'Failed to delete API keys.',
+    deleteArg: (row) => row.hash,
+  },
+];
+LIST_SUBJECTS.forEach((s) => { s.load = lazy(() => loadSfc(s.page, Object.assign({}, LIST_STUB, s.pageDeps))); });
+
+const subjectsOf = (list) => list.map((s) => s.name).join(', ');
+const STORE_SUBJECTS = LIST_SUBJECTS.slice();
+
+checkAsync('S1 a network failure throws Could not reach the server. and leaves the store state untouched: ' + subjectsOf(STORE_SUBJECTS), async () => {
+  for (const s of STORE_SUBJECTS) {
+    const seeded = s.rows();
+    const { state, outcome } = await storeRun(s.store, s.fetch, { fetchImpl: NETWORK_FAIL, state: { [s.key]: clone(seeded) } });
+    assert.ok(outcome.error instanceof Error, s.name + '/' + s.fetch + ' rejects on a network failure (resolved with ' + JSON.stringify(outcome.value) + ')');
+    assert.equal(outcome.error.message, 'Could not reach the server.', s.name + ': the message');
+    assert.deepEqual(state[s.key], seeded, s.name + ': the state is untouched');
+  }
+  return subjectsOf(STORE_SUBJECTS);
+});
+
+checkAsync('S2 a refused reply (502 JSON) resolves and keeps the state, an empty success envelope resolves: ' + subjectsOf(STORE_SUBJECTS), async () => {
+  for (const s of STORE_SUBJECTS) {
+    const seeded = s.rows();
+    const refused = await storeRun(s.store, s.fetch, { fetchImpl: REPLY(502, { error: 'bad gateway' }), state: { [s.key]: clone(seeded) } });
+    assert.ok(!refused.outcome.error, s.name + ': a 502 reply resolves (' + (refused.outcome.error && refused.outcome.error.message) + ')');
+    assert.deepEqual(refused.state[s.key], seeded, s.name + ': a 502 reply keeps the state');
+    const empty = await storeRun(s.store, s.fetch, { fetchImpl: REPLY(200, { success: true }), state: { [s.key]: clone(seeded) } });
+    assert.ok(!empty.outcome.error, s.name + ': an empty success envelope resolves (' + (empty.outcome.error && empty.outcome.error.message) + ')');
+    assert.deepEqual(empty.state[s.key], s.empty, s.name + ': an empty envelope leaves ' + JSON.stringify(s.empty));
+  }
+  return subjectsOf(STORE_SUBJECTS);
+});
+
+checkAsync('S3 a stored write with a failing follow-up read resolves with refreshed: false; a working follow-up and a failed write return the result unchanged: ' + subjectsOf(STORE_SUBJECTS), async () => {
+  const covered = [];
+  for (const s of STORE_SUBJECTS) {
+    const mod = loadStore(s.store);
+    const state = typeof mod.state === 'function' ? mod.state() : mod.state;
+    for (const w of s.writes) {
+      const label = s.name + '/' + w.action;
+      const WRITE_OK = { success: true, response: { ok: true } };
+      const WRITE_FAIL = { success: false, message: 'refused' };
+      const run = async (write, followUp) => {
+        const dispatched = [];
+        const ctx = { state, commit() {}, dispatch: (type) => { dispatched.push(type); return followUp(); } };
+        const reply = async () => clone(write);
+        const $api = { $get: reply, $post: reply, $put: reply, $delete: reply };
+        let result;
+        try {
+          result = await mod.actions[w.action].call({ $api }, ctx, w.arg);
+        } catch (err) {
+          throw new Error(label + ' rejects (' + (err && err.message) + ') instead of resolving the write result');
+        }
+        return { result, dispatched };
+      };
+      const ok = await run(WRITE_OK, () => Promise.resolve());
+      assert.deepEqual(ok.result, WRITE_OK, label + ': a working follow-up returns the write result unchanged');
+      assert.deepEqual(ok.dispatched, [s.refresh], label + ': one follow-up ' + s.refresh);
+      const off = await run(WRITE_OK, () => Promise.reject(new Error('Could not reach the server.')));
+      assert.deepEqual(off.result, Object.assign({}, WRITE_OK, { refreshed: false }), label + ': a failed follow-up resolves the result plus refreshed: false');
+      assert.deepEqual(off.dispatched, [s.refresh], label + ': the follow-up was attempted once');
+      const failed = await run(WRITE_FAIL, () => Promise.resolve());
+      assert.deepEqual(failed.result, WRITE_FAIL, label + ': a failed write returns its result unchanged');
+      assert.deepEqual(failed.dispatched, [], label + ': no follow-up after a failed write');
+      covered.push(label);
+    }
+  }
+  return covered.join(', ');
+});
+
+checkAsync('P1 loadData with a rejecting fetch resolves, clears rows, selection and action error, sets loadFailed and clears loading: ' + subjectsOf(LIST_SUBJECTS), async () => {
+  for (const s of LIST_SUBJECTS) {
+    const { def } = s.load();
+    const stale = s.rows();
+    const vm = pageVm(def, {
+      items: clone(stale), selectedIds: [stale[0].id], isSelected: true, selectedCount: 1, error: s.deleteFailure, loading: false,
+      fetchItems: () => Promise.reject(new Error('Could not reach the server.')),
+      getItems: () => stale,
+      getHeaders: () => [],
+    });
+    const { settled, unhandled } = await withUnhandled(() => def.methods.loadData.call(vm));
+    assert.deepEqual(unhandled.map((e) => String(e && e.message)), [], s.name + ': no unhandled rejection');
+    assert.equal(settled, 'resolved', s.name + ': loadData resolves');
+    assert.deepEqual(vm.items, [], s.name + ': rows cleared');
+    assert.deepEqual(vm.selectedIds, [], s.name + ': selection cleared');
+    assert.equal(vm.isSelected, false, s.name + ': isSelected false');
+    assert.equal(vm.selectedCount, 0, s.name + ': selectedCount 0');
+    assert.equal(vm.loadFailed, true, s.name + ': loadFailed true');
+    assert.equal(vm.loading, false, s.name + ': loading false');
+    assert.equal(vm.error, null, s.name + ': action error cleared');
+  }
+  return subjectsOf(LIST_SUBJECTS);
+});
+
+checkAsync('P2 loadData with a working fetch fills items and headers from the getters and clears loadFailed, on a first load and on a retry after a failed load: ' + subjectsOf(LIST_SUBJECTS), async () => {
+  for (const s of LIST_SUBJECTS) {
+    const { def } = s.load();
+    const fresh = s.rows();
+    const headers = [{ title: 'Alias', prop: 'alias', pos: 0 }];
+    const first = pageVm(def, { fetchItems: () => Promise.resolve(fresh), getItems: () => fresh, getHeaders: () => headers });
+    await def.methods.loadData.call(first);
+    assert.deepEqual(first.items, fresh, s.name + ': first load fills items');
+    assert.deepEqual(first.headers, headers, s.name + ': first load fills headers');
+    assert.equal(first.loadFailed, false, s.name + ': first load loadFailed false');
+    assert.equal(first.loading, false, s.name + ': first load loading false');
+
+    let fail = true;
+    const retry = pageVm(def, {
+      fetchItems: () => (fail ? Promise.reject(new Error('Could not reach the server.')) : Promise.resolve(fresh)),
+      getItems: () => fresh,
+      getHeaders: () => headers,
+    });
+    await withUnhandled(() => def.methods.loadData.call(retry));
+    assert.equal(retry.loadFailed, true, s.name + ': the failed load set loadFailed');
+    fail = false;
+    await def.methods.loadData.call(retry);
+    assert.deepEqual(retry.items, fresh, s.name + ': the retry fills items');
+    assert.deepEqual(retry.headers, headers, s.name + ': the retry fills headers');
+    assert.equal(retry.loadFailed, false, s.name + ': the retry clears loadFailed');
+    assert.equal(retry.loading, false, s.name + ': the retry clears loading');
+  }
+  return subjectsOf(LIST_SUBJECTS);
+});
+
+checkAsync('P3 render: loadFailed shows exactly one load-error alert with the fixed copy and no List; otherwise one List with the rows and no alert: ' + subjectsOf(LIST_SUBJECTS), async () => {
+  for (const s of LIST_SUBJECTS) {
+    const { def } = s.load();
+    const stale = s.rows();
+    const failed = renderPage(def, { loadFailed: true, items: clone(stale), headers: [], error: null, loading: false });
+    assert.equal(failed.error, null, s.name + ': the failed page renders without error');
+    assert.deepEqual(failed.warnings, [], s.name + ': the failed page renders without Vue warnings');
+    const alerts = byCy(failed.vnode, s.cy);
+    assert.equal(alerts.length, 1, s.name + ': exactly one ' + s.cy + ' element');
+    assert.equal(attrsOf(alerts[0]).variant, 'danger', s.name + ': the alert is a danger alert');
+    assert.equal(textOf(alerts[0]), s.copy, s.name + ': the alert copy');
+    assert.equal(componentsOf(failed.vnode, 'List').length, 0, s.name + ': no List while loadFailed');
+    assert.equal(dangerAlerts(failed.vnode).length, 1, s.name + ': no other danger alert');
+
+    const ok = renderPage(def, { loadFailed: false, items: clone(stale), headers: [], error: null, loading: false });
+    assert.equal(ok.error, null, s.name + ': the loaded page renders without error');
+    assert.deepEqual(ok.warnings, [], s.name + ': the loaded page renders without Vue warnings');
+    const lists = componentsOf(ok.vnode, 'List');
+    assert.equal(lists.length, 1, s.name + ': one List');
+    assert.deepEqual(propsOf(lists[0]).datasource, stale, s.name + ': the List shows the rows');
+    assert.equal(byCy(ok.vnode, s.cy).length, 0, s.name + ': no load-error alert');
+  }
+  return subjectsOf(LIST_SUBJECTS);
+});
+
+checkAsync('P4 deleteSelected: a stored delete re-syncs the rows from the store without loadData, refreshed: false calls loadData once, a failed delete keeps the rows and shows the failure; the selection is cleared each time: ' + subjectsOf(LIST_SUBJECTS), async () => {
+  for (const s of LIST_SUBJECTS) {
+    const { def } = s.load();
+    const stale = s.rows();
+    const fresh = [stale[1]];
+    const run = async (result, label) => {
+      const loads = [];
+      const deleted = [];
+      const vm = pageVm(def, {
+        items: clone(stale), selectedIds: [stale[0].id], isSelected: true, selectedCount: 1, error: null, loading: false, loadFailed: false,
+        deleteItems: async (ids) => { deleted.push(ids); return clone(result); },
+        getItems: () => fresh,
+        getHeaders: () => [],
+        loadData: async () => { loads.push(1); },
+      });
+      await def.methods.deleteSelected.call(vm);
+      assert.deepEqual(deleted, [[s.deleteArg(stale[0])]], s.name + ' ' + label + ': deletes the selected row');
+      assert.deepEqual(vm.selectedIds, [], s.name + ' ' + label + ': selection cleared');
+      assert.equal(vm.isSelected, false, s.name + ' ' + label + ': isSelected false');
+      assert.equal(vm.selectedCount, 0, s.name + ' ' + label + ': selectedCount 0');
+      return { vm, loads };
+    };
+    const ok = await run({ success: true }, 'success');
+    assert.deepEqual(ok.vm.items, fresh, s.name + ' success: rows re-synced from the store');
+    assert.deepEqual(ok.loads, [], s.name + ' success: no loadData');
+    assert.equal(ok.vm.error, null, s.name + ' success: no error');
+    const off = await run({ success: true, refreshed: false }, 'refreshed: false');
+    assert.deepEqual(off.loads, [1], s.name + ' refreshed: false: one loadData');
+    assert.equal(off.vm.error, null, s.name + ' refreshed: false: no error');
+    const failed = await run({ success: false }, 'failure');
+    assert.deepEqual(failed.vm.items, stale, s.name + ' failure: rows kept');
+    assert.equal(failed.vm.error, s.deleteFailure, s.name + ' failure: the fixed failure text');
+    assert.deepEqual(failed.loads, [], s.name + ' failure: no loadData');
+    const message = await run({ success: false, message: 'server says' }, 'failure with message');
+    assert.equal(message.vm.error, 'server says', s.name + ' failure with message: the result message');
+  }
+  return subjectsOf(LIST_SUBJECTS);
+});
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop
