@@ -215,6 +215,41 @@ checkAsync('G6 no extra requests: other /app routes, public paths and non-app pa
   return (appPaths.length + otherPaths.length) + ' paths';
 });
 
+// ---------------------------------------------------------------- Cypress spec hygiene (Y)
+
+const CYPRESS = path.join(__dirname, '..', '..', 'cypress');
+const readSpec = (rel) => fs.readFileSync(path.join(CYPRESS, rel), 'utf8');
+
+// Markers a gating spec must not carry (T-48.1-02, T-48.1-04): skipped or focused tests,
+// retries, numeric waits, the live login helpers, Cypress.env and absolute URLs. Written as
+// data so 48.1-03 can run the same function over its new specs.
+const SPEC_FORBIDDEN = [
+  [/\.skip\(/, 'skip'],
+  [/\.only\(/, 'only'],
+  [/\bxit\(/, 'xit'],
+  [/\bxdescribe\(/, 'xdescribe'],
+  [/\bretries\b/, 'retries'],
+  [/cy\.wait\(\s*\d/, 'numeric wait'],
+  [/loginAsAdmin/, 'loginAsAdmin'],
+  [/cy\.login\(/, 'cy.login'],
+  [/Cypress\.env\(/, 'Cypress.env'],
+  [/https?:\/\//, 'absolute URL'],
+];
+
+// A stub-only spec: calls cy.stubThinxApi(, carries none of SPEC_FORBIDDEN, and holds
+// exactly `tests` it( tests.
+function specHygiene(rel, { tests }) {
+  const text = readSpec(rel);
+  assert.ok(text.includes('cy.stubThinxApi('), rel + ' stubs the API');
+  for (const [re, label] of SPEC_FORBIDDEN) assert.ok(!re.test(text), rel + ' has no ' + label);
+  const count = (text.match(/^[ \t]*it\(/gm) || []).length;
+  assert.equal(count, tests, rel + ' holds exactly ' + tests + ' tests');
+  return count + ' tests';
+}
+
+check('Y1 deep-link.spec.js is stub-only, has no skip/only/retries/numeric wait/credentials, 8 tests', () =>
+  specHygiene('integration/deep-link.spec.js', { tests: 8 }));
+
 // ---------------------------------------------------------------- run
 
 // An async check that never settles would otherwise let node drain its event loop

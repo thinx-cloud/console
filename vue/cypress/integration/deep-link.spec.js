@@ -77,6 +77,44 @@ describe('Deep link reload (NOTIF-04)', function() {
       cy.get('@unstubbed.all').should('have.length', 0);
     });
 
+    // Aliases are cumulative within a test, so each load waits for its own two profile
+    // reads, two build-log reads and one user-list read.
+    it('Should keep a logged-in admin reload of /#/app/admin/users on the user list', function() {
+      cy.visitApp('/#/app/admin/users', { session: true });
+      expectAdminUsers();
+      cy.reload();
+      expectAdminUsers();
+      cy.get('@getStats.all').should('have.length', 0);
+      cy.get('@getStatsToday.all').should('have.length', 0);
+      cy.get('@unstubbed.all').should('have.length', 0);
+    });
+
+  });
+
+  // The default stubs of the outer beforeEach: profile.json is not an admin.
+  describe('Deep link on an admin route without admin rights (NOTIF-04, audit W1)', function() {
+
+    it('Should send a logged-in non-admin hard load of /#/app/admin/users to the dashboard', function() {
+      cy.visitApp('/#/app/admin/users', { session: true });
+      cy.location('hash').should('eq', '#/app/dashboard');
+      cy.get('@getAdminUsers.all').should('have.length', 0);
+      // The guard's profile read plus the dashboard's eight reads (profile again from the
+      // Header; logs/build from Visits, Header and Notifications) settle inside this test.
+      cy.wait(['@getStats', '@getStatsToday', '@getAuditLog', '@getDevices', '@getProfile', '@getProfile', '@getBuildLog', '@getBuildLog', '@getBuildLog']);
+      cy.get('@unstubbed.all').should('have.length', 0);
+    });
+
+    it('Should send a logged-out hard load of /#/app/admin/users to the login page', function() {
+      cy.visitApp('/#/app/admin/users');
+      cy.location('hash').should('eq', '#/login');
+      // Without a session the guard never reaches the profile read.
+      cy.get('@getProfile.all').should('have.length', 0);
+      cy.get('@getAdminUsers.all').should('have.length', 0);
+      cy.get('@getStats.all').should('have.length', 0);
+      // Both session-token posts of a logged-out cold load settle before the test ends (48-08).
+      cy.wait(['@unstubbed', '@unstubbed']);
+    });
+
   });
 
 });
