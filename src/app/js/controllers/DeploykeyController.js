@@ -13,7 +13,6 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
 
     Thinx.deploykeyList()
     .done( function( data ) {
-      console.log( "+++ updateDeploykeys " );
       $scope.$emit( "updateDeploykeys", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
@@ -100,7 +99,6 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
 
             Thinx.deploykeyList()
             .done( function( data ) {
-              console.log( "+++ updateDeploykeys " );
               $scope.$emit( "updateDeploykeys", data );
             } )
             .fail( error => $scope.$emit( "xhrFailed", error ) );
@@ -147,7 +145,6 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
 
         Thinx.deploykeyList()
         .done( function( data ) {
-          console.log( "+++ updateDeploykeys " );
           $scope.$emit( "updateDeploykeys", data );
         } )
         .fail( error => $scope.$emit( "xhrFailed", error ) );

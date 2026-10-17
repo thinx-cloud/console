@@ -24,7 +24,6 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
 
     Thinx.channelList()
     .done( function( data ) {
-      console.log( "+++ updateChannels " );
       $scope.$emit( "updateChannels", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
@@ -720,7 +719,6 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
     // refresh latest firmware envelope
     Thinx.getLatestFirmwareEnvelope( $scope.deviceForm.udid )
     .done( function( data ) {
-      console.log( "+++ updateLatestFirmwareEnvelope " );
       $scope.$emit( "updateLatestFirmwareEnvelope", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
