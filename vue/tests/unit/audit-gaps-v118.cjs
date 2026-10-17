@@ -30,14 +30,32 @@ void renderError;
 const SRC = path.join(__dirname, '..', '..', 'src');
 
 let failures = 0;
+let reported = 0;
+
+// Default output is one `ok   name (detail)` or `FAIL name (reason)` line per check, which
+// test:unit and the plan verifies grep. `--tap` prints the same results as TAP version 13
+// (`ok N - name` / `not ok N - name`, detail as a comment, a trailing plan), the report
+// format the TDD RED-evidence classifier reads (48.1-02).
+const TAP = process.argv.includes('--tap');
+if (TAP) console.log('TAP version 13');
+function report(ok, name, detail) {
+  reported++;
+  if (!ok) failures++;
+  if (TAP) {
+    console.log((ok ? 'ok ' : 'not ok ') + reported + ' - ' + name);
+    if (detail) console.log('# ' + detail);
+  } else {
+    console.log((ok ? 'ok   ' : 'FAIL ') + name + (detail ? ' (' + detail + ')' : ''));
+  }
+}
+const firstLine = (err) => String(err && err.message ? err.message : err).split('\n')[0];
 
 function check(name, fn) {
   try {
     const detail = fn();
-    console.log('ok   ' + name + (typeof detail === 'string' ? ' (' + detail + ')' : ''));
+    report(true, name, typeof detail === 'string' ? detail : '');
   } catch (err) {
-    failures++;
-    console.log('FAIL ' + name + ' (' + String(err && err.message ? err.message : err).split('\n')[0] + ')');
+    report(false, name, firstLine(err));
   }
 }
 
@@ -671,7 +689,8 @@ checkAsync('P4 deleteSelected: a stored delete re-syncs the rows from the store 
 let running = null;
 process.on('beforeExit', () => {
   if (running === null) return;
-  console.log('FAIL ' + running + ' (never settled)');
+  report(false, running, 'never settled');
+  if (TAP) console.log('1..' + reported);
   process.exit(1);
 });
 
@@ -680,12 +699,12 @@ process.on('beforeExit', () => {
     running = name;
     try {
       const detail = await fn();
-      console.log('ok   ' + name + (typeof detail === 'string' ? ' (' + detail + ')' : ''));
+      report(true, name, typeof detail === 'string' ? detail : '');
     } catch (err) {
-      failures++;
-      console.log('FAIL ' + name + ' (' + String(err && err.message ? err.message : err).split('\n')[0] + ')');
+      report(false, name, firstLine(err));
     }
   }
   running = null;
+  if (TAP) console.log('1..' + reported);
   process.exit(failures ? 1 : 0);
 })();
