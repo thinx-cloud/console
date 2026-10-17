@@ -5,14 +5,12 @@ angular.module( "RTM" ).controller( "DevicesController", [ "$rootScope", "$scope
 
     Thinx.sourceList()
     .done( function( data ) {
-      console.log( "+++ updateSources " );
       $scope.$emit( "updateSources", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
 
     Thinx.apikeyList()
     .done( function( data ) {
-      console.log( "+++ updateApikeys " );
       $scope.$emit( "updateApikeys", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
