@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "response": [
+    {
+      "id": "source-arduino-0001",
+      "alias": "esp-arduino",
+      "url": "https://git.example.test/firmware/esp-arduino.git",
+      "branch": "origin/master",
+      "platform": "arduino:esp8266"
+    },
+    {
+      "id": "source-platformio-0002",
+      "alias": "pio-sensor",
+      "url": "https://git.example.test/firmware/pio-sensor.git",
+      "branch": "origin/main",
+      "platform": "platformio"
+    },
+    {
+      "id": "source-mongoose-0003",
+      "alias": "mongoose-node",
+      "url": "https://git.example.test/firmware/mongoose-node.git",
+      "branch": "origin/master",
+      "platform": "mongoose"
+    },
+    {
+      "id": "source-legacy-0004",
+      "alias": "legacy-repo",
+      "url": "https://git.example.test/firmware/legacy-repo.git",
+      "branch": "origin/master",
+      "platform": "unknown_platform"
+    }
+  ]
+}

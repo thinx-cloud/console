@@ -43,6 +43,15 @@
 //   - profile-transformers-after-delete.json — transformers.spec.js. The same
 //     profile keeping only utid-3 (sigfox); served by the spec's stateful GET
 //     /profile handler once its POST /profile handler has seen the write.
+//   - sources.json      — repositories.spec.js (48.1-03), through the opt-in
+//     cy.stubSources(). Four rows whose platform cells are asserted as the
+//     bullets Arduino (arduino:esp8266), Platform.io (platformio), MongooseOS
+//     (mongoose) and unknown (unknown_platform); example.test git hosts only.
+//   - build-log-detail.json — build-log-search.spec.js (48.1-03), served by a
+//     bespoke GET /logs/build/build-1 intercept inside the spec. 120 lines
+//     "[step N] compiling module N of 120"; exactly three lines match the term
+//     `error` case-insensitively, at lines 3, 60 and 112 (ERROR, error, Error),
+//     and the last is deep enough to scroll the 70vh log box.
 
 import { forgeJwt } from './session';
 
@@ -112,6 +121,16 @@ Cypress.Commands.add('stubThinxApi', (overrides = {}) => {
   // Environment globals (48.1-03, ENV-01): one PUT { key, value } replaces a value; the
   // store re-reads GET /env afterwards (store/enviros.js refreshAfter).
   cy.intercept({ method: 'PUT', pathname: `${API}/env` }, ok('env_saved')).as('putEnv');
+});
+
+// Repositories (48.1-03, REPO-01): GET /api/v2/source is OPT-IN, not a default stub,
+// because DeviceDetail.vue also reads it and the existing device specs rely on the
+// catch-all answering it with HTTP 500. Call this AFTER cy.stubThinxApi() so it
+// outranks the catch-all.
+//   cy.stubSources()                          // four rows from api/sources.json
+//   cy.stubSources('api/other-sources.json')  // another fixture
+Cypress.Commands.add('stubSources', (fixture = 'api/sources.json') => {
+  cy.intercept({ method: 'GET', pathname: `${API}/source` }, { fixture }).as('getSource');
 });
 
 // The CI login (D-02): the Vue login form posts { username, password } to
