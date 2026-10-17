@@ -386,7 +386,20 @@ const isComponent = (n, name) => !!(n && n.componentOptions && n.componentOption
 const componentsOf = (top, name) => nodesOf(top).filter((n) => isComponent(n, name));
 const textOf = (top) => nodesOf(top).filter((n) => !n.tag && n.text).map((n) => n.text).join(' ').replace(/\s+/g, ' ').trim();
 const propsOf = (n) => (n && n.componentOptions && n.componentOptions.propsData) || {};
-const dangerAlerts = (top) => nodesOf(top).filter((n) => n.tag === 'b-alert' && attrsOf(n).variant === 'danger');
+// Danger alerts of the page itself: a b-alert inside a b-modal (the create dialog's own
+// alert) is not the page's load error and is not counted.
+function dangerAlerts(top) {
+  const out = [];
+  (function walk(n) {
+    if (!n) return;
+    if (Array.isArray(n)) { n.forEach(walk); return; }
+    if (n.tag === 'b-modal') return;
+    if (n.tag === 'b-alert' && attrsOf(n).variant === 'danger') out.push(n);
+    (n.children || []).forEach(walk);
+  })(top);
+  return out;
+}
+const insideModal = (top) => nodesOf(top).filter((n) => n.tag === 'b-modal').flatMap((m) => nodesOf(m.children || []));
 
 // core/api.js with the real utils/cookies.js inlined, so the CSRF prime and retry are the
 // shipped code. Each call returns a fresh module (its own in-flight prime).
@@ -497,6 +510,53 @@ const LIST_SUBJECTS = [
     deleteFailure: 'Failed to delete API keys.',
     deleteArg: (row) => row.hash,
   },
+  {
+    name: 'channels',
+    store: 'store/channels.js',
+    fetch: 'fetchItems',
+    refresh: 'fetchItems',
+    key: 'items',
+    empty: [],
+    rows: () => [
+      { id: '0', mesh_id: 'living-room', alias: 'Living Room' },
+      { id: '1', mesh_id: 'garage', alias: 'Garage' },
+    ],
+    writes: [
+      { action: 'createItem', arg: { mesh_id: 'attic', alias: 'Attic' } },
+      { action: 'deleteItems', arg: ['living-room'] },
+    ],
+    page: 'pages/Channels/Channels.vue',
+    pageDeps: {},
+    cy: 'channels-load-error',
+    copy: 'Could not load mesh channels. Refresh to retry.',
+    deleteFailure: 'Failed to delete mesh channels.',
+    deleteArg: (row) => row.mesh_id,
+  },
+  {
+    name: 'repositories',
+    store: 'store/repositories.js',
+    fetch: 'fetchRepositories',
+    alias: 'fetchItems',            // delegates through dispatch('fetchRepositories')
+    refresh: 'fetchRepositories',
+    key: 'items',
+    empty: [],
+    rows: () => [
+      { id: 'r'.repeat(64), alias: 'firmware', url: 'https://example.invalid/firmware.git', branch: 'origin/master', platform: 'arduino:esp8266' },
+      { id: 's'.repeat(64), alias: 'sensors', url: 'https://example.invalid/sensors.git', branch: 'origin/main', platform: 'unknown_platform' },
+    ],
+    writes: [
+      { action: 'createItem', arg: { url: 'https://example.invalid/new.git', alias: 'new', branch: 'origin/master', is_private: false } },
+      { action: 'deleteItems', arg: ['r'.repeat(64)] },
+    ],
+    page: 'pages/Repositories/Repositories.vue',
+    pageDeps: { PlatformBullet: { name: 'PlatformBullet', props: ['platform'], render: (h) => h('span') } },
+    cy: 'repositories-load-error',
+    copy: 'Could not load repositories. Refresh to retry.',
+    deleteFailure: 'Failed to delete repositories.',
+    deleteArg: (row) => row.id,
+    platformSlot: true,             // the List keeps its #cell(platform) PlatformBullet slot
+    modalAlert: true,               // the create dialog carries its own danger alert
+  },
 ];
 LIST_SUBJECTS.forEach((s) => { s.load = lazy(() => loadSfc(s.page, Object.assign({}, LIST_STUB, s.pageDeps))); });
 
@@ -512,6 +572,19 @@ checkAsync('S1 a network failure throws Could not reach the server. and leaves t
     assert.deepEqual(state[s.key], seeded, s.name + ': the state is untouched');
   }
   return subjectsOf(STORE_SUBJECTS);
+});
+
+checkAsync('S1b repositories/fetchItems rejects when its dispatch to fetchRepositories rejects and resolves the list when it works', async () => {
+  const s = LIST_SUBJECTS.find((x) => x.alias);
+  const seeded = s.rows();
+  const off = await storeRun(s.store, s.alias, { fetchImpl: NETWORK_FAIL, state: { [s.key]: clone(seeded) } });
+  assert.ok(off.outcome.error instanceof Error, s.name + '/' + s.alias + ' rejects on a network failure (resolved with ' + JSON.stringify(off.outcome.value) + ')');
+  assert.equal(off.outcome.error.message, 'Could not reach the server.', 'the message');
+  assert.deepEqual(off.state[s.key], seeded, 'the state is untouched');
+  const ok = await storeRun(s.store, s.alias, { fetchImpl: REPLY(200, { success: true, response: [{ id: 'x', alias: 'x' }] }), state: { [s.key]: [] } });
+  assert.ok(!ok.outcome.error, 'a working read resolves');
+  assert.equal(ok.state[s.key].length, 1, 'the list was saved');
+  return s.name + '/' + s.alias;
 });
 
 checkAsync('S2 a refused reply (502 JSON) resolves and keeps the state, an empty success envelope resolves: ' + subjectsOf(STORE_SUBJECTS), async () => {
@@ -641,6 +714,35 @@ checkAsync('P3 render: loadFailed shows exactly one load-error alert with the fi
     assert.equal(byCy(ok.vnode, s.cy).length, 0, s.name + ': no load-error alert');
   }
   return subjectsOf(LIST_SUBJECTS);
+});
+
+checkAsync('P3b Repositories keeps the PlatformBullet #cell(platform) slot on its List when the load worked', async () => {
+  const s = LIST_SUBJECTS.find((x) => x.platformSlot);
+  const { def } = s.load();
+  const ok = renderPage(def, { loadFailed: false, items: clone(s.rows()), headers: [], error: null, loading: false });
+  assert.equal(ok.error, null, 'renders without error');
+  const lists = componentsOf(ok.vnode, 'List');
+  assert.equal(lists.length, 1, 'one List');
+  const slots = (lists[0].data && lists[0].data.scopedSlots) || {};
+  assert.ok(typeof slots['cell(platform)'] === 'function', 'the List has a cell(platform) scoped slot');
+  const cell = slots['cell(platform)']({ value: 'arduino:esp8266' });
+  const bullets = componentsOf(cell, 'PlatformBullet');
+  assert.equal(bullets.length, 1, 'the slot renders one PlatformBullet');
+  assert.equal(propsOf(bullets[0]).platform, 'arduino:esp8266', 'with the cell value as its platform');
+  return s.name;
+});
+
+checkAsync('P3c Repositories: the create-dialog alert inside the modal is not the load error; only the repositories-load-error marker is', async () => {
+  const s = LIST_SUBJECTS.find((x) => x.modalAlert);
+  const { def } = s.load();
+  const failed = renderPage(def, { loadFailed: true, items: [], headers: [], error: null, loading: false });
+  assert.equal(failed.error, null, 'renders without error');
+  const modalAlerts = insideModal(failed.vnode).filter((n) => n.tag === 'b-alert');
+  assert.equal(modalAlerts.length, 1, 'the create dialog keeps its own alert');
+  assert.equal(cyOf(modalAlerts[0]), null, 'the dialog alert carries no load-error marker');
+  assert.equal(byCy(failed.vnode, s.cy).length, 1, 'exactly one ' + s.cy + ' element on the page');
+  assert.ok(!insideModal(failed.vnode).some((n) => cyOf(n) === s.cy), 'the load error is outside the modal');
+  return s.name;
 });
 
 checkAsync('P4 deleteSelected: a stored delete re-syncs the rows from the store without loadData, refreshed: false calls loadData once, a failed delete keeps the rows and shows the failure; the selection is cleared each time: ' + subjectsOf(LIST_SUBJECTS), async () => {
