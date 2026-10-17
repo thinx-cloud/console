@@ -144,8 +144,32 @@ const router = new Router({
 // the one-shot hash redirect was missed) can't navigate freely under /app/*.
 // Reads the in-memory store first; on a cold reload (tokens are never persisted
 // in browser storage) it re-mints one from the httpOnly session cookie.
+//
+// NOTIF-04 (audit W1): on a cold reload the profile store is still its initial
+// empty object (nothing loads the profile before the first navigation), so the
+// admin check loads the profile first and decides from the server's answer. The
+// guard is a UX gate only — the API enforces admin on every /api/v2/admin route.
+// A profile that cannot be loaded fails closed to the dashboard.
 const PUBLIC_PATHS = ['/login', '/password-reset', '/error', '/oauth-return'];
 const ADMIN_PATHS = ['/app/admin'];
+
+// Resolves true only when the loaded profile carries admin === true; never rejects.
+// Fetches the profile only while the store still holds the initial empty object, so
+// a loaded admin or a loaded non-admin is decided without a request.
+async function isAdminSession() {
+  const profileOf = () => (store && store.state && store.state.profile && store.state.profile.profile);
+  let profile = profileOf();
+  if (!profile || Object.keys(profile).length === 0) {
+    try {
+      await store.dispatch('profile/fetchProfile');
+    } catch (_error) {
+      // A failed read leaves the store as it was; the check below fails closed.
+    }
+    profile = profileOf();
+  }
+  return !!profile && profile.admin === true;
+}
+
 router.beforeEach(async (to, from, next) => {
   if (PUBLIC_PATHS.includes(to.path)) return next();
   if (!to.path.startsWith('/app')) return next();
@@ -154,8 +178,7 @@ router.beforeEach(async (to, from, next) => {
     !!(store && await store.dispatch('auth/hydrateSession'));
   if (!authed) return next('/login');
   if (ADMIN_PATHS.some(p => to.path.startsWith(p))) {
-    const profile = (store && store.state && store.state.profile && store.state.profile.profile);
-    if (!profile || profile.admin !== true) return next('/app/dashboard');
+    if (!(await isAdminSession())) return next('/app/dashboard');
   }
   next();
 });

@@ -44,6 +44,10 @@ describe('Deep link reload (NOTIF-04)', function() {
     cy.visitApp('/#/app/history');
     cy.location('hash').should('eq', '#/login');
     cy.get('@getStats.all').should('have.length', 0);
+    // A logged-out cold load posts /session/token twice (the guard, then App.vue after
+    // onReady); both land on the catch-all. The second is still in flight when this
+    // test ends and would be recorded under the next test's fresh catch-all (48-08).
+    cy.wait(['@unstubbed', '@unstubbed']);
   });
 
   // Audit W1: on a cold reload the profile store is empty, so the admin guard used to send
