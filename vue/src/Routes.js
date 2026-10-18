@@ -156,8 +156,10 @@ const ADMIN_PATHS = ['/app/admin'];
 // Resolves true only when the loaded profile carries admin === true; never rejects.
 // Fetches the profile only while the store still holds the initial empty object, so
 // a loaded admin or a loaded non-admin is decided without a request. That shortcut
-// relies on the store never holding a previous account: auth/logout resets the
-// profile to {} and Login/OAuthReturn reset it before their read (48.1-REVIEW WR-01).
+// relies on the store never holding a previous account, so every in-tab identity switch
+// resets the profile to {}: auth/logout after sign-out, Login/OAuthReturn before their
+// read, AdminUsers.confirmImpersonate before it reads the impersonated user's profile, and
+// ImpersonationBanner.exit before the admin's session is re-hydrated (48.1-REVIEW WR-01).
 async function isAdminSession() {
   const profileOf = () => (store && store.state && store.state.profile && store.state.profile.profile);
   let profile = profileOf();

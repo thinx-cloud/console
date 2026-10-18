@@ -3,8 +3,9 @@
 // Plain-node checks, by prefix:
 //   G  src/Routes.js admin guard: the profile is loaded before the admin check on a cold
 //      reload, the guard fails closed, and no other route issues a request (W1, PD-01..PD-03);
-//      auth/logout and the two sign-in pages reset the profile, so the guard's "decide from
-//      the store" shortcut never reuses a previous account (48.1-REVIEW WR-01, G7/G8);
+//      auth/logout, the two sign-in pages and both ends of admin impersonation reset the
+//      profile, so the guard's "decide from the store" shortcut never reuses a previous
+//      account (48.1-REVIEW WR-01, G7/G8/G9);
 //   Y  Cypress spec hygiene: stubs only, no skip/only/retries/numeric wait, no credentials;
 //   S  store network contract (48.1-02);
 //   P  page load errors (48.1-02);
@@ -240,7 +241,9 @@ checkAsync('G6 no extra requests: other /app routes, public paths and non-app pa
 // /login without a reload) must therefore reset the profile, and the sign-in pages must reset it
 // before their read, so a read that fails leaves {} rather than the other account's admin: true.
 // clearSession itself must keep the profile: scheduleExpiry.expire calls it and then silently
-// re-hydrates the same account, and the Header does not refetch.
+// re-hydrates the same account, and the Header does not refetch. Admin impersonation is the
+// third identity switch (G9): its start swaps the token under the mounted Layout and its exit
+// reaches /login without login(), so both reset the profile themselves.
 
 // src/store/auth.js with its three imports stubbed (the token decoder, the legacy-storage
 // scrub and the CSRF prime are not under test here).
@@ -373,6 +376,93 @@ checkAsync('G8 sign-in: Login login() and OAuthReturn complete() reset the profi
     assert.deepEqual(r.nextCalls, [['/app/dashboard']], label + ': fails closed to the dashboard');
   }
   return 'Login, OAuthReturn';
+});
+
+// The third in-tab identity switch: admin impersonation swaps the token under the still-mounted
+// Layout (no Header remount, no refetch), and its exit re-hydrates the admin's cookie session on
+// /login without passing through login(). Both ends must reset the profile themselves.
+const adminUsersPage = lazy(() => loadSfc('pages/AdminUsers/AdminUsers.vue'));
+const impersonationBanner = lazy(() => loadSfc('components/ImpersonationBanner/ImpersonationBanner.vue', {
+  VueJwtDecode: { decode: () => ({}) },
+}));
+
+checkAsync('G9 impersonation: AdminUsers confirmImpersonate() resets the profile after the token swap and reads the impersonated user with the new token (a rejecting read leaves {}); ImpersonationBanner exit() resets it after clearSession; the admin guard then decides from the impersonated profile or fetches, never from admin: true', async () => {
+  const IMPERSONATED = () => ({ admin: false, username: 'impersonated-user' });
+  const user = { owner: 'o'.repeat(64), username: 'impersonated-user', admin: false };
+
+  // Drive the real confirmImpersonate with a stub impersonate resolving a token. `events`
+  // records the order of the token swap, the reset, the read and the navigation.
+  const impersonation = (readOutcome) => {
+    const s = { profile: FIRST_ACCOUNT(), events: [], saves: [], reads: [], pushes: [], otherCommits: [] };
+    const vm = pageVm(adminUsersPage().def, {
+      $bvModal: { msgBoxConfirm: async () => true },
+      impersonate: async ({ owner }) => { assert.equal(owner, user.owner, 'impersonate gets the owner'); return { success: true, response: { access_token: 'impersonated-token' } }; },
+      persistSession: async ({ accessToken, refreshToken }) => { s.events.push('persistSession ' + accessToken + ' ' + refreshToken); return true; },
+      fetchProfile: () => {
+        s.events.push('fetchProfile');
+        s.reads.push(clone(s.profile));
+        if (readOutcome === 'rejecting') return Promise.reject(new Error('Could not reach the server.'));
+        s.profile = IMPERSONATED();
+        return Promise.resolve(s.profile);
+      },
+      $store: { commit: (t, p) => {
+        if (t === 'profile/saveProfile') { s.events.push('saveProfile'); s.saves.push(clone(p)); s.profile = p; return; }
+        s.otherCommits.push([t, clone(p)]);
+      } },
+      $router: { push: (location) => { s.events.push('push ' + location); s.pushes.push(location); } },
+    });
+    return { s, vm };
+  };
+
+  const working = impersonation('resolving');
+  const r1 = await withUnhandled(() => adminUsersPage().def.methods.confirmImpersonate.call(working.vm, user));
+  assert.equal(r1.settled, 'resolved', 'resolving read: confirmImpersonate() resolves');
+  assert.deepEqual(r1.unhandled, [], 'resolving read: no unhandled rejection');
+  assert.deepEqual(working.s.events, ['persistSession impersonated-token null', 'saveProfile', 'fetchProfile', 'push /app/dashboard'], 'resolving read: token swap, reset, read, then navigate');
+  assert.deepEqual(working.s.saves, [{}], 'resolving read: one profile/saveProfile {} commit');
+  assert.deepEqual(working.s.reads, [{}], 'resolving read: fetchProfile ran after the reset (saw {})');
+  assert.deepEqual(working.s.otherCommits, [], 'resolving read: nothing else committed through $store');
+  assert.deepEqual(working.s.profile, IMPERSONATED(), 'resolving read: the store holds the impersonated user');
+  assert.equal(working.vm.error, '', 'resolving read: no error message');
+
+  const failing = impersonation('rejecting');
+  const r2 = await withUnhandled(() => adminUsersPage().def.methods.confirmImpersonate.call(failing.vm, user));
+  assert.equal(r2.settled, 'resolved', 'rejecting read: confirmImpersonate() still resolves');
+  assert.deepEqual(r2.unhandled, [], 'rejecting read: no unhandled rejection');
+  assert.deepEqual(failing.s.events, ['persistSession impersonated-token null', 'saveProfile', 'fetchProfile', 'push /app/dashboard'], 'rejecting read: same order, the dashboard is still reached');
+  assert.deepEqual(failing.s.saves, [{}], 'rejecting read: one profile/saveProfile {} commit');
+  assert.deepEqual(failing.s.profile, {}, 'rejecting read: the store holds {}, not the admin');
+  assert.equal(failing.vm.error, '', 'rejecting read: a failed profile read is not an impersonation error');
+
+  // The guard decides the impersonated session from the impersonated profile without a request,
+  // or fetches and fails closed when the read failed; never from the admin's admin: true.
+  const decided = guardHarness({ token: 'impersonated-token', profile: working.s.profile, loadProfile: () => { throw new Error('must not fetch'); } });
+  const g1 = await decided.run(ADMIN_URL);
+  assert.equal(g1.settled, 'resolved', 'guard (impersonated profile): resolves');
+  assert.deepEqual(g1.dispatches, [], 'guard (impersonated profile): no further request');
+  assert.deepEqual(g1.nextCalls, [['/app/dashboard']], 'guard (impersonated profile): the admin page redirects to the dashboard');
+  const empty = guardHarness({ token: 'impersonated-token', profile: failing.s.profile, loadProfile: () => { throw new Error('network'); } });
+  const g2 = await empty.run(ADMIN_URL);
+  assert.deepEqual(g2.dispatches, ['profile/fetchProfile'], 'guard (empty profile): fetched');
+  assert.deepEqual(g2.nextCalls, [['/app/dashboard']], 'guard (empty profile): fails closed to the dashboard');
+
+  // Exit: clearSession, then one reset, then /login (Login.created re-hydrates the admin).
+  const exit = { events: [], saves: [], otherCommits: [], pushes: [] };
+  const bannerVm = pageVm(impersonationBanner().def, {
+    clearSession: async () => { exit.events.push('clearSession'); },
+    $store: { commit: (t, p) => {
+      if (t === 'profile/saveProfile') { exit.events.push('saveProfile'); exit.saves.push(clone(p)); return; }
+      exit.otherCommits.push([t, clone(p)]);
+    }, getters: {} },
+    $router: { push: (location) => { exit.events.push('push ' + location); exit.pushes.push(location); } },
+  });
+  const r3 = await withUnhandled(() => impersonationBanner().def.methods.exit.call(bannerVm));
+  assert.equal(r3.settled, 'resolved', 'exit(): resolves');
+  assert.deepEqual(r3.unhandled, [], 'exit(): no unhandled rejection');
+  assert.deepEqual(exit.events, ['clearSession', 'saveProfile', 'push /login'], 'exit(): clearSession, reset, then /login');
+  assert.deepEqual(exit.saves, [{}], 'exit(): one profile/saveProfile {} commit');
+  assert.deepEqual(exit.otherCommits, [], 'exit(): nothing else committed through $store');
+  return 'confirmImpersonate (resolving, rejecting), guard, exit';
 });
 
 // ---------------------------------------------------------------- Cypress spec hygiene (Y)

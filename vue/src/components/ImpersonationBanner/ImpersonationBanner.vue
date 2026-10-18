@@ -64,6 +64,10 @@ export default {
     },
     async exit() {
       await this.clearSession();
+      // The admin's own session is re-hydrated from the cookie on /login without login(), so
+      // Login's reset does not run: drop the impersonated profile here so the admin guard and
+      // the Sidebar fetch the admin's instead of deciding from it (48.1-REVIEW WR-01).
+      this.$store.commit('profile/saveProfile', {});
       this.$router.push('/login');
     },
   },
