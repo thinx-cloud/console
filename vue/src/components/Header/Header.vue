@@ -69,9 +69,7 @@ export default {
   name: "Header",
   components: { Notifications },
   data() {
-    return {
-      profile: {},
-    };
+    return {};
   },
   computed: {
     ...mapState("layout", {
@@ -82,6 +80,13 @@ export default {
     // Builds"). Reactive to the buildlog store; the badge is hidden when 0 — the
     // previous hardcoded "9" was a mock placeholder, not a real count.
     ...mapGetters("buildlog", { buildItems: "getItems" }),
+    // The name and avatar read the store reactively, not a copy taken once in mounted():
+    // the Layout keeps the Header mounted across every /app navigation, so an impersonation
+    // start (AdminUsers.confirmImpersonate), a Profile-page save and the Header's own read
+    // all land here without a remount (48.1-REVIEW WR-01).
+    profile() {
+      return this.getProfile() || {};
+    },
     recentBuildCount() {
       return (this.buildItems || []).length;
     },
@@ -119,12 +124,12 @@ export default {
   },
   created() {},
   mounted() {
-    //this.profile = this.getProfile();
-    this.fetchProfile().then(() => {
-      this.profile = this.getProfile();
-    }).catch(() => {
-      // A profile read that failed in the network leaves the name blank; the next mount
-      // retries. Without this catch the rejection was unhandled (48-08, audit W2).
+    // One profile read per Layout mount (the deep-link spec counts it); the result reaches
+    // the name through the store, see the `profile` computed.
+    this.fetchProfile().catch(() => {
+      // A profile read that failed in the network leaves the store (and so the name) as it
+      // is; the next mount retries. Without this catch the rejection was unhandled (48-08,
+      // audit W2).
     });
     // Populate the buildlog store so the recent-builds badge reflects reality.
     this.$store.dispatch("buildlog/fetchBuildLog");

@@ -585,9 +585,10 @@ checkAsync('I8 audited callers take an empty envelope without throwing and keep 
   assert.ok(!stats.getters.getTimeline(stats.state), 'no timeline');
   done.push('stats');
 
-  // profile store -> Header name (Header.vue:26 reads profile.first_name).
+  // profile store -> Header name (Header.vue reads profile.first_name through its `profile`
+  // computed over the store getter, 48.1-REVIEW WR-01).
   const profile = await runStore('store/profile.js', 'fetchProfile', EMPTY);
-  const h = renderPage(header().def, { profile: profile.getters.getProfile(profile.state) });
+  const h = renderPage(header().def, { getProfile: () => profile.getters.getProfile(profile.state) });
   assert.equal(h.error, null, 'Header renders without error');
   assertNoStrayText(h.vnode, 'the Header');
   done.push('profile');
@@ -1187,7 +1188,7 @@ function slotChildren(n, name) {
 check('M1 the account menu toggle is a user icon named Account menu with an Account tip; items unchanged', () => {
   const { def, source } = header();
   assert.ok(!source.includes('flaticon-settings-10'), 'no settings cog in Header.vue');
-  const r = renderPage(def, { profile: {} });
+  const r = renderPage(def, { getProfile: () => ({}) });
   assert.equal(r.error, null, 'Header renders without error');
   assert.deepEqual(r.warnings, [], 'Header renders without Vue warnings');
   const dropdown = one(byCy(r.vnode, 'settings-dropdown'), 'settings-dropdown');

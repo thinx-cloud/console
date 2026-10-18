@@ -5,7 +5,7 @@
 //      reload, the guard fails closed, and no other route issues a request (W1, PD-01..PD-03);
 //      auth/logout, the two sign-in pages and both ends of admin impersonation reset the
 //      profile, so the guard's "decide from the store" shortcut never reuses a previous
-//      account (48.1-REVIEW WR-01, G7/G8/G9);
+//      account, and the Header renders the name from the store (48.1-REVIEW WR-01, G7/G8/G9);
 //   Y  Cypress spec hygiene: stubs only, no skip/only/retries/numeric wait, no credentials;
 //   S  store network contract (48.1-02);
 //   P  page load errors (48.1-02);
@@ -380,14 +380,15 @@ checkAsync('G8 sign-in: Login login() and OAuthReturn complete() reset the profi
 
 // The third in-tab identity switch: admin impersonation swaps the token under the still-mounted
 // Layout (no Header remount, no refetch), and its exit re-hydrates the admin's cookie session on
-// /login without passing through login(). Both ends must reset the profile themselves.
+// /login without passing through login(). Both ends must reset the profile themselves, and the
+// Header must render the name from the store so the start is visible without a remount.
 const adminUsersPage = lazy(() => loadSfc('pages/AdminUsers/AdminUsers.vue'));
 const impersonationBanner = lazy(() => loadSfc('components/ImpersonationBanner/ImpersonationBanner.vue', {
   VueJwtDecode: { decode: () => ({}) },
 }));
 
-checkAsync('G9 impersonation: AdminUsers confirmImpersonate() resets the profile after the token swap and reads the impersonated user with the new token (a rejecting read leaves {}); ImpersonationBanner exit() resets it after clearSession; the admin guard then decides from the impersonated profile or fetches, never from admin: true', async () => {
-  const IMPERSONATED = () => ({ admin: false, username: 'impersonated-user' });
+checkAsync('G9 impersonation: AdminUsers confirmImpersonate() resets the profile after the token swap and reads the impersonated user with the new token (a rejecting read leaves {}); ImpersonationBanner exit() resets it after clearSession; the admin guard then decides from the impersonated profile or fetches, never from admin: true; the mounted Header renders the name from the store across both without a remount', async () => {
+  const IMPERSONATED = () => ({ admin: false, username: 'impersonated-user', first_name: 'Impersonated', last_name: 'User' });
   const user = { owner: 'o'.repeat(64), username: 'impersonated-user', admin: false };
 
   // Drive the real confirmImpersonate with a stub impersonate resolving a token. `events`
@@ -462,7 +463,60 @@ checkAsync('G9 impersonation: AdminUsers confirmImpersonate() resets the profile
   assert.deepEqual(exit.events, ['clearSession', 'saveProfile', 'push /login'], 'exit(): clearSession, reset, then /login');
   assert.deepEqual(exit.saves, [{}], 'exit(): one profile/saveProfile {} commit');
   assert.deepEqual(exit.otherCommits, [], 'exit(): nothing else committed through $store');
-  return 'confirmImpersonate (resolving, rejecting), guard, exit';
+
+  // 48.1-REVIEW (iteration 3) WR-01: the Layout keeps the Header mounted for the whole
+  // impersonated session, so its name and avatar must follow the store, not a copy taken in
+  // mounted(). One reactive store stand-in (Vuex state is reactive) is shared by a rendered
+  // Header, the real confirmImpersonate and the real exit(); the Header is mounted once.
+  const ADMIN_PROFILE = () => Object.assign(FIRST_ACCOUNT(), { first_name: 'Ada', last_name: 'Admin' });
+  const live = Vue.observable({ profile: ADMIN_PROFILE() });
+  const liveCommit = (t, p) => { assert.equal(t, 'profile/saveProfile', 'live store: only profile/saveProfile is committed, got ' + t); live.profile = p; };
+  const headerReads = [];
+  const header = renderPage(headerPage().def, {
+    getProfile: () => live.profile,
+    fetchProfile: () => { headerReads.push(1); return Promise.resolve(live.profile); },
+    $store: { dispatch: () => Promise.resolve() },
+  });
+  assert.equal(header.error, null, 'Header: renders without error');
+  assert.deepEqual(header.warnings, [], 'Header: renders without Vue warnings');
+  const renderedName = () => {
+    const { out, error, warnings } = withWarnings(() => header.vm._render());
+    assert.equal(error, null, 'Header: re-renders without error');
+    assert.deepEqual(warnings, [], 'Header: re-renders without Vue warnings');
+    const spans = nodesOf(out).filter((n) => n.data && n.data.staticClass === 'text-white');
+    assert.equal(spans.length, 1, 'Header: exactly one name span');
+    return textOf(spans[0]);
+  };
+  const m = await withUnhandled(() => headerPage().def.mounted.call(header.vm));
+  assert.deepEqual(m.unhandled, [], 'Header mounted: no unhandled rejection');
+  assert.deepEqual(headerReads, [1], 'Header mounted: one profile read');
+  assert.equal(renderedName(), 'Ada Admin', 'Header: shows the admin before impersonation');
+
+  const liveVm = pageVm(adminUsersPage().def, {
+    $bvModal: { msgBoxConfirm: async () => true },
+    impersonate: async () => ({ success: true, response: { access_token: 'impersonated-token' } }),
+    persistSession: async () => true,
+    fetchProfile: () => { assert.deepEqual(clone(live.profile), {}, 'live store: the read follows the reset'); live.profile = IMPERSONATED(); return Promise.resolve(live.profile); },
+    $store: { commit: liveCommit },
+    $router: { push: () => {} },
+  });
+  const r4 = await withUnhandled(() => adminUsersPage().def.methods.confirmImpersonate.call(liveVm, user));
+  assert.equal(r4.settled, 'resolved', 'live confirmImpersonate(): resolves');
+  assert.deepEqual(clone(live.profile), IMPERSONATED(), 'live store: holds the impersonated user');
+  assert.equal(renderedName(), 'Impersonated User', 'Header: shows the impersonated user without a remount');
+  assert.deepEqual(headerReads, [1], 'Header: still one profile read (no second mounted)');
+
+  const liveBanner = pageVm(impersonationBanner().def, {
+    clearSession: async () => {},
+    $store: { commit: liveCommit, getters: {} },
+    $router: { push: () => {} },
+  });
+  const r5 = await withUnhandled(() => impersonationBanner().def.methods.exit.call(liveBanner));
+  assert.equal(r5.settled, 'resolved', 'live exit(): resolves');
+  assert.deepEqual(clone(live.profile), {}, 'live store: exit() reset it to {}');
+  assert.equal(renderedName(), '', 'Header: the name is blank after exit() until the remount reads the admin');
+  assert.deepEqual(headerReads, [1], 'Header: exit() itself triggers no read');
+  return 'confirmImpersonate (resolving, rejecting), guard, exit, Header follows the store';
 });
 
 // ---------------------------------------------------------------- Cypress spec hygiene (Y)
@@ -1195,22 +1249,37 @@ const headerPage = lazy(() => loadSfc('components/Header/Header.vue', {
   require: () => 'default_avatar_sm.png',
 }));
 
-checkAsync('K1 Header mounted absorbs a rejected fetchProfile (no unhandled rejection, profile stays {}) and still fetches the build log; a working read fills profile', async () => {
+// 48.1-REVIEW (iteration 3) WR-01: the Header's `profile` is a computed over the store getter,
+// not a data field copied once in mounted(); G9 renders it across an impersonation.
+checkAsync('K1 Header: profile is a computed over getProfile (no data copy); mounted reads the profile once, absorbs a rejected read (no unhandled rejection, the store and so the name stay {}) and still fetches the build log; a working read fills profile through the store', async () => {
   const { def } = headerPage();
+  assert.equal(typeof def.computed.profile, 'function', 'profile is a computed');
+  assert.ok(!('profile' in def.data()), 'profile is not a data field');
   const run = async (fetchProfile) => {
+    const store = { profile: {} };
     const dispatched = [];
-    const vm = pageVm(def, { fetchProfile, getProfile: () => PROFILE(), $store: { dispatch: (t) => { dispatched.push(t); return Promise.resolve(); } } });
+    const reads = [];
+    const vm = pageVm(def, {
+      fetchProfile: () => { reads.push(1); return fetchProfile(store); },
+      getProfile: () => store.profile,
+      $store: { dispatch: (t) => { dispatched.push(t); return Promise.resolve(); } },
+    });
     const r = await withUnhandled(() => def.mounted.call(vm));
-    return { vm, dispatched, r };
+    return { vm, store, dispatched, reads, r, profile: def.computed.profile.call(vm) };
   };
   const off = await run(() => Promise.reject(new Error('Could not reach the server.')));
   assert.deepEqual(off.r.unhandled.map((e) => String(e && e.message)), [], 'rejected read: no unhandled rejection');
-  assert.deepEqual(off.vm.profile, {}, 'rejected read: profile stays {}');
+  assert.deepEqual(off.reads, [1], 'rejected read: one profile read per mount');
+  assert.deepEqual(off.store.profile, {}, 'rejected read: the store stays {}');
+  assert.deepEqual(off.profile, {}, 'rejected read: profile (from the store) stays {}');
   assert.deepEqual(off.dispatched, ['buildlog/fetchBuildLog'], 'rejected read: the build log is still fetched');
-  const ok = await run(() => Promise.resolve(PROFILE()));
+  const ok = await run((store) => { store.profile = PROFILE(); return Promise.resolve(store.profile); });
   assert.deepEqual(ok.r.unhandled, [], 'working read: no unhandled rejection');
-  assert.deepEqual(ok.vm.profile, PROFILE(), 'working read: profile from the store');
+  assert.deepEqual(ok.reads, [1], 'working read: one profile read per mount');
+  assert.deepEqual(ok.profile, PROFILE(), 'working read: profile from the store');
   assert.deepEqual(ok.dispatched, ['buildlog/fetchBuildLog'], 'working read: the build log is fetched');
+  // A getter that returns nothing yet still renders a blank name, not a crash.
+  assert.deepEqual(def.computed.profile.call({ getProfile: () => undefined }), {}, 'an undefined getter reads as {}');
 });
 
 const SIGN_IN_REPLY = { success: true, access_token: 'a'.repeat(40), refresh_token: 'r'.repeat(40) };
