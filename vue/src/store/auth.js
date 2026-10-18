@@ -104,7 +104,7 @@ export default {
       },
       // Explicit sign-out: also destroy the server session cookie, otherwise the
       // next hydrateSession would silently sign the user back in.
-      async logout({ dispatch }) {
+      async logout({ dispatch, commit }) {
         try {
           await fetch(this.$api.composePath('/logout'), {
             method: 'GET',
@@ -115,6 +115,12 @@ export default {
           // Server unreachable — still drop the local session.
         }
         await dispatch('clearSession');
+        // The next account must not inherit this one's profile (admin flag, name, avatar):
+        // the Routes.js admin guard and the Sidebar decide from a non-empty store without a
+        // request (48.1-REVIEW WR-01). Reset here, not in clearSession: scheduleExpiry's
+        // expire path calls clearSession and then silently re-hydrates the same account, and
+        // the Header does not refetch, so wiping there would blank the admin menu.
+        commit('profile/saveProfile', {}, { root: true });
       },
       scheduleExpiry({ dispatch }, token) {
         if (expiryTimerId) {

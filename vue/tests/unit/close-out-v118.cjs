@@ -824,16 +824,20 @@ checkAsync('H1 Header logout() dispatches auth/logout once and pushes /login onl
   assert.equal(calls.dispatch.length, 1, 'still one dispatch');
 });
 
-checkAsync('H2 auth/logout with a failing fetch still resolves and clears the session once', async () => {
+checkAsync('H2 auth/logout with a failing fetch still resolves, clears the session once and resets the profile', async () => {
   const auth = loadStore('store/auth.js');
   const prevFetch = global.fetch;
   const requests = [];
   global.fetch = (url, opts) => { requests.push([url, opts]); return Promise.reject(new Error('offline')); };
   const dispatched = [];
+  const committed = [];
   try {
     await auth.actions.logout.call(
       { $api: { composePath: (p) => 'https://api.test/api/v2' + p } },
-      { dispatch: (...args) => { dispatched.push(args); return Promise.resolve(); } },
+      {
+        dispatch: (...args) => { dispatched.push(args); return Promise.resolve(); },
+        commit: (...args) => { committed.push(args); },
+      },
     );
   } finally {
     global.fetch = prevFetch;
@@ -842,6 +846,8 @@ checkAsync('H2 auth/logout with a failing fetch still resolves and clears the se
   assert.equal(requests[0][0], 'https://api.test/api/v2/logout');
   assert.equal(requests[0][1].credentials, 'include', 'the session cookie is sent');
   assert.deepEqual(dispatched, [['clearSession']], 'clearSession dispatched once');
+  // 48.1-REVIEW WR-01: the next account must not inherit this one's profile (G7 in audit-gaps-v118).
+  assert.deepEqual(committed, [['profile/saveProfile', {}, { root: true }]], 'the profile is reset at the root');
 });
 
 // ================================================================ N: Notifications rows (35 IN-08)

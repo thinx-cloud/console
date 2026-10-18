@@ -212,6 +212,9 @@ export default {
       }
 
       if (this.isAuthenticated()) {
+        // Drop whatever account the store still holds first: a failed read below then
+        // leaves {}, never a previous account's admin flag (48.1-REVIEW WR-01).
+        this.$store.commit("profile/saveProfile", {});
         try {
           await this.fetchProfile();
         } catch (profileError) {

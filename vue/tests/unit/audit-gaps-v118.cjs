@@ -3,6 +3,8 @@
 // Plain-node checks, by prefix:
 //   G  src/Routes.js admin guard: the profile is loaded before the admin check on a cold
 //      reload, the guard fails closed, and no other route issues a request (W1, PD-01..PD-03);
+//      auth/logout and the two sign-in pages reset the profile, so the guard's "decide from
+//      the store" shortcut never reuses a previous account (48.1-REVIEW WR-01, G7/G8);
 //   Y  Cypress spec hygiene: stubs only, no skip/only/retries/numeric wait, no credentials;
 //   S  store network contract (48.1-02);
 //   P  page load errors (48.1-02);
@@ -231,6 +233,146 @@ checkAsync('G6 no extra requests: other /app routes, public paths and non-app pa
     assert.deepEqual(r.nextCalls, [[]], p + ': next() once');
   }
   return (appPaths.length + otherPaths.length) + ' paths';
+});
+
+// 48.1-REVIEW WR-01: the G4 shortcut (a non-empty profile is decided without a request) is only
+// safe while the store never holds a previous account. An in-tab sign-out (Header.logout pushes
+// /login without a reload) must therefore reset the profile, and the sign-in pages must reset it
+// before their read, so a read that fails leaves {} rather than the other account's admin: true.
+// clearSession itself must keep the profile: scheduleExpiry.expire calls it and then silently
+// re-hydrates the same account, and the Header does not refetch.
+
+// src/store/auth.js with its three imports stubbed (the token decoder, the legacy-storage
+// scrub and the CSRF prime are not under test here).
+const authStore = () => {
+  const deps = {
+    VueJwtDecode: { decode: () => ({ exp: Math.floor(Date.now() / 1000) + 3600 }) },
+    clearLegacyAuthStorage: () => {},
+    ensureCsrfToken: async () => '',
+  };
+  const code = read('store/auth.js').replace(/^import .*;?$/gm, '').replace(/export default /, 'return ');
+  return new Function(...Object.keys(deps), code)(...Object.values(deps)); // eslint-disable-line no-new-func
+};
+
+const FIRST_ACCOUNT = () => ({ admin: true, username: 'first-account' });
+const SECOND_ACCOUNT = () => ({ admin: false, username: 'second-account' });
+
+checkAsync('G7 sign-out: auth/logout resets the profile to {} (clearSession alone keeps it), so the admin guard fetches the next account instead of reusing admin: true', async () => {
+  const auth = authStore();
+  const $api = { composePath: (p) => 'https://api.test/api/v2' + p, setAccessToken() {}, setRefreshToken() {} };
+  const root = {
+    auth: Object.assign({}, auth.state, { accessToken: 'tok', user: FIRST_ACCOUNT() }),
+    profile: { profile: FIRST_ACCOUNT() },
+  };
+  const rootCommits = [];
+  const ctx = {
+    state: root.auth,
+    commit: (type, payload, options) => {
+      if (options && options.root) {
+        rootCommits.push([type, payload]);
+        assert.equal(type, 'profile/saveProfile', 'the only root commit is profile/saveProfile');
+        root.profile.profile = payload;
+        return;
+      }
+      auth.mutations[type].call({ $api }, root.auth, payload);
+    },
+    dispatch: (type, payload) => auth.actions[type].call({ $api }, ctx, payload),
+  };
+  const requests = [];
+  const saved = globalThis.fetch;
+  globalThis.fetch = (url, opts) => { requests.push([url, opts]); return Promise.resolve(fakeResponse(200, { success: true })); };
+  try {
+    // The expiry path: clearSession, then hydrateSession re-signs the same account.
+    await ctx.dispatch('clearSession');
+    assert.deepEqual(root.profile.profile, FIRST_ACCOUNT(), 'clearSession keeps the profile');
+    assert.deepEqual(rootCommits, [], 'clearSession commits nothing at the root');
+    root.auth.accessToken = 'tok';
+    root.auth.user = FIRST_ACCOUNT();
+    // The explicit sign-out.
+    await ctx.dispatch('logout');
+  } finally {
+    globalThis.fetch = saved;
+  }
+  assert.equal(requests.length, 1, 'one logout request');
+  assert.equal(requests[0][0], 'https://api.test/api/v2/logout', 'GET /logout');
+  assert.equal(root.auth.accessToken, null, 'access token dropped');
+  assert.equal(root.auth.user, null, 'user dropped');
+  assert.deepEqual(root.profile.profile, {}, 'logout resets the profile to {}');
+  assert.deepEqual(rootCommits, [['profile/saveProfile', {}]], 'one root commit of profile/saveProfile {}');
+
+  // The second account signs in, and the guard decides from its own profile.
+  const h = guardHarness({ token: 'tok', profile: root.profile.profile, loadProfile: (state) => { state.profile.profile = SECOND_ACCOUNT(); } });
+  const r = await h.run(ADMIN_URL);
+  assert.equal(r.settled, 'resolved', 'guard promise resolves');
+  assert.deepEqual(r.dispatches, ['profile/fetchProfile'], 'the guard fetched the second account');
+  assert.deepEqual(r.nextCalls, [['/app/dashboard']], 'the non-admin second account goes to the dashboard');
+  return 'clearSession keeps, logout resets, guard fetches';
+});
+
+checkAsync('G8 sign-in: Login login() and OAuthReturn complete() reset the profile before the read, so a rejecting read hands {} to setUser and the admin guard fetches instead of reusing the previous account', async () => {
+  // A profile store stand-in shared by the page stubs: what fetchProfile saw when it ran,
+  // every profile/saveProfile commit, and the current value getProfile returns.
+  const profileStore = () => {
+    const s = { profile: FIRST_ACCOUNT(), reads: [], saves: [] };
+    s.commit = (type, payload) => {
+      if (type === 'profile/saveProfile') { s.saves.push(clone(payload)); s.profile = payload; return true; }
+      return false;
+    };
+    s.fetchProfile = () => { s.reads.push(clone(s.profile)); return Promise.reject(new Error('Could not reach the server.')); };
+    s.getProfile = () => s.profile;
+    return s;
+  };
+
+  const login = profileStore();
+  const loginCommits = [];
+  const loginVm = pageVm(loginPage().def, {
+    $refs: { username: { value: 'cypress-test' }, password: { value: 'secret' } },
+    $hostnames: { API: 'https://api.test/api/v2' },
+    $rollbar: null,
+    isTokenValid: async () => true,
+    persistSession: async () => {},
+    isAuthenticated: () => true,
+    fetchProfile: login.fetchProfile,
+    getProfile: login.getProfile,
+    $store: { commit: (t, p) => { if (!login.commit(t, p)) loginCommits.push([t, clone(p)]); } },
+    pushIfNeeded: async () => {},
+  });
+  const r1 = await withUnhandled(() => loginPage().def.methods.login.call(loginVm, { preventDefault() {} }));
+  assert.equal(r1.settled, 'resolved', 'Login: login() resolves');
+  assert.deepEqual(r1.unhandled, [], 'Login: no unhandled rejection');
+  assert.deepEqual(login.saves, [{}], 'Login: one profile/saveProfile {} commit');
+  assert.deepEqual(login.reads, [{}], 'Login: fetchProfile ran after the reset (saw {})');
+  assert.deepEqual(loginCommits, [['auth/setUser', {}]], 'Login: auth/setUser gets {}, not the previous account');
+
+  const oauth = profileStore();
+  const users = [];
+  const oauthVm = pageVm(oauthReturnPage().def, {
+    $route: { query: { t: 'one-shot-token' } },
+    $hostnames: { API: 'https://api.test/api/v2' },
+    isTokenValid: async () => true,
+    persistSession: async () => {},
+    isAuthenticated: () => true,
+    fetchProfile: oauth.fetchProfile,
+    getProfile: oauth.getProfile,
+    setUser: (p) => users.push(clone(p)),
+    $store: { commit: (t, p) => { assert.ok(oauth.commit(t, p), 'OAuthReturn: only profile/saveProfile is committed through $store, got ' + t); } },
+    $router: { push: () => Promise.resolve() },
+  });
+  const r2 = await withUnhandled(() => oauthReturnPage().def.methods.complete.call(oauthVm));
+  assert.equal(r2.settled, 'resolved', 'OAuthReturn: complete() resolves');
+  assert.deepEqual(r2.unhandled, [], 'OAuthReturn: no unhandled rejection');
+  assert.deepEqual(oauth.saves, [{}], 'OAuthReturn: one profile/saveProfile {} commit');
+  assert.deepEqual(oauth.reads, [{}], 'OAuthReturn: fetchProfile ran after the reset (saw {})');
+  assert.deepEqual(users, [{}], 'OAuthReturn: setUser gets {}, not the previous account');
+
+  // Either store now holds {}: the guard fetches the signed-in account and fails closed.
+  for (const [label, s] of [['Login', login], ['OAuthReturn', oauth]]) {
+    const h = guardHarness({ token: 'tok', profile: s.profile, loadProfile: () => { throw new Error('network'); } });
+    const r = await h.run(ADMIN_URL);
+    assert.deepEqual(r.dispatches, ['profile/fetchProfile'], label + ': the guard fetched');
+    assert.deepEqual(r.nextCalls, [['/app/dashboard']], label + ': fails closed to the dashboard');
+  }
+  return 'Login, OAuthReturn';
 });
 
 // ---------------------------------------------------------------- Cypress spec hygiene (Y)
@@ -1017,7 +1159,7 @@ checkAsync('K2 Login login() with a successful reply still commits auth/setUser 
     const r = await withUnhandled(() => def.methods.login.call(vm, { preventDefault() {} }));
     assert.equal(r.settled, 'resolved', label + ': login() resolves');
     assert.deepEqual(r.unhandled, [], label + ': no unhandled rejection');
-    assert.deepEqual(commits, [['auth/setUser', PROFILE()]], label + ': auth/setUser committed with getProfile()');
+    assert.deepEqual(commits, [['profile/saveProfile', {}], ['auth/setUser', PROFILE()]], label + ': profile reset (WR-01), then auth/setUser committed with getProfile()');
     assert.deepEqual(pushes, ['/app/dashboard'], label + ': /app/dashboard pushed');
     assert.equal(vm.errorMessage, null, label + ': no error message');
   }
@@ -1036,6 +1178,7 @@ checkAsync('K3 OAuthReturn complete() with a valid sign-in reply still calls set
   for (const [label, fetchProfile] of PROFILE_READS) {
     const users = [];
     const pushes = [];
+    const commits = [];
     const vm = pageVm(def, {
       $route: { query: { t: 'one-shot-token' } },
       $hostnames: { API: 'https://api.test/api/v2' },
@@ -1045,11 +1188,13 @@ checkAsync('K3 OAuthReturn complete() with a valid sign-in reply still calls set
       fetchProfile,
       getProfile: () => PROFILE(),
       setUser: (p) => users.push(p),
+      $store: { commit: (t, p) => commits.push([t, p]) },
       $router: { push: (location) => { pushes.push(location); return Promise.resolve(); } },
     });
     const r = await withUnhandled(() => def.methods.complete.call(vm));
     assert.equal(r.settled, 'resolved', label + ': complete() resolves');
     assert.deepEqual(r.unhandled, [], label + ': no unhandled rejection');
+    assert.deepEqual(commits, [['profile/saveProfile', {}]], label + ': the profile is reset before the read (WR-01)');
     assert.deepEqual(users, [PROFILE()], label + ': setUser(getProfile()) once');
     assert.deepEqual(pushes, ['/app/dashboard'], label + ': /app/dashboard pushed');
     assert.equal(vm.errorMessage, null, label + ': no error message');
