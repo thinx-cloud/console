@@ -74,6 +74,9 @@ import { validateKeyName, keyNameMessage, isReservedKeyName } from '@/utils/keyN
 // 45-REVIEW IN-03: the key is gone, so "Try again" would never succeed.
 const GONE_ONE = 'This deploy key no longer exists. The list has been refreshed.';
 const GONE_MANY = 'These deploy keys no longer exist. The list has been refreshed.';
+// Phase 40 D-03: OpenBao unavailable or key generation switched off. The fixed sentence
+// only; the code and any OpenBao detail are never shown.
+const KEY_SERVICE_UNAVAILABLE = "Deploy keys can't be created right now, try again later.";
 
 export default {
   name: 'Rsakeys',
@@ -142,6 +145,10 @@ export default {
         }
         if (result && result.response === 'invalid_key_name') {
           this.createServerReason = typeof result.reason === 'string' && result.reason ? result.reason : 'unknown';
+          return;
+        }
+        if (result && result.response === 'key_service_unavailable') {
+          this.error = KEY_SERVICE_UNAVAILABLE;
           return;
         }
         this.error = 'Could not generate the deploy key. Try again.';

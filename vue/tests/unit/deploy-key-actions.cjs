@@ -1300,6 +1300,7 @@ checkAsync('A5 deleting keys that are already gone reloads the list and says the
 // ---------------------------------------------------------------- G: Generate form name feedback (45-04 task 2)
 
 const GENERATE_ERROR = 'Could not generate the deploy key. Try again.';
+const KEY_SERVICE_UNAVAILABLE = "Deploy keys can't be created right now, try again later.";
 
 // The Generate form, its input and submit button, and the feedback line right after it.
 // Both sit in div.key-create, which carries the 16px below them (UI-REVIEW fix 1), so the
@@ -1406,6 +1407,19 @@ checkAsync('G2 create: a bad client name sends nothing; a server reason keeps th
     assert.equal(h.vm.keyName, 'Firmware', outcome + ' keeps the name');
     assert.equal(h.vm.creating, false);
   }
+
+  // Phase 40 D-03: an unavailable key service gets its own fixed sentence, never the code.
+  const down = createHarness('Firmware');
+  const dn = down.vm.create();
+  down.control.createItem.resolve({ success: false, response: 'key_service_unavailable' });
+  await dn;
+  assert.equal(down.vm.error, KEY_SERVICE_UNAVAILABLE, 'the D-03 sentence');
+  assert.equal(down.vm.createFeedback, '', 'no name sentence for an unavailable key service');
+  assert.equal(down.vm.keyName, 'Firmware', 'the typed name stays');
+  assert.equal(down.vm.creating, false);
+  const downText = textOf(rerender(down.vm));
+  assert.ok(downText.includes(KEY_SERVICE_UNAVAILABLE), 'the sentence is rendered in the page alert');
+  assert.ok(!downText.includes('key_service_unavailable'), 'the code is never rendered');
 
   const ok = createHarness('Firmware');
   const o = ok.vm.create();
