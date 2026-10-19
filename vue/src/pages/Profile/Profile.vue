@@ -418,7 +418,7 @@ export default {
       } else {
         // Failure responses carry a string code in result.response:
         // 401 github_token_invalid, 403 github_token_missing_scope, 400 missing_token,
-        // invalid_owner, plus the 500s.
+        // invalid_owner, plus the 500s and the 503 key_service_unavailable.
         const code = result && result.response;
         const messages = {
           github_token_invalid: 'GitHub rejected this token. Check that it is valid and not expired, then try again.',
@@ -427,6 +427,8 @@ export default {
           invalid_owner: 'Your session is no longer valid. Please sign in again.',
           token_store_failed: 'The token could not be stored. Please try again.',
           rsa_key_creation_failed: 'Could not create an RSA key for your account. Please try again.',
+          // Phase 40 D-03: the same sentence as the Deploy Keys page; never the code itself.
+          key_service_unavailable: "Deploy keys can't be created right now, try again later.",
         };
         this.githubResult = {
           variant: 'danger',
