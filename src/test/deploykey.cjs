@@ -21,8 +21,10 @@ const SENTENCES = {
   invisible: 'The name contains an invisible character, such as a zero-width space.',
   reserved: 'This name is reserved for the key\'s default label. Choose a different name.',
 };
-const ALLOWED = new Set(['Key created.', CREATE_FAILED, FALLBACK, ...Object.values(SENTENCES)]);
-const FORBIDDEN = ['invalid_key_name', 'key_failed', 'ssh-rsa', 'Firmware', 'Fire', '[object Object]', 'undefined'];
+// Phase 40 D-03: OpenBao unavailable or THINX_DEPLOY_KEYGEN off; the code itself is never shown.
+const KEY_SERVICE_UNAVAILABLE = "Deploy keys can't be created right now, try again later.";
+const ALLOWED = new Set(['Key created.', CREATE_FAILED, FALLBACK, KEY_SERVICE_UNAVAILABLE, ...Object.values(SENTENCES)]);
+const FORBIDDEN = ['invalid_key_name', 'key_failed', 'key_service_unavailable', 'ssh-rsa', 'Firmware', 'Fire', '[object Object]', 'undefined'];
 
 // Every toast body and every .text() value from every scenario, for D9.
 const seen = [];
@@ -168,6 +170,17 @@ check('D8 a throw while handling the reply still resets and shows the generic se
   assert.equal(r.scope.creatingDeploykey, false);
   assert.deepEqual(r.warnings, [CREATE_FAILED]);
   assert.deepEqual(r.toasts.error.map(t => t.message), [CREATE_FAILED]);
+});
+
+check('D11 key_service_unavailable shows the D-03 sentence from .done and from a 503 .fail (Phase 40 D-03)', () => {
+  assertShown(scenario({ response: { success: false, response: 'key_service_unavailable' } }), KEY_SERVICE_UNAVAILABLE);
+  const jqXHR = { status: 503, responseJSON: { success: false, response: 'key_service_unavailable' } };
+  const r = scenario({ failWith: jqXHR });
+  assertShown(r, KEY_SERVICE_UNAVAILABLE);
+  assert.ok(r.emitted.some(e => e[0] === 'xhrFailed' && e[1] === jqXHR), 'xhrFailed emitted');
+  // A 503 without the code, or another code, keeps the generic sentence.
+  assertShown(scenario({ failWith: { status: 503, responseJSON: { success: false, response: 'other' } } }), CREATE_FAILED);
+  assertShown(scenario({ failWith: { status: 503 } }), CREATE_FAILED);
 });
 
 check('D9 every toast and warning is a fixed sentence with no reply field, key name or reason code', () => {
