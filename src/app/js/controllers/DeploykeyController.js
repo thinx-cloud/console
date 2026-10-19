@@ -38,6 +38,9 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
   };
   var KEY_NAME_FALLBACK = "This name is not allowed. Choose a different name.";
   var CREATE_FAILED = "Could not generate the deploy key. Try again.";
+  // Phase 40 D-03: OpenBao unavailable or key generation switched off (503). The fixed
+  // sentence only; the code and any OpenBao detail are never shown.
+  var KEY_SERVICE_UNAVAILABLE = "Deploy keys can't be created right now, try again later.";
 
   // The reason the trimmed name is refused before sending, or null.
   // Code units are compared as numbers on purpose: a regular expression with a
@@ -105,6 +108,8 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
           }
         } else if ( response && response.response === "invalid_key_name" ) {
           showCreateError( keyNameSentence( response.reason ) );
+        } else if ( response && response.response === "key_service_unavailable" ) {
+          showCreateError( KEY_SERVICE_UNAVAILABLE );
         } else {
           showCreateError( CREATE_FAILED );
         }
@@ -119,6 +124,8 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
       var body = jqXHR && jqXHR.responseJSON;
       if ( body && body.response === "invalid_key_name" ) {
         showCreateError( keyNameSentence( body.reason ) );
+      } else if ( body && body.response === "key_service_unavailable" ) {
+        showCreateError( KEY_SERVICE_UNAVAILABLE );
       } else {
         showCreateError( CREATE_FAILED );
       }
