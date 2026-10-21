@@ -1,16 +1,6 @@
 <template>
   <b-navbar toggleable="md" class="app-header d-print-none">
     <b-navbar-nav class="navbar-nav-mobile ml-auto">
-      <b-nav-text class="mr-3">
-        <b-alert
-          class="header-alert animate__animated animate__bounceIn animate__delay-2s"
-          dismissible
-          v-model="showNavbarAlert"
-        >
-          <i class="fa fa-info-circle mr-1"></i> Check out Light Blue Settings on the
-          right!
-        </b-alert>
-      </b-nav-text>
       <b-nav-form class="d-sm-down-none mr-3">
         <b-input-group class="input-group-transparent search-group">
           <b-input-group-text slot="prepend"
@@ -52,27 +42,17 @@
         class="mr-2"
         menu-class="dropdown-menu-settings"
       >
+        <!-- D-16: bootstrap-vue 2.21.2 has no toggle attrs, so the toggle's accessible name is its link text. -->
         <template slot="button-content">
-          <i class="fi flaticon-settings-10 px-2" />
+          <i class="la la-user-circle account-menu-icon" title="Account" aria-hidden="true"></i>
+          <span class="sr-only">Account menu</span>
         </template>
-        <b-dropdown-item to="/app/profile"><i class="la la-user" /> My Account</b-dropdown-item>
-        <b-dropdown-divider />
-        <b-dropdown-item>
-          Inbox &nbsp;&nbsp;<b-badge
-            variant="danger"
-            pill
-            class="animate__animated animate__bounceIn"
-            >9</b-badge
-          >
-        </b-dropdown-item>
+        <b-dropdown-item to="/app/profile" data-cy="header-profile"><i class="la la-user" /> My Profile</b-dropdown-item>
         <b-dropdown-divider />
         <b-dropdown-item-button @click="logout">
           <i class="la la-sign-out" /> Log Out
         </b-dropdown-item-button>
       </b-nav-item-dropdown>
-      <b-nav-item class="d-md-down-none" @click="logout">
-        <i class="fi flaticon-power-1 px-2" />
-      </b-nav-item>
       <b-nav-item class="d-md-none" @click="switchSidebarMethod">
         <i class="la la-navicon px-2" />
       </b-nav-item>
@@ -89,10 +69,7 @@ export default {
   name: "Header",
   components: { Notifications },
   data() {
-    return {
-      showNavbarAlert: true,
-      profile: {},
-    };
+    return {};
   },
   computed: {
     ...mapState("layout", {
@@ -103,6 +80,13 @@ export default {
     // Builds"). Reactive to the buildlog store; the badge is hidden when 0 — the
     // previous hardcoded "9" was a mock placeholder, not a real count.
     ...mapGetters("buildlog", { buildItems: "getItems" }),
+    // The name and avatar read the store reactively, not a copy taken once in mounted():
+    // the Layout keeps the Header mounted across every /app navigation, so an impersonation
+    // start (AdminUsers.confirmImpersonate), a Profile-page save and the Header's own read
+    // all land here without a remount (48.1-REVIEW WR-01).
+    profile() {
+      return this.getProfile() || {};
+    },
     recentBuildCount() {
       return (this.buildItems || []).length;
     },
@@ -140,9 +124,12 @@ export default {
   },
   created() {},
   mounted() {
-    //this.profile = this.getProfile();
-    this.fetchProfile().then(() => {
-      this.profile = this.getProfile();
+    // One profile read per Layout mount (the deep-link spec counts it); the result reaches
+    // the name through the store, see the `profile` computed.
+    this.fetchProfile().catch(() => {
+      // A profile read that failed in the network leaves the store (and so the name) as it
+      // is; the next mount retries. Without this catch the rejection was unhandled (48-08,
+      // audit W2).
     });
     // Populate the buildlog store so the recent-builds badge reflects reality.
     this.$store.dispatch("buildlog/fetchBuildLog");

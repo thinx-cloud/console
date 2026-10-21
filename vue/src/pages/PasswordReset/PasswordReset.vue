@@ -92,22 +92,20 @@
         </form>
       </Widget>
     </b-container>
-    <footer class="auth-footer">
-      <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by
-      <a :href="this.$hostnames.LANDING" target="_blank">THiNX Cloud</a>
-    </footer>
+    <AppFooter variant="auth" />
   </div>
 </template>
 
 <script>
 import Widget from "@/components/Widget/Widget";
+import AppFooter from "@/components/AppFooter/AppFooter";
 import { mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
 import { ensureCsrfToken, isCsrfRejectedPayload, reportCsrfRejection, CSRF_REJECTED_MESSAGE } from "@/utils/cookies";
 
 export default {
   name: "PasswordReset",
-  components: { Widget },
+  components: { Widget, AppFooter },
   mixins: [hostnameMixin],
   data() {
     return {
@@ -138,6 +136,9 @@ export default {
         if (result && result.success === true) {
           this.successMessage = "Reset email sent. Check your inbox.";
           this.email = "";
+        } else if (result && result.networkError) {
+          // The request never got a response (48-REVIEW CR-01).
+          this.errorMessage = "Network error. Please try again.";
         } else if (isCsrfRejectedPayload(result)) {
           reportCsrfRejection(this.$rollbar, "POST /password/reset");
           this.errorMessage = CSRF_REJECTED_MESSAGE;
@@ -179,6 +180,8 @@ export default {
           this.successMessage = "Password set. You can now log in.";
           this.password = "";
           this.rpassword = "";
+        } else if (result && result.networkError) {
+          this.errorMessage = "Network error. Please try again.";
         } else if (isCsrfRejectedPayload(result)) {
           reportCsrfRejection(this.$rollbar, "POST /password/set");
           this.errorMessage = CSRF_REJECTED_MESSAGE;

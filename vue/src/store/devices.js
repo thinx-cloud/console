@@ -36,16 +36,40 @@ export default {
       }
     },
     actions: {
+      // A refused or empty reply keeps the current list. A request that never got a
+      // response (result.networkError) throws, so Devices.vue shows its load error instead
+      // of an empty fleet (48-REVIEW CR-01). Visits.vue reads it through allSettled.
       async fetchItems({ state, commit }) {
         const result = await this.$api.$get('/device');
         if (result.success) {
-          commit('saveDevices', { items: result.response });
+          commit('saveDevices', { items: result.response || [] });
+        } else if (result.networkError) {
+          throw new Error('Could not reach the server.');
         }
         return state.items;
       },
+      // Phase 46 (UI-T09): the same GET /device, but any failure is reported, so a page can
+      // tell "no device uses it" from "the list could not be loaded". fetchItems throws only
+      // on a network failure.
+      async loadDevices({ state, commit }) {
+        const result = await this.$api.$get('/device');
+        if (!result || !result.success || !Array.isArray(result.response)) {
+          throw new Error('Could not load devices.');
+        }
+        commit('saveDevices', { items: result.response });
+        return state.items;
+      },
+      // A revoke the server stored stays a success when only the follow-up list read fails
+      // (the refreshAfter pattern in enviros.js); the page's own reload reports that.
       async revokeDevices({ dispatch }, udids) {
         const result = await this.$api.$delete('/device', JSON.stringify({ udids }));
-        if (result.success) await dispatch('fetchItems');
+        if (result.success) {
+          try {
+            await dispatch('fetchItems');
+          } catch (e) {
+            return Object.assign({}, result, { refreshed: false });
+          }
+        }
         return result;
       },
       async pushConfiguration(_, { udids, enviros, reset_devices }) {

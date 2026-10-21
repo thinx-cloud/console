@@ -1,3 +1,36 @@
+/* Notification frames come off the websocket and are device-supplied: a
+ * device's current owner, or a transferred device's previous one, writes
+ * body, title and nid. toastr renders its message and title as HTML, so
+ * every frame field is escaped (or validated, for nid) before it is used in
+ * markup, ids or selectors, and toastr is only called through its four
+ * display methods. The frame itself stays unchanged. */
+var THINX_HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;", "`": "&#96;" };
+var THINX_TOAST_METHODS = [ "info", "success", "warning", "error" ];
+var THINX_NID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+function thinxEscapeHtml( value ) {
+  if ( value === null || typeof( value ) === "undefined" ) {
+    return "";
+  }
+  return String( value ).replace( /[&<>"'`]/g, function( c ) {
+    return THINX_HTML_ENTITIES[ c ];
+  } );
+}
+
+// toastr method for a frame type, or null; never indexes toastr with frame data
+function thinxToastMethod( type ) {
+  return THINX_TOAST_METHODS.indexOf( type ) !== -1 ? type : null;
+}
+
+// nid safe for ids, names and jQuery selectors, or null
+function thinxSafeNid( nid ) {
+  if ( typeof( nid ) !== "string" && typeof( nid ) !== "number" ) {
+    return null;
+  }
+  nid = String( nid );
+  return THINX_NID_PATTERN.test( nid ) ? nid : null;
+}
+
 /* Setup blank page controller */
 angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope", "settings", function( $rootScope, $scope, settings ) {
   $scope.$on( "$viewContentLoaded", function() {
@@ -24,11 +57,12 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
         // open websocket
         $rootScope.wss = new WebSocket( "<ENV::wssUrl>/" + $rootScope.profile.owner );
 
+        // Always subscribe first, so a tab whose first socket opens from the log overlay still
+        // receives Build Status and device frames (D-09, 43-REVIEW IN-04); then tail the selected build.
         $rootScope.wss.onopen = function() {
+          $rootScope.wssinit();
           if ( typeof( $rootScope.modalBuildId ) !== "undefined" ) {
             $rootScope.wsstailLog( $rootScope.modalBuildId );
-          } else {
-            $rootScope.wssinit();
           }
         };
         $rootScope.wss.onmessage = function( message ) {
@@ -105,7 +139,10 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
     // $rootScope.logdata.buffer[$rootScope.modalBuildId] = "";
     $rootScope.logdata[ build_id ] = "";
     $rootScope.modalBuildId = build_id;
-    $rootScope.wss.send( JSON.stringify( message ) );
+    // A connecting socket would throw InvalidStateError; it sends the tail from its own onopen.
+    if ( $rootScope.wss && $rootScope.wss.readyState === 1 ) {
+      $rootScope.wss.send( JSON.stringify( message ) );
+    }
   };
 
   $rootScope.wssinit = function() {
@@ -190,7 +227,14 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
             timestamp: nowTime
           };
 
-          // prepare user metadata for particular device
+          // prepare user metadata for particular device; a device with no build history has
+          // no array yet, and a throw here would lose the frame's toast (43-UI-REVIEW fix 3, D-09)
+          if ( typeof( $rootScope.meta.deviceBuilds ) !== "object" || $rootScope.meta.deviceBuilds === null ) {
+            $rootScope.meta.deviceBuilds = {};
+          }
+          if ( !Array.isArray( $rootScope.meta.deviceBuilds[ msg.udid ] ) ) {
+            $rootScope.meta.deviceBuilds[ msg.udid ] = [];
+          }
           $rootScope.meta.deviceBuilds[ msg.udid ].push( buildRecord );
           $scope.$apply();
 
@@ -213,16 +257,24 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
       // show toast with action dialog
       if ( msg.type == "actionable" ) {
 
+        // nid ends up in ids, names and selectors; anything else is not ours
+        var nid = thinxSafeNid( msg.nid );
+        if ( nid === null ) {
+          return;
+        }
+        var actionBody = thinxEscapeHtml( msg.body );
+        var actionTitle = thinxEscapeHtml( msg.title );
+
         // YES/NO
         if ( msg.response_type == "bool" ) {
-          toastr[ "info" ](
-            msg.body + "<br><br>" +
-            msg.nid + "<br><br>" +
-            "<div><button type=\"button\" id=\"okBtn-" + msg.nid +
+          toastr.info(
+            actionBody + "<br><br>" +
+            nid + "<br><br>" +
+            "<div><button type=\"button\" id=\"okBtn-" + nid +
             "\" class=\"btn btn-success toastr-ok-btn\">Yes</button>" +
-            "<button type=\"button\" id=\"cancelBtn-" + msg.nid +
+            "<button type=\"button\" id=\"cancelBtn-" + nid +
             "\" class=\"btn btn-danger toastr-cancel-btn\" style=\"margin: 0 8px 0 8px\">No</button></div>",
-            msg.title,
+            actionTitle,
             {
               timeOut: 0,
               extendedTimeOut: 0,
@@ -234,12 +286,12 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
             }
           );
 
-          $( "#okBtn-" + msg.nid ).on( "click", function( e ) {
+          $( "#okBtn-" + nid ).on( "click", function( e ) {
             $( this ).parent().slideToggle( 500 );
             $scope.$emit( "submitNotificationResponse", true );
           } );
 
-          $( "#cancelBtn-" + msg.nid ).on( "click", function( e ) {
+          $( "#cancelBtn-" + nid ).on( "click", function( e ) {
             $( this ).parent().slideToggle( 500 );
             $scope.$emit( "submitNotificationResponse", false );
           } );
@@ -247,13 +299,13 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
 
         // INPUT string
         if ( msg.response_type == "string" ) {
-          toastr[ "warning" ](
-            msg.body + "<br><br>" +
-            msg.nid + "<br><br>" +
-            "<div><input class=\"toastr-input\" name=\"reply-" + msg.nid + "\" value=\"\"/></div><br>" +
-            "<div><button type=\"button\" id=\"sendBtn-" + msg.nid +
+          toastr.warning(
+            actionBody + "<br><br>" +
+            nid + "<br><br>" +
+            "<div><input class=\"toastr-input\" name=\"reply-" + nid + "\" value=\"\"/></div><br>" +
+            "<div><button type=\"button\" id=\"sendBtn-" + nid +
             "\" class=\"btn btn-success toastr-send-btn\">Send</button></div>",
-            msg.title,
+            actionTitle,
             {
               timeOut: 0,
               extendedTimeOut: 0,
@@ -265,21 +317,32 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
             }
           );
 
-          $( "#sendBtn-" + msg.nid ).on( "click", function( e ) {
+          $( "#sendBtn-" + nid ).on( "click", function( e ) {
             $( this ).parent().slideToggle( 500 );
-            $scope.$emit( "submitNotificationResponse", $( "input[name=reply-" + msg.nid + "]" ).val() );
+            $scope.$emit( "submitNotificationResponse", $( "input[name=reply-" + nid + "]" ).val() );
           } );
         }
 
+        return;
+      }
+
+      // Supported msg.types by Toastr: "error", "info", "success", "warning"
+      var toastMethod = thinxToastMethod( msg.type );
+      if ( toastMethod === null ) {
+        return;
+      }
+
+      // JSON.stringify does not escape markup
+      var toastBody = thinxEscapeHtml( JSON.stringify( msg.body ) );
 
       // non-actionable status notification
-      } else if ( typeof( msg.body.status ) !== "undefined" ) {
+      if ( msg.body !== null && typeof( msg.body ) !== "undefined" && typeof( msg.body.status ) !== "undefined" ) {
 
         var msgTitle = "Device Status Update";
 
         // process status message
-        toastr[ msg.type ](
-          JSON.stringify( msg.body ),
+        toastr[ toastMethod ](
+          toastBody,
           msgTitle,
           {
             timeOut: 8000,
@@ -305,15 +368,9 @@ angular.module( "RTM" ).controller( "LogviewController", [ "$rootScope", "$scope
         // non-actionable notification without status
       } else {
 
-        // Supported msg.types by Toastr
-        // "error"
-        // "info"
-        // "success"
-        // "warning"
-
-        toastr[ msg.type ](
-          JSON.stringify( msg.body ),
-          msg.title,
+        toastr[ toastMethod ](
+          toastBody,
+          thinxEscapeHtml( msg.title ),
           {
             timeOut: 20000,
             extendedTimeOut: 0,

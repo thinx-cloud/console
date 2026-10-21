@@ -9,6 +9,7 @@
     <b-alert v-if="message" variant="success" show dismissible @dismissed="message = null">{{ message }}</b-alert>
 
     <div v-if="loading">Loading...</div>
+    <b-alert v-else-if="loadFailed" variant="danger" show data-cy="profile-load-error">Could not load your profile. Refresh to retry.</b-alert>
     <b-tabs v-else content-class="mt-3">
 
       <!-- Profile Tab -->
@@ -39,9 +40,9 @@
       <b-tab title="Notifications">
         <b-form @submit.prevent="saveNotifications" style="max-width:400px">
           <b-form-group label="Notification preferences">
-            <b-form-checkbox v-model="notifForm.all" class="mb-2">All notifications</b-form-checkbox>
-            <b-form-checkbox v-model="notifForm.important" class="mb-2">Important notifications only</b-form-checkbox>
-            <b-form-checkbox v-model="notifForm.info">Informational notifications</b-form-checkbox>
+            <b-form-checkbox v-model="notifForm.all" @change="notificationChanged('all', $event)" class="mb-2">All notifications</b-form-checkbox>
+            <b-form-checkbox v-model="notifForm.important" @change="notificationChanged('important', $event)" class="mb-2">Important notifications only</b-form-checkbox>
+            <b-form-checkbox v-model="notifForm.info" @change="notificationChanged('info', $event)">Informational notifications</b-form-checkbox>
           </b-form-group>
           <b-button type="submit" variant="primary" data-cy="save-notifications" :disabled="saving">
             {{ saving ? 'Saving...' : 'Save Notifications' }}
@@ -110,12 +111,29 @@
                there is no "current value" to display — only the masked input, the
                link action, and transient feedback after a submit. -->
           <b-card title="GitHub Access Token" class="mb-3">
-            <p class="text-muted mb-2">
+            <p class="mb-2">
               Link a GitHub
               <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">personal access token</a>
-              so THiNX can push your deploy (RSA) key to GitHub and access your private repositories.
+              so THiNX can add your deploy (RSA) key to your GitHub account. THiNX then clones your private
+              repositories over SSH with that key, so it reaches every repository your GitHub account can read.
               The token is validated with GitHub, stored securely, and never shown again.
             </p>
+            <div class="mb-2" data-cy="github-token-scopes">
+              <p class="mb-1">The token needs permission to read and add your SSH keys, and nothing else:</p>
+              <ul class="mb-0">
+                <li>
+                  Classic token:
+                  <a href="https://github.com/settings/tokens/new?scopes=admin:public_key&amp;description=THiNX" target="_blank" rel="noopener noreferrer"><code>admin:public_key</code></a>
+                  (or both <code>read:public_key</code> and <code>write:public_key</code>).
+                </li>
+                <li>
+                  Fine-grained token:
+                  <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">account permission</a>
+                  <strong>Git SSH keys</strong>: Read and write.
+                </li>
+              </ul>
+              <p class="mt-1 mb-0">No <code>repo</code> scope is needed.</p>
+            </div>
             <b-form @submit.prevent="linkGitHub">
               <b-form-group
                 label="GitHub access token"
@@ -195,6 +213,7 @@ export default {
   data() {
     return {
       loading: true,
+      loadFailed: false,
       saving: false,
       error: null,
       message: null,
@@ -239,66 +258,99 @@ export default {
   methods: {
     ...mapGetters({ getProfile: 'profile/getProfile' }),
     ...mapActions({ fetchProfile: 'profile/fetchProfile', updateProfile: 'profile/updateProfile', deleteAccount: 'profile/deleteAccount', uploadAvatar: 'profile/uploadAvatar', linkGitHubToken: 'profile/linkGitHubToken', clearSession: 'auth/clearSession' }),
+    // A network failure throws out of profile/fetchProfile (audit W2): show one load error in
+    // place of the tabs and a blank form, so nothing stale is saved. A refused reply resolves
+    // with the current profile, as before.
     async loadProfile() {
       this.loading = true;
-      await this.fetchProfile();
-      this.profile = this.getProfile();
-      if (this.profile && this.profile.info) {
-        const info = this.profile.info;
-        this.form.first_name = info.first_name || '';
-        this.form.last_name = info.last_name || '';
-        this.form.mobile_phone = info.mobile_phone || '';
-        // Read `timezone_abbr` (canonical); fall back to the bare `timezone` key
-        // for accounts whose only timezone value came from the earlier broken
-        // Vue saveProfile path.
-        this.form.timezone_abbr = info.timezone_abbr || info.timezone || '';
-        const notif = info.notifications || {};
-        this.notifForm.all = !!notif.all;
-        this.notifForm.important = !!notif.important;
-        this.notifForm.info = !!notif.info;
+      try {
+        await this.fetchProfile();
+        this.profile = this.getProfile();
+        if (this.profile && this.profile.info) {
+          const info = this.profile.info;
+          this.form.first_name = info.first_name || '';
+          this.form.last_name = info.last_name || '';
+          this.form.mobile_phone = info.mobile_phone || '';
+          // Read `timezone_abbr` (canonical); fall back to the bare `timezone` key
+          // for accounts whose only timezone value came from the earlier broken
+          // Vue saveProfile path.
+          this.form.timezone_abbr = info.timezone_abbr || info.timezone || '';
+          const notif = info.notifications || {};
+          this.notifForm.all = !!notif.all;
+          this.notifForm.important = !!notif.important;
+          this.notifForm.info = !!notif.info;
+          if (this.notifForm.all) {
+            this.notifForm.important = false;
+            this.notifForm.info = false;
+          }
+        }
+        this.loadFailed = false;
+      } catch (e) {
+        this.profile = null;
+        this.form.first_name = '';
+        this.form.last_name = '';
+        this.form.mobile_phone = '';
+        this.form.timezone_abbr = '';
+        this.notifForm.all = false;
+        this.notifForm.important = false;
+        this.notifForm.info = false;
+        this.loadFailed = true;
+        this.error = null;
+      } finally {
+        this.loading = false;
       }
-      this.loading = false;
     },
     async saveProfile() {
       this.saving = true;
-      // Merge form fields into existing info — the backend writes the full info
-      // blob, so sending only form fields would wipe email, notifications,
-      // security, tags, transformers, goals, avatar. Same data-loss pattern as
-      // saveNotifications fixed in 06-02; missed there for saveProfile.
-      const existingInfo = (this.profile && this.profile.info) ? Object.assign({}, this.profile.info) : {};
-      const info = Object.assign(existingInfo, {
+      // Send only the keys this form owns. users/edit merges `info` key by key
+      // (design/design_users.json), so absent keys are kept. Copying the whole
+      // info snapshot taken at page load would revert keys written elsewhere
+      // since then, e.g. info.transformers from the Transformers page (35 WR-04).
+      const info = {
         first_name: this.form.first_name,
         last_name: this.form.last_name,
         mobile_phone: this.form.mobile_phone,
         timezone_abbr: this.form.timezone_abbr,
-      });
-      // Strip the legacy bare `timezone` key if present — it was the buggy field
-      // name Vue used briefly; legacy + device.js consumers only read
-      // timezone_abbr, so clearing it on save avoids two fields drifting out of
-      // sync in the stored info blob.
-      if (Object.prototype.hasOwnProperty.call(info, 'timezone')) delete info.timezone;
+      };
+      // Clear the legacy bare `timezone` key (the buggy field name Vue used
+      // briefly). A merge cannot delete a key, so null it explicitly; legacy +
+      // device.js consumers only read timezone_abbr.
+      const loadedInfo = (this.profile && this.profile.info) || {};
+      if (Object.prototype.hasOwnProperty.call(loadedInfo, 'timezone') && loadedInfo.timezone !== null) info.timezone = null;
       const result = await this.updateProfile(info);
       this.saving = false;
       if (result.success) {
         // Refresh the local copy so the form re-hydrates from the just-saved info
-        // on the next visit/reload without a fetchProfile round-trip.
-        this.profile = this.getProfile();
+        // on the next visit/reload without a fetchProfile round-trip. When only the
+        // store's follow-up read failed (refreshed: false), reload instead, so the page
+        // shows the load error rather than a stale copy (audit W2).
+        if (result.refreshed === false) await this.loadProfile();
+        else this.profile = this.getProfile();
         this.message = 'Profile updated.';
       } else {
         this.error = result.message || 'Failed to update profile.';
       }
     },
+    notificationChanged(kind, selected) {
+      if (!selected) return;
+      if (kind === 'all') {
+        this.notifForm.important = false;
+        this.notifForm.info = false;
+      } else {
+        this.notifForm.all = false;
+      }
+    },
     async saveNotifications() {
       this.saving = true;
-      const existingInfo = (this.profile && this.profile.info) ? Object.assign({}, this.profile.info) : {};
-      const info = Object.assign(existingInfo, {
+      // Only the notifications key: users/edit merges `info` per key, and a full
+      // info snapshot would revert keys changed elsewhere since load (35 WR-04).
+      const result = await this.updateProfile({
         notifications: {
           all: this.notifForm.all,
           important: this.notifForm.important,
           info: this.notifForm.info,
         },
       });
-      const result = await this.updateProfile(info);
       this.saving = false;
       if (result && result.success) this.message = 'Notification preferences saved.';
       else this.error = (result && result.message) || 'Failed to save notifications.';
@@ -320,7 +372,9 @@ export default {
       const result = await this.uploadAvatar(this.avatarB64);
       this.avatarUploading = false;
       if (result && result.success) {
-        this.profile = this.getProfile();
+        // refreshed: false — the avatar was stored but the follow-up read failed (audit W2).
+        if (result.refreshed === false) await this.loadProfile();
+        else this.profile = this.getProfile();
         this.message = 'Avatar updated.';
         this.avatarB64 = null;
       } else {
@@ -340,7 +394,7 @@ export default {
       // Never retain the token in component state once it has been submitted.
       this.githubForm.token = '';
       if (result && result.success) {
-        // Success payload is { key_pushed, created_key } (parsed by core/api.js into
+        // Success payload is { key_pushed, created_key, keys_in_use_elsewhere } (parsed by core/api.js into
         // result.response). Report whether a key was created vs. reused, and whether
         // the public key actually reached GitHub. key_pushed:false means the token
         // was stored but the key push failed — surface that as a warning, not success.
@@ -349,20 +403,32 @@ export default {
         const pushPart = r.key_pushed
           ? 'and pushed to GitHub'
           : 'but the public key could not be pushed to GitHub';
+        // keys_in_use_elsewhere: keys GitHub reported as registered on another account or
+        // as a repository deploy key, skipped before the one that was pushed.
+        const skipped = Number(r.keys_in_use_elsewhere) || 0;
+        const skippedPart = skipped > 0
+          ? ' ' + (skipped === 1 ? 'One of your keys is' : skipped + ' of your keys are') +
+            ' already registered on another GitHub account or as a repository deploy key, so ' +
+            (skipped === 1 ? 'it was' : 'they were') + ' skipped.'
+          : '';
         this.githubResult = {
           variant: r.key_pushed ? 'success' : 'warning',
-          text: 'GitHub token linked — ' + keyPart + ' ' + pushPart + '.',
+          text: 'GitHub token linked — ' + keyPart + ' ' + pushPart + '.' + skippedPart,
         };
       } else {
         // Failure responses carry a string code in result.response:
-        // 401 github_token_invalid, 400 missing_token, invalid_owner, plus the 500s.
+        // 401 github_token_invalid, 403 github_token_missing_scope, 400 missing_token,
+        // invalid_owner, plus the 500s and the 503 key_service_unavailable.
         const code = result && result.response;
         const messages = {
-          github_token_invalid: 'GitHub rejected this token. Check it is valid and has the required scopes, then try again.',
+          github_token_invalid: 'GitHub rejected this token. Check that it is valid and not expired, then try again.',
+          github_token_missing_scope: 'This token cannot read your SSH keys. Give it admin:public_key (classic) or Git SSH keys: Read and write (fine-grained), then link it again.',
           missing_token: 'No token was provided.',
           invalid_owner: 'Your session is no longer valid. Please sign in again.',
           token_store_failed: 'The token could not be stored. Please try again.',
           rsa_key_creation_failed: 'Could not create an RSA key for your account. Please try again.',
+          // Phase 40 D-03: the same sentence as the Deploy Keys page; never the code itself.
+          key_service_unavailable: "Deploy keys can't be created right now, try again later.",
         };
         this.githubResult = {
           variant: 'danger',

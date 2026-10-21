@@ -47,28 +47,35 @@ export default {
       saveItems(state, data) { 
         let flatItems = [];
         for (let id of Object.keys(data.items)) {
-          flatItems.push({id: id, ...data.items[id]});
+          flatItems.push({ ...data.items[id], id: data.items[id].filename || id });
         }
-        state.items = flatItems;
+        state.items = flatItems.sort((a, b) => new Date(b.date) - new Date(a.date));
       },
     },
     actions: {
       async fetchItems({ state, commit }) {
+        // api.js turns 401/5xx/non-JSON into { success: false } without throwing.
+        // Throw here (like transformers/fetchItems) so the page reports the
+        // failure instead of showing an empty "No deploy keys yet." (35 WR-05).
         const result = await this.$api.$get('/rsakey');
-        if (result.success) {
-          commit('saveItems', { items: result.response });
-        }
+        if (!result || !result.success) throw new Error('Could not load deploy keys.');
+        commit('saveItems', { items: result.response || [] });
         return state.items;
       },
-      async createItem({ dispatch }) {
-        const result = await this.$api.$put('/rsakey', JSON.stringify({}));
-        if (result.success) await dispatch('fetchItems');
-        return result;
+      // createItem / deleteItems send one request and return its result. The page reloads
+      // the list itself (loadData: fetch, prune the selection, report a load error), so
+      // fetching here as well cost a second GET per mutation (45-UI-REVIEW finding 7).
+      async createItem(_ctx, name) {
+        return this.$api.$put('/rsakey', JSON.stringify({ name }));
       },
-      async deleteItems({ dispatch }, filenames) {
-        const result = await this.$api.$delete('/rsakey', JSON.stringify({ filenames }));
-        if (result.success) await dispatch('fetchItems');
-        return result;
+      // KEY-04: PATCH /rsakey { filename, name }. The result comes back unchanged
+      // (the page reads `reason` from an invalid_key_name answer) and the page
+      // reloads the list itself after a success.
+      async renameItem(_ctx, { filename, name }) {
+        return this.$api.$patch('/rsakey', JSON.stringify({ filename, name }));
+      },
+      async deleteItems(_ctx, filenames) {
+        return this.$api.$delete('/rsakey', JSON.stringify({ filenames }));
       },
     },
     getters: {

@@ -13,7 +13,6 @@ angular.module( "RTM" ).controller( "SourceController", [ "$rootScope", "$scope"
 
     Thinx.sourceList()
     .done( function( data ) {
-      console.log( "+++ updateSources " );
       $scope.$emit( "updateSources", data );
 
       Thinx.deviceList()

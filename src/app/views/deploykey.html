@@ -86,9 +86,9 @@
 
         <div class="table-scrollable table-scrollable-borderless">
           <table class="table table-hover table-light">
-            <tr ng-repeat="deploykey in $root.deploykeys | propsFilter:{'pubkey': searchText, 'date': searchText}" ng-click="checkItem(deploykey.filename)" ng-class="selectedItems.indexOf(deploykey.filename) > -1 ? 'selected-row' : 'default-row'">
+            <tr ng-repeat="deploykey in $root.deploykeys | propsFilter:{'name': searchText, 'pubkey': searchText, 'date': searchText}" ng-click="checkItem(deploykey.filename)" ng-class="selectedItems.indexOf(deploykey.filename) > -1 ? 'selected-row' : 'default-row'">
               <td>
-                <div class="row-item-subtitle">Created on {{deploykey.name}}</div>
+                <div class="row-item-subtitle">{{deploykey.name}} — Created on {{deploykey.date}}</div>
                 <div class="key-label monospace-info">{{deploykey.pubkey}}</div>
               </td>
             </tr>
@@ -108,9 +108,15 @@
           </div>
           <div class="modal-body">
             <div class="form-group">
+              <label class="control-label col-md-3" for="deploykeyName">Key Name</label>
+              <div class="col-md-9">
+                <input type="text" id="deploykeyName" name="deploykeyName" class="form-control" ng-model="deploykeyName" maxlength="120" required ng-disabled="creatingDeploykey || deploykeyValue !== null" placeholder="e.g. Firmware Repository" />
+              </div>
+            </div>
+            <div class="form-group">
               <label class="control-label col-md-3">Key Value</label>
               <div class="col-md-9">
-                <input type="text" id="deploykeyValue" name="deploykeyValue" class="form-control" ng-value="deploykeyValue" ng-readonly="true" placeholder="Create, than copy deploy key from here..." />
+                <input type="text" id="deploykeyValue" name="deploykeyValue" class="form-control" ng-value="deploykeyValue" ng-readonly="true" placeholder="Create, then copy deploy key from here..." />
               </div>
             </div>
             <div class="form-group last">
@@ -122,7 +128,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-            <button type="button" ng-show="deploykeyValue == null" class="btn btn-primary" ng-click="createDeploykey()"><i class="fa fa-check"></i> Create</button>
+            <button type="button" ng-show="deploykeyValue == null" class="btn btn-primary" ng-click="createDeploykey()" ng-disabled="creatingDeploykey || !deploykeyName.trim()"><i class="fa fa-check"></i> Create</button>
             <button type="button" ng-show="deploykeyValue !== null" class="btn btn-default copy-btn" data-clipboard-target="#deploykeyValue"><i class="fa fa-clipboard"></i> Copy</button>
           </div>
         </div>

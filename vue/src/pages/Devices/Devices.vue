@@ -22,75 +22,148 @@
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
     <b-alert v-if="message" variant="success" show dismissible @dismissed="message = null">{{ message }}</b-alert>
 
-    <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-      <b-button size="sm" data-cy="view-list" :variant="viewMode === 'list' ? 'primary' : 'outline-secondary'" @click="viewMode = 'list'" class="mr-1">
-        <span>&#9776;</span>
-      </b-button>
-      <b-button size="sm" data-cy="view-grid" :variant="viewMode === 'grid' ? 'primary' : 'outline-secondary'" @click="viewMode = 'grid'" class="mr-1">
-        <span>&#9635;</span>
+    <div class="d-flex align-items-center flex-wrap mb-3 device-toolbar">
+      <b-button
+        size="sm"
+        data-cy="view-list"
+        :variant="viewMode === 'list' ? 'light' : 'outline-light'"
+        :pressed="viewMode === 'list'"
+        aria-label="List view"
+        title="List view"
+        @click="viewMode = 'list'"
+      >
+        <span aria-hidden="true">&#9776;</span>
       </b-button>
       <b-button
-        v-for="cat in ['All', 'yellow-crusta', 'red-intense', 'purple-studio', 'blue', 'green', 'green-dark', 'grey-mint']"
-        :key="cat"
-        :data-cy="'category-pill-' + cat"
         size="sm"
-        :variant="filterCategory === cat ? 'primary' : 'outline-secondary'"
-        :style="filterCategory !== cat && cat !== 'All' ? { borderColor: categoryColor(cat), color: categoryColor(cat) } : {}"
-        @click="filterCategory = cat"
-        class="mr-1"
-      >{{ cat }}</b-button>
+        data-cy="view-grid"
+        :variant="viewMode === 'grid' ? 'light' : 'outline-light'"
+        :pressed="viewMode === 'grid'"
+        aria-label="Grid view"
+        title="Grid view"
+        @click="viewMode = 'grid'"
+      >
+        <span aria-hidden="true">&#9635;</span>
+      </b-button>
+      <div role="group" aria-label="Filter by platform" class="d-inline-flex flex-wrap platform-pills">
+        <b-button
+          v-for="pill in platformPills"
+          :key="pill.key"
+          :data-cy="'platform-pill-' + pill.key"
+          size="sm"
+          :variant="activePlatform === pill.key ? 'light' : 'outline-light'"
+          :pressed="activePlatform === pill.key"
+          @click="platformFilter = pill.key"
+        >{{ pill.label }}</b-button>
+      </div>
       <div class="ml-auto d-flex align-items-center">
         <b-form-select data-cy="device-sort" v-model="sortBy" :options="[{ value: 'lastupdate', text: 'Last Update' }, { value: 'platform', text: 'Platform' }, { value: 'alias', text: 'Alias' }]" size="sm" style="width:140px" class="mr-2" />
         <b-form-input data-cy="device-search" v-model="searchText" placeholder="Search alias or MAC..." size="sm" style="width:200px" />
       </div>
     </div>
     <div v-if="loading">Loading...</div>
-    <table v-else-if="viewMode === 'list'" class="table table-striped">
-      <thead>
-        <tr>
-          <th>
-            <div class="abc-checkbox">
-              <input type="checkbox" id="checkboxAll" :checked="isAllSelected" @change="checkAll" />
-              <label for="checkboxAll" />
-            </div>
-          </th>
-          <th>Alias</th>
-          <th>Platform</th>
-          <th>Firmware</th>
-          <th>Status</th>
-          <th>Last Seen</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(device, index) in filteredItems" :key="device.udid" data-cy="device-row">
-          <td>
-            <div class="abc-checkbox">
-              <input
-                type="checkbox"
-                :id="'checkbox-' + index"
-                :checked="isSelected_(device.udid)"
-                @change="toggleDevice(device.udid)"
+    <div v-else-if="viewMode === 'list'" class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>
+              <div class="abc-checkbox">
+                <input type="checkbox" id="checkboxAll" :checked="isAllSelected" @change="checkAll" />
+                <label for="checkboxAll" />
+              </div>
+            </th>
+            <th><span class="sr-only">Icon</span></th>
+            <th>Alias</th>
+            <th>Platform</th>
+            <th>Firmware</th>
+            <th>Status</th>
+            <th>Last Seen</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="device in filteredItems" :key="device.udid" data-cy="device-row">
+            <td>
+              <div class="abc-checkbox">
+                <input
+                  type="checkbox"
+                  :id="'checkbox-' + device.udid"
+                  :checked="isSelected_(device.udid)"
+                  @change="toggleDevice(device.udid)"
+                />
+                <label :for="'checkbox-' + device.udid" />
+              </div>
+            </td>
+            <td>
+              <span
+                class="device-icon device-icon--sm"
+                :class="'platform-' + platformOf(device).key"
+                :title="platformOf(device).label"
+              ><img class="device-icon-symbol" :src="symbolSrc(device.icon)" :alt="platformOf(device).label + ' device icon'"></span>
+            </td>
+            <td>{{ asText(device.alias) }}</td>
+            <td><PlatformBullet :platform="device.platform" /></td>
+            <td><span class="firmware-cell" :title="asText(device.firmware) || null"><i class="fa fa-cogs" aria-hidden="true"></i>{{ asText(device.firmware) || '—' }}</span></td>
+            <td>
+              <span class="device-status">
+                <i class="fa fa-heartbeat" aria-hidden="true"></i>
+                <span
+                  v-if="missingApiKey(device)"
+                  class="api-key-indicator"
+                  role="img"
+                  tabindex="0"
+                  v-b-tooltip.hover.focus
+                  data-cy="api-key-warning"
+                  :aria-label="apiKeyTip"
+                  :title="apiKeyTip"
+                ><i class="fa fa-warning" aria-hidden="true"></i></span>
+                <span :title="statusTitle(device.status)">{{ statusText(device.status) }}</span>
+                <span
+                  v-if="statusHasError(device.status)"
+                  class="status-alert"
+                  role="img"
+                  tabindex="0"
+                  v-b-tooltip.hover.focus
+                  aria-label="Device reported an error"
+                  title="Device reported an error"
+                ><i class="fa fa-warning" aria-hidden="true"></i></span>
+                <span
+                  v-if="statusHasWarning(device.status)"
+                  class="status-warning"
+                  role="img"
+                  tabindex="0"
+                  v-b-tooltip.hover.focus
+                  aria-label="Device reported a warning"
+                  title="Device reported a warning"
+                ><i class="fa fa-warning" aria-hidden="true"></i></span>
+              </span>
+            </td>
+            <td>{{ device.lastupdate | fromNow }}</td>
+            <td class="actions-cell">
+              <IconButton
+                :icon="buildAction(device).icon"
+                :label="buildAction(device).label"
+                :disabled="buildAction(device).disabled"
+                data-cy="row-build"
+                @click="buildDevice(device)"
               />
-              <label :for="'checkbox-' + index" />
-            </div>
-          </td>
-          <td>{{ device.alias }}</td>
-          <td>{{ device.platform }}</td>
-          <td>{{ device.firmware }}</td>
-          <td>{{ device.status }}</td>
-          <td>{{ device.lastupdate | fromNow }}</td>
-          <td>
-            <b-button size="sm" variant="primary" data-cy="row-detail" @click="viewDevice(device.udid)" class="mr-1">Detail</b-button>
-            <b-button size="sm" variant="secondary" data-cy="row-build" @click="buildDevice(device)" class="mr-1">Build</b-button>
-            <b-button size="sm" variant="danger" data-cy="row-revoke" @click="revokeRow(device.udid)" class="ml-1">Revoke</b-button>
-          </td>
-        </tr>
-        <tr v-if="!filteredItems.length">
-          <td colspan="7" class="text-muted">No devices registered yet.</td>
-        </tr>
-      </tbody>
-    </table>
+              <IconButton
+                icon="fa fa-eye"
+                :label="hasBuild(device) ? 'View log' : 'No build yet'"
+                :disabled="!hasBuild(device)"
+                data-cy="row-log"
+                @click="openLastBuild(device)"
+              />
+              <IconButton icon="fa fa-pencil" label="Edit" data-cy="row-detail" @click="viewDevice(device.udid)" />
+              <IconButton icon="fa fa-trash" label="Revoke" variant="danger" data-cy="row-revoke" @click="revokeRow(device.udid)" />
+            </td>
+          </tr>
+          <tr v-if="!filteredItems.length">
+            <td colspan="8">{{ emptyMessage }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     <b-row v-else-if="viewMode === 'grid'">
       <b-col
         v-for="device in filteredItems"
@@ -100,32 +173,86 @@
       >
         <b-card class="h-100" data-cy="device-card">
           <template #header>
-            <span
-              class="badge mr-2"
-              :style="{ backgroundColor: categoryColor(device.category), color: '#fff' }"
-            >{{ device.category }}</span>
-            <strong>{{ device.alias }}</strong>
+            <div class="device-card-heading d-flex align-items-center">
+              <span
+                class="device-icon"
+                :class="'platform-' + platformOf(device).key"
+                :title="platformOf(device).label"
+              ><img class="device-icon-symbol" :src="symbolSrc(device.icon)" :alt="platformOf(device).label + ' device icon'"></span>
+              <strong>{{ asText(device.alias) }}</strong>
+            </div>
           </template>
-          <p class="mb-1"><strong>Platform:</strong> {{ device.platform }}</p>
-          <p class="mb-1 text-muted small">{{ device.firmware }}</p>
-          <p class="mb-2 text-muted small">{{ device.lastupdate | fromNow }}</p>
-          <div class="abc-checkbox d-inline-block mr-2">
-            <input
-              type="checkbox"
-              :id="'grid-checkbox-' + device.udid"
-              :checked="isSelected_(device.udid)"
-              @change="toggleDevice(device.udid)"
+          <p class="mb-1"><PlatformBullet :platform="device.platform" /></p>
+          <p class="mb-1 device-firmware"><i class="fa fa-cogs" aria-hidden="true"></i>{{ asText(device.firmware) || '—' }}</p>
+          <p class="mb-1">
+            <span class="device-status">
+              <i class="fa fa-heartbeat" aria-hidden="true"></i>
+              <span
+                v-if="missingApiKey(device)"
+                class="api-key-indicator"
+                role="img"
+                tabindex="0"
+                v-b-tooltip.hover.focus
+                data-cy="api-key-warning"
+                :aria-label="apiKeyTip"
+                :title="apiKeyTip"
+              ><i class="fa fa-warning" aria-hidden="true"></i></span>
+              <span :title="statusTitle(device.status)">{{ statusText(device.status) }}</span>
+              <span
+                v-if="statusHasError(device.status)"
+                class="status-alert"
+                role="img"
+                tabindex="0"
+                v-b-tooltip.hover.focus
+                aria-label="Device reported an error"
+                title="Device reported an error"
+              ><i class="fa fa-warning" aria-hidden="true"></i></span>
+              <span
+                v-if="statusHasWarning(device.status)"
+                class="status-warning"
+                role="img"
+                tabindex="0"
+                v-b-tooltip.hover.focus
+                aria-label="Device reported a warning"
+                title="Device reported a warning"
+              ><i class="fa fa-warning" aria-hidden="true"></i></span>
+            </span>
+          </p>
+          <p class="mb-2 small">{{ device.lastupdate | fromNow }}</p>
+          <div class="d-flex align-items-center flex-nowrap">
+            <div class="abc-checkbox d-inline-block mr-2">
+              <input
+                type="checkbox"
+                :id="'grid-checkbox-' + device.udid"
+                :checked="isSelected_(device.udid)"
+                @change="toggleDevice(device.udid)"
+              />
+              <label :for="'grid-checkbox-' + device.udid" />
+            </div>
+            <IconButton
+              :icon="buildAction(device).icon"
+              :label="buildAction(device).label"
+              :disabled="buildAction(device).disabled"
+              data-cy="card-build"
+              @click="buildDevice(device)"
             />
-            <label :for="'grid-checkbox-' + device.udid" />
+            <IconButton
+              icon="fa fa-eye"
+              :label="hasBuild(device) ? 'View log' : 'No build yet'"
+              :disabled="!hasBuild(device)"
+              data-cy="card-log"
+              @click="openLastBuild(device)"
+            />
+            <IconButton icon="fa fa-pencil" label="Edit" class="ml-auto" data-cy="card-detail" @click="viewDevice(device.udid)" />
           </div>
-          <b-button size="sm" variant="primary" @click="viewDevice(device.udid)" class="mr-1">Detail</b-button>
-          <b-button size="sm" variant="secondary" @click="buildDevice(device)">Build</b-button>
         </b-card>
       </b-col>
       <b-col v-if="!filteredItems.length" cols="12">
-        <p class="text-muted">No devices match the current filter.</p>
+        <p>{{ emptyMessage }}</p>
       </b-col>
     </b-row>
+
+    <BuildLogDialog ref="buildLogDialog" />
 
     <!-- Transfer Modal -->
     <b-modal id="transfer-modal" title="Transfer Devices" @ok="transfer" ok-title="Transfer" ok-variant="warning">
@@ -157,19 +284,34 @@
 <script>
 import { mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
+import PlatformBullet from '@/components/PlatformBullet/PlatformBullet';
+import IconButton from '@/components/IconButton/IconButton';
+import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
+import { basePlatform, platformInfo, comparePlatformKeys } from '@/utils/platforms';
 
-const CATEGORY_COLORS = {
-  'yellow-crusta': '#f3c200',
-  'red-intense':   '#e35b5a',
-  'purple-studio': '#8E44AD',
-  'blue':          '#3598dc',
-  'green':         '#32c5d2',
-  'green-dark':    '#4DB3A2',
-  'grey-mint':     '#525e64',
-};
+// Tip for a device without an API key (DEV-05). Legacy's text from device.html: keyhash
+// is the key chosen for the device in the console (builds use it); devices register and
+// report with the key they send, so the tip says nothing about connectivity (44 CR-01).
+const API_KEY_TIP = 'No API Key assigned';
+
+// Danger alert text when GET /device or the environment list fails (UI review).
+const LOAD_ERROR = 'Could not load devices. Refresh to retry.';
+
+// Device-sent text fields (alias, firmware, mac) as a string: strings as-is, numbers and
+// booleans as their text, anything else empty, so stored device data cannot make the page
+// throw (44-SECURITY N-1 residual).
+function asText(value) {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return '';
+}
+
+// Legacy device symbols b_medium_01.png .. b_medium_73.png (DEV-01, UI-D10).
+const DEVICE_SYMBOLS = require.context('@/assets/thinx/ioticons', false, /^\.\/b_medium_\d\d\.png$/);
 
 export default {
   name: "Devices",
+  components: { PlatformBullet, IconButton, BuildLogDialog },
   filters: {
     fromNow(val) {
       if (!val) return '—';
@@ -187,41 +329,82 @@ export default {
       transferForm: { to: '', mig_sources: false, mig_apikeys: false },
       pushForm: { selectedEnviros: [], reset_devices: false },
       viewMode: 'list',
-      filterCategory: 'All',
+      platformFilter: 'All',
       sortBy: 'lastupdate',
       searchText: '',
+      // udids whose build request is in flight (UI-D17).
+      buildingUdids: [],
+      // GET /logs/build first page (buildlog store), newest first; View log reads it (WR-02).
+      builds: [],
+      apiKeyTip: API_KEY_TIP,
     };
   },
   computed: {
     isSelected() { return this.selectedUdids.length > 0; },
     selectedCount() { return this.selectedUdids.length; },
     isAllSelected() { return this.filteredItems.length > 0 && this.filteredItems.every(d => this.selectedUdids.includes(d.udid)); },
+    // Pills: All, then each base platform present in the loaded list, by label, unknown last.
+    platformPills() {
+      const keys = [...new Set(this.items.map(d => basePlatform(d.platform)))];
+      const pills = keys.map(key => ({ key, label: platformInfo(key).label }));
+      pills.sort((a, b) => comparePlatformKeys(a.key, b.key));
+      return [{ key: 'All', label: 'All' }, ...pills];
+    },
+    // The selected platform, or All once a reload no longer contains it.
+    activePlatform() {
+      const key = this.platformFilter;
+      if (key === 'All' || !this.items.some(d => basePlatform(d.platform) === key)) return 'All';
+      return key;
+    },
+    emptyMessage() {
+      return this.items.length ? 'No devices match the current filter.' : 'No devices registered yet.';
+    },
     filteredItems() {
       let result = this.items;
-      if (this.filterCategory && this.filterCategory !== 'All') {
-        result = result.filter(d => d.category === this.filterCategory);
+      if (this.activePlatform !== 'All') {
+        result = result.filter(d => basePlatform(d.platform) === this.activePlatform);
       }
       if (this.searchText) {
         const q = this.searchText.toLowerCase();
         result = result.filter(d =>
-          (d.alias || '').toLowerCase().includes(q) ||
-          (d.mac || '').toLowerCase().includes(q)
+          asText(d.alias).toLowerCase().includes(q) ||
+          asText(d.mac).toLowerCase().includes(q)
         );
       }
       result = [...result].sort((a, b) => {
         if (this.sortBy === 'lastupdate') return new Date(b.lastupdate || 0).getTime() - new Date(a.lastupdate || 0).getTime();
-        if (this.sortBy === 'platform')   return (a.platform || '').localeCompare(b.platform || '');
-        if (this.sortBy === 'alias')      return (a.alias || '').localeCompare(b.alias || '');
+        // Same order as the pills: by label, unknown last (D-14), then the alias.
+        if (this.sortBy === 'platform')   return comparePlatformKeys(basePlatform(a.platform), basePlatform(b.platform)) || asText(a.alias).localeCompare(asText(b.alias));
+        if (this.sortBy === 'alias')      return asText(a.alias).localeCompare(asText(b.alias));
         return 0;
       });
       return result;
+    },
+  },
+  watch: {
+    // A pill switch starts a fresh selection (44 IN-04).
+    platformFilter() {
+      this.selectedUdids = [];
+    },
+    // Bulk Revoke, Transfer and Push Config act only on visible devices: whatever the
+    // platform filter, the search or a reload hides is dropped from the selection (UI review).
+    filteredItems(list) {
+      const visible = new Set(list.map(d => d.udid));
+      const kept = this.selectedUdids.filter(udid => visible.has(udid));
+      if (kept.length !== this.selectedUdids.length) this.selectedUdids = kept;
+    },
+    // Once a reload no longer holds the selected platform the filter is All, and stays All
+    // when such devices come back (44 IN-04).
+    activePlatform(key) {
+      if (key === 'All' && this.platformFilter !== 'All') this.platformFilter = 'All';
     },
   },
   created() {
     this.$watch(() => this.$route.params, () => { this.loadData(); }, { immediate: true });
   },
   methods: {
-    ...mapGetters({ getItems: 'devices/getItems', getEnviros: 'enviros/getItems' }),
+    asText,
+    ...mapGetters({ getItems: 'devices/getItems', getEnviros: 'enviros/getItems', getBuildItems: 'buildlog/getItems' }),
     ...mapActions({
       fetchItems: 'devices/fetchItems',
       revokeDevices: 'devices/revokeDevices',
@@ -229,8 +412,44 @@ export default {
       pushConfiguration: 'devices/pushConfiguration',
       buildFirmware: 'devices/buildFirmware',
       fetchEnviros: 'enviros/fetchItems',
+      fetchBuildLog: 'buildlog/fetchBuildLog',
     }),
     isSelected_(udid) { return this.selectedUdids.includes(udid); },
+    platformOf(device) { return platformInfo(device.platform); },
+    // b_medium_NN.png for icons 1..73, otherwise 01. Only a number or a string is read:
+    // parseInt would throw on an object whose toString is not a function (44-SECURITY N-1).
+    symbolSrc(icon) {
+      const n = typeof icon === 'number' || typeof icon === 'string' ? parseInt(icon, 10) : NaN;
+      const nn = Number.isInteger(n) && n >= 1 && n <= 73 ? String(n).padStart(2, '0') : '01';
+      return DEVICE_SYMBOLS('./b_medium_' + nn + '.png');
+    },
+    // Device-supplied status without control characters (code below 32 or 127). A charCode
+    // scan, not a regex: Codacy flags control-character regexes (quick 261012-r9z).
+    // Only a string is read; any other type is empty (44-SECURITY N-1).
+    cleanStatus(status) {
+      const raw = typeof status === 'string' ? status : '';
+      let out = '';
+      for (let i = 0; i < raw.length; i++) {
+        const code = raw.charCodeAt(i);
+        if (code >= 32 && code !== 127) out += raw[i];
+      }
+      return out;
+    },
+    // Legacy status text (UI-D13): Registered for 0-1 characters, 22 characters plus an ellipsis beyond.
+    statusText(status) {
+      const text = this.cleanStatus(status);
+      if (text.length <= 1) return 'Registered';
+      return text.length > 22 ? text.slice(0, 22) + '…' : text;
+    },
+    statusTitle(status) {
+      const text = this.cleanStatus(status);
+      return text.length > 22 ? text : null;
+    },
+    statusHasError(status) { return this.cleanStatus(status).toLowerCase().includes('#e'); },
+    statusHasWarning(status) { return this.cleanStatus(status).toLowerCase().includes('#w'); },
+    missingApiKey(device) {
+      return device.keyhash === null || device.keyhash === undefined || device.keyhash === '';
+    },
     toggleDevice(udid) {
       const i = this.selectedUdids.indexOf(udid);
       if (i > -1) this.selectedUdids.splice(i, 1);
@@ -242,10 +461,54 @@ export default {
     viewDevice(udid) {
       this.$router.push({ name: 'DeviceDetail', params: { udid } });
     },
+    // Build action state (UI-SPEC Actions rows 1): in flight, not buildable, no source, else the hammer.
+    buildAction(device) {
+      if (this.buildingUdids.includes(device.udid)) {
+        return { icon: 'fa fa-spin fa-circle-o-notch', label: 'Building…', disabled: true };
+      }
+      if (platformInfo(device.platform).build === false) return { icon: 'fa fa-ban', label: 'Not supported', disabled: true };
+      if (!device.source) return { icon: 'fa fa-ban', label: 'No source', disabled: true };
+      return { icon: 'icomoon-hammer_icon', label: 'Build', disabled: false };
+    },
+    // One request per device at a time; the udid is released however the request settles.
     async buildDevice(device) {
-      const result = await this.buildFirmware({ udid: device.udid, source_id: device.source });
-      if (result.success) this.message = 'Build triggered.';
-      else this.error = result.message || 'Build failed.';
+      if (this.buildAction(device).disabled) return;
+      this.buildingUdids.push(device.udid);
+      let result;
+      try {
+        result = await this.buildFirmware({ udid: device.udid, source_id: device.source });
+      } catch (e) {
+        result = { success: false };
+      } finally {
+        const i = this.buildingUdids.indexOf(device.udid);
+        if (i > -1) this.buildingUdids.splice(i, 1);
+      }
+      if (result && result.success) this.message = 'Build triggered.';
+      else this.error = this.buildFailure(result);
+    },
+    // The API answers a failed /build with { success: false, response: <reason> }; the reason
+    // is shown as text when it is a non-blank string, else Build failed. (44 IN-01).
+    buildFailure(result) {
+      const text = (v) => (typeof v === 'string' && v.trim() !== '' ? v : null);
+      return (result && (text(result.message) || text(result.response))) || 'Build failed.';
+    },
+    // Newest build of the device, failed ones included: the first entry for its udid in the
+    // build list (GET /logs/build answers newest first, as Legacy's deviceBuilds[udid][0]).
+    // last_build_id only moves on builds that produced an artifact, so it is the fallback for
+    // a device whose builds are older than the loaded page (44 WR-02).
+    latestBuildId(device) {
+      const valid = (id) => typeof id === 'string' && id.trim() !== '';
+      const own = this.builds.find(b => b && b.udid === device.udid && valid(b.build_id));
+      if (own) return own.build_id;
+      return valid(device.last_build_id) ? device.last_build_id : null;
+    },
+    hasBuild(device) {
+      return this.latestBuildId(device) !== null;
+    },
+    openLastBuild(device) {
+      const buildId = this.latestBuildId(device);
+      if (buildId === null) return;
+      this.$refs.buildLogDialog.open({ build_id: buildId });
     },
     async confirmRevoke() {
       const confirmed = await this.$bvModal.msgBoxConfirm(
@@ -296,13 +559,23 @@ export default {
         this.error = result.message || 'Failed to push configuration.';
       }
     },
-    loadData() {
+    // A failed load shows a message in the danger alert and never leaves Loading... up (UI review).
+    async loadData() {
       this.loading = true;
-      Promise.all([this.fetchItems(), this.fetchEnviros()]).then(() => {
+      // The build list only feeds View log: its failure must not fail the device list.
+      const builds = Promise.resolve().then(() => this.fetchBuildLog()).catch(() => null);
+      try {
+        await Promise.all([this.fetchItems(), this.fetchEnviros(), builds]);
         this.items = this.getItems();
         this.enviros = this.getEnviros();
+        const buildItems = this.getBuildItems();
+        this.builds = Array.isArray(buildItems) ? buildItems : [];
+        if (this.error === LOAD_ERROR) this.error = null;
+      } catch (e) {
+        this.error = LOAD_ERROR;
+      } finally {
         this.loading = false;
-      });
+      }
     },
     async revokeRow(udid) {
       const confirmed = await this.$bvModal.msgBoxConfirm(
@@ -319,9 +592,6 @@ export default {
       } else {
         this.error = result.message || 'Failed to revoke device.';
       }
-    },
-    categoryColor(cat) {
-      return CATEGORY_COLORS[cat] || '#525e64';
     },
   },
 };

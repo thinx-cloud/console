@@ -87,6 +87,7 @@ export default {
       revokeSession: 'admin/revokeSession',
       impersonate: 'admin/impersonate',
       persistSession: 'auth/persistSession',
+      fetchProfile: 'profile/fetchProfile',
     }),
     formatDate(ts) {
       if (!ts) return '—';
@@ -126,6 +127,17 @@ export default {
         return;
       }
       await this.persistSession({ accessToken: access_token, refreshToken: null });
+      // The store must not keep the admin's profile for the impersonated session: the
+      // Routes.js admin guard and the Sidebar decide from a non-empty store without a request,
+      // and nothing under /app remounts the Header to refetch (48.1-REVIEW WR-01). Reset, then
+      // read the impersonated user's profile with the new token; a failed read leaves {} and
+      // the guard/Sidebar fail closed until the Header retries.
+      this.$store.commit('profile/saveProfile', {});
+      try {
+        await this.fetchProfile();
+      } catch (_e) {
+        // Fails closed; see above.
+      }
       this.$router.push('/app/dashboard');
     },
   },

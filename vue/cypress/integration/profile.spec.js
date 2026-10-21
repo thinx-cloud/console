@@ -46,6 +46,9 @@ describe('Profile feature', function() {
         expect(info.last_name).to.eq('Tester');
         expect(info.mobile_phone).to.eq('+420123456789');
         expect(info.timezone_abbr).to.eq('Europe/Prague');
+        // Only the form's keys: a full info snapshot would revert transformers (35 WR-04).
+        expect(info).not.to.have.property('transformers');
+        expect(info).not.to.have.property('email');
       });
       cy.get('.alert-success').should('contain', 'Profile updated.');
     });
@@ -82,10 +85,10 @@ describe('Profile feature', function() {
 
       cy.wait('@postProfile').its('request.body.info').should((info) => {
         expect(info.notifications.all).to.eq(true);
-        // The regression this test exists for: saveNotifications must merge into
-        // the existing info blob, not replace it.
-        expect(info.first_name).to.eq('Cypress');
-        expect(info.email).to.eq('cypress@example.test');
+        // users/edit merges `info` per key, so the server keeps every other key.
+        // saveNotifications must send only notifications: a full snapshot from
+        // page load would revert keys written since, e.g. transformers (35 WR-04).
+        expect(Object.keys(info)).to.deep.eq(['notifications']);
       });
       cy.get('.alert-success').should('contain', 'Notification preferences saved.');
     });
@@ -107,10 +110,11 @@ describe('Profile feature', function() {
       cy.hash().should('eq', '#/login');
     });
 
-    it('Should be reachable via header My Account dropdown link (PROF-06)', function() {
+    it('Should be reachable via header My Profile dropdown link (PROF-06)', function() {
       cy.visitApp('/#/app/dashboard', { session: true });
       cy.get('[data-cy=settings-dropdown] .dropdown-toggle').click();
-      cy.get('[data-cy=settings-dropdown]').contains('.dropdown-item', 'My Account').click();
+      // Select by data-cy so a label change cannot break the spec (35 WR-07).
+      cy.get('[data-cy=settings-dropdown] [data-cy=header-profile]').should('contain', 'My Profile').click();
       cy.hash().should('eq', '#/app/profile');
     });
 

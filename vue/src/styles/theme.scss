@@ -12,6 +12,7 @@
 @import '../../node_modules/font-awesome/css/font-awesome.css';
 @import '../../node_modules/line-awesome/dist/line-awesome/css/line-awesome.css';
 @import '../fonts/flaticon/flaticon';
+@import '../fonts/icomoon/icomoon';
 @import '../../node_modules/animate.css/animate';
 @import '../../node_modules/awesome-bootstrap-checkbox/awesome-bootstrap-checkbox';
 @import 'mixins';
@@ -21,3 +22,8 @@
 @import 'general';
 @import 'utils';
 @import 'icons';
+@import 'platforms';
+@import 'deploy-keys';
+@import 'settings-pages';
+@import 'build-log';
+@import 'device-detail';

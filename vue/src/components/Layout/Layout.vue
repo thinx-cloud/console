@@ -8,9 +8,7 @@
       <router-view />
     </transition>
   </div>
-  <footer class="contentFooter">
-    <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by <a :href="this.$hostnames.LANDING" target="_blank">THiNX Cloud</a>
-  </footer>
+  <AppFooter variant="layout" />
 </div>
 </template>
 
@@ -20,6 +18,7 @@ import { mapState, mapActions } from 'vuex';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import Header from '@/components/Header/Header';
 import ImpersonationBanner from '@/components/ImpersonationBanner/ImpersonationBanner';
+import AppFooter from '@/components/AppFooter/AppFooter';
 // Removed: Helper (Flatlogic template "Configuration" panel — Purchase / Go FULL / Documentation / social-sharing).
 // Not part of THiNX product surface; was leftover from the light-blue-vue template.
 
@@ -27,7 +26,7 @@ import './Layout.scss';
 
 export default {
   name: 'Layout',
-  components: { Sidebar, Header, ImpersonationBanner },
+  components: { Sidebar, Header, ImpersonationBanner, AppFooter },
   methods: {
     ...mapActions(
       'layout', ['switchSidebar', 'changeSidebarActive'],

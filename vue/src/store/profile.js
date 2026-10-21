@@ -1,4 +1,17 @@
 
+// A write the server stored stays a success when only the follow-up profile read fails (the
+// Phase 35 IN-02 / 46-02 pattern): it resolves with refreshed: false and the page reloads,
+// instead of telling the user the save failed.
+async function refreshAfter(dispatch, result) {
+  if (!result || !result.success) return result;
+  try {
+    await dispatch('fetchProfile');
+  } catch (e) {
+    return Object.assign({}, result, { refreshed: false });
+  }
+  return result;
+}
+
 export default {
     namespaced: true,
     state: {
@@ -82,22 +95,27 @@ export default {
       }
     },
     actions: {
+      // A refused or empty reply keeps the current profile. A request that never got a
+      // response (result.networkError) throws, so Profile.vue shows its load error instead of
+      // a blank form (audit W2, 48-REVIEW CR-01 pattern). Every caller absorbs the rejection:
+      // Header.vue (catch), Login.vue and OAuthReturn.vue (try/catch, sign-in continues),
+      // Routes.js (fails closed), refreshAfter below.
       async fetchProfile({ state, commit }) {
         const result = await this.$api.$get('/profile');
         if (result.success) {
-          commit('saveProfile', result.response);
+          commit('saveProfile', result.response || {});
+        } else if (result.networkError) {
+          throw new Error('Could not reach the server.');
         }
         return state.profile;
       },
       async updateProfile({ dispatch }, info) {
         const result = await this.$api.$post('/profile', JSON.stringify({ info }));
-        if (result.success) await dispatch('fetchProfile');
-        return result;
+        return refreshAfter(dispatch, result);
       },
       async uploadAvatar({ dispatch }, base64String) {
         const result = await this.$api.$post('/profile', JSON.stringify({ avatar: base64String }));
-        if (result.success) await dispatch('fetchProfile');
-        return result;
+        return refreshAfter(dispatch, result);
       },
       async deleteAccount({ state }) {
         const owner = state.profile && state.profile.owner;

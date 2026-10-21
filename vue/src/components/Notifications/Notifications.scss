@@ -39,3 +39,29 @@
     top: 2px;
   }
 }
+
+// Navbar Recent Builds rows (UI-B12, 35 IN-06): spans instead of a heading and a paragraph,
+// which are not valid inside the row's button.
+.notification-title {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1rem;
+  font-weight: 300;
+}
+
+.notification-meta {
+  display: block;
+  font-size: .875rem;
+  font-weight: 400;
+}
+
+// A row without a build id is static text (D-14). The compound selector is needed because
+// NotificationsDemo/ListGroup.scss loads after this file with an equally specific
+// .listGroupItem:hover background.
+.listGroupItem.listGroupItem--static {
+  cursor: default;
+}
+
+.listGroupItem.listGroupItem--static:hover {
+  background-color: transparent;
+}

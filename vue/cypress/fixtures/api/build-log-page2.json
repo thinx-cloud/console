@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "response": [
+    {
+      "_id": "paged-build-3",
+      "name": "mu-03",
+      "state": "completed",
+      "log": [
+        {
+          "build_id": "paged-build-3",
+          "udid": "udid-m3",
+          "alias": "mu-03",
+          "state": "completed",
+          "last_update": "2026-08-12T09:30:00.000Z",
+          "log": [
+            {
+              "udid": "udid-m3",
+              "alias": "mu-03",
+              "state": "completed",
+              "last_update": "2026-08-12T09:30:00.000Z",
+              "contents": "build ok"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "paging": {
+    "limit": 100,
+    "has_more": false,
+    "next_cursor": null
+  }
+}

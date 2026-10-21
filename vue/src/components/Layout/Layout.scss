@@ -30,6 +30,17 @@
 .contentFooter {
   position: absolute;
   bottom: 15px;
-  color: $text-muted;
+  color: $text-color;
   padding: 0 $content-padding;
+
+  // AA on the page gradient (UI-D09): #c1ccd3 reaches 6.75:1 on its lightest stop.
+  a {
+    color: $gray-400;
+    text-decoration: underline;
+
+    &:hover,
+    &:focus {
+      color: $white;
+    }
+  }
 }

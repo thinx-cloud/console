@@ -14,6 +14,20 @@ if ( urlBase.indexOf( "localhost" ) !== -1 ) {
   } );
 }
 
+// Phase 25 D-18 seam: same wire contract as assets/thinx/csrf.js (XSRF-TOKEN cookie -> X-XSRF-TOKEN header),
+// read at send time, API-bound calls only (urlBase or same-origin relative), never to a foreign origin.
+$.ajaxSetup( {
+  beforeSend: function( xhr, settings ) {
+    var url = ( settings && typeof( settings.url ) === "string" ) ? settings.url : "";
+    var apiBound = url === urlBase || url.indexOf( urlBase + "/" ) === 0 ||
+      ( url.charAt( 0 ) === "/" && url.charAt( 1 ) !== "/" && url.charAt( 1 ) !== "\\" );
+    var match = document.cookie.match( /(?:^|; )XSRF-TOKEN=([^;]*)/ );
+    if ( apiBound && match && match[ 1 ] ) {
+      xhr.setRequestHeader( "X-XSRF-TOKEN", decodeURIComponent( match[ 1 ] ) );
+    }
+  }
+} );
+
 // eslint-disable-next-line  no-redeclare
 var Thinx = {
   // RSA
@@ -38,8 +52,8 @@ var Thinx = {
   deploykeyList: function() {
     return deploykeyList();
   },
-  createDeploykey: function() {
-    return createDeploykey();
+  createDeploykey: function(name) {
+    return createDeploykey(name);
   },
   revokeDeploykeys: function( filenames ) {
     return revokeDeploykeys( filenames );
@@ -338,11 +352,14 @@ function init( $rootScope, $scope ) {
   }
 
   function updateDeploykeys( data ) {
-    $rootScope.deploykeys = data.response;
+    if (typeof data === "string") data = JSON.parse(data);
+    if (!data || !data.success) return;
+    $rootScope.deploykeys = Array.isArray(data.response) ? data.response : [];
     safeApply( $scope );
 
-    // save user-spcific goal achievement
-    if ( $rootScope.profile.info.goals.length > 0 ) {
+    // save user-spcific goal achievement; same rule as the sibling handlers (goals.length > 0),
+    // kept null-safe (35 IN-05)
+    if ( $rootScope.profile && $rootScope.profile.info && Array.isArray( $rootScope.profile.info.goals ) && $rootScope.profile.info.goals.length > 0 ) {
       if ( !$rootScope.profile.info.goals.includes( "deploykey" ) && $rootScope.deploykeys.length > 0 ) {
         $rootScope.profile.info.goals.push( "deploykey" );
         $scope.$emit( "saveProfileChanges", [ "goals" ] );
@@ -1027,10 +1044,12 @@ function deploykeyList() {
   } );
 }
 
-function createDeploykey() {
+function createDeploykey(name) {
   return $.ajax( {
     url: urlBase + "/user/rsakey/create",
-    type: "GET"
+    type: "GET",
+    data: { name: name },
+    dataType: "json"
   } );
 }
 
@@ -1192,6 +1211,10 @@ function getProfile() {
   } );
 }
 
+// users/edit merges `info` per key. transformers is deliberately absent: this
+// sends a session-old $rootScope snapshot (also on every info-note dismissal),
+// which would revert transformers written by the Vue console since login.
+// Transformer edits go through submitProfileChanges( [ "transformers" ] ) (35 WR-04).
 function submitProfile( profile ) {
   var info = {
     first_name: profile.info.first_name,
@@ -1204,7 +1227,6 @@ function submitProfile( profile ) {
     username: profile.info.username,
     owner: profile.info.owner,
     tags: profile.info.tags,
-    transformers: profile.info.transformers,
     timezone_abbr: profile.timezone_abbr,
     timezone_offset: profile.timezone_offset
   };

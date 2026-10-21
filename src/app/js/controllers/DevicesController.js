@@ -5,14 +5,12 @@ angular.module( "RTM" ).controller( "DevicesController", [ "$rootScope", "$scope
 
     Thinx.sourceList()
     .done( function( data ) {
-      console.log( "+++ updateSources " );
       $scope.$emit( "updateSources", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
 
     Thinx.apikeyList()
     .done( function( data ) {
-      console.log( "+++ updateApikeys " );
       $scope.$emit( "updateApikeys", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
@@ -114,8 +112,10 @@ angular.module( "RTM" ).controller( "DevicesController", [ "$rootScope", "$scope
             }
           }
 
+          // The build reply carries no status field (Phase 43 carry, D-09, UI-C19): fixed copy only,
+          // no reply value reaches toastr (it renders HTML).
           toastr.info(
-            response.status + "<br><br>Click to show build log...",
+            ( response.response === "queued" ? "Build queued." : "Build started." ) + "<br><br>Click to show build log...",
             "THiNX Builder",
             {
               timeOut: 3000,
@@ -132,7 +132,9 @@ angular.module( "RTM" ).controller( "DevicesController", [ "$rootScope", "$scope
           $scope.$apply();
         } else {
           console.log( response );
-          toastr.error( response.status, "<ENV::loginPageTitle>", { timeOut: 5000 } );
+          // A refused build replies { success: false, response: "<reason>" } with no status
+          // field: one fixed sentence, no reply value reaches toastr (48-REVIEW WR-04).
+          toastr.error( "Build failed.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
         }
       } else {
         console.log( "error" );

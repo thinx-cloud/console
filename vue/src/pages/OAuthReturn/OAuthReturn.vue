@@ -87,9 +87,10 @@ export default {
     // via the OAuth-provider redirect and created() dispatches immediately to a
     // protected POST with no human-typing delay, so callers must AWAIT this. It
     // joins App.vue's in-flight hydrate prime rather than racing it with a second
-    // cookieless GET that would mint a divergent token (21-REVIEW CR-01).
+    // cookieless GET that would mint a divergent token (21-REVIEW CR-01). Forced:
+    // GET /api/oauth/* destroyed the session the existing cookie is bound to.
     async primeCsrfCookie() {
-      await ensureCsrfToken(this.$hostnames.API);
+      await ensureCsrfToken(this.$hostnames.API, { force: true });
     },
 
     // PUT /api/v2/gdpr is the consent setter (setGDPR); POST is transferGDPR, so
@@ -187,7 +188,14 @@ export default {
       }
 
       if (this.isAuthenticated()) {
-        await this.fetchProfile();
+        // Drop whatever account the store still holds first: a failed read below then
+        // leaves {}, never a previous account's admin flag (48.1-REVIEW WR-01).
+        this.$store.commit("profile/saveProfile", {});
+        try {
+          await this.fetchProfile();
+        } catch (profileError) {
+          // A failed profile read must not block sign-in; the Header retries (audit W2).
+        }
         this.setUser(this.getProfile());
         this.$router.push("/app/dashboard");
       } else {

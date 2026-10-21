@@ -13,7 +13,6 @@ angular.module( "RTM" ).controller( "ChannelController", [ "$rootScope", "$scope
 
     Thinx.channelList()
     .done( function( data ) {
-      console.log( "+++ updateChannels " );
       $scope.$emit( "updateChannels", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
@@ -33,7 +32,6 @@ angular.module( "RTM" ).controller( "ChannelController", [ "$rootScope", "$scope
             console.log( response );
             Thinx.channelList()
               .done( function( data ) {
-                console.log( "+++ updateChannels " );
                 $scope.$emit( "updateChannels", data );
               } )
               .fail( error => $scope.$emit( "xhrFailed", error ) );
@@ -69,7 +67,6 @@ angular.module( "RTM" ).controller( "ChannelController", [ "$rootScope", "$scope
 
         Thinx.channelList()
         .done( function( data ) {
-          console.log( "+++ updateChannels " );
           $scope.$emit( "updateChannels", data );
         } )
         .fail( error => $scope.$emit( "xhrFailed", error ) );

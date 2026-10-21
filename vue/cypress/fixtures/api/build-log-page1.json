@@ -1,0 +1,56 @@
+{
+  "success": true,
+  "response": [
+    {
+      "_id": "paged-build-1",
+      "name": "kappa-01",
+      "state": "completed",
+      "log": [
+        {
+          "build_id": "paged-build-1",
+          "udid": "udid-k1",
+          "alias": "kappa-01",
+          "state": "completed",
+          "last_update": "2026-09-22T09:30:00.000Z",
+          "log": [
+            {
+              "udid": "udid-k1",
+              "alias": "kappa-01",
+              "state": "completed",
+              "last_update": "2026-09-22T09:30:00.000Z",
+              "contents": "build ok"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "paged-build-2",
+      "name": "lambda-02",
+      "state": "failed",
+      "log": [
+        {
+          "build_id": "paged-build-2",
+          "udid": "udid-l2",
+          "alias": "lambda-02",
+          "state": "failed",
+          "last_update": "2026-09-21T09:30:00.000Z",
+          "log": [
+            {
+              "udid": "udid-l2",
+              "alias": "lambda-02",
+              "state": "failed",
+              "last_update": "2026-09-21T09:30:00.000Z",
+              "contents": "build failed: missing source"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "paging": {
+    "limit": 100,
+    "has_more": true,
+    "next_cursor": "build-cursor-2"
+  }
+}

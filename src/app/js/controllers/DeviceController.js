@@ -12,21 +12,18 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
 
     Thinx.sourceList()
     .done( function( data ) {
-      console.log( "+++ updateSources " );
       $scope.$emit( "updateSources", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
 
     Thinx.apikeyList()
     .done( function( data ) {
-      console.log( "+++ updateApikeys " );
       $scope.$emit( "updateApikeys", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
 
     Thinx.channelList()
     .done( function( data ) {
-      console.log( "+++ updateChannels " );
       $scope.$emit( "updateChannels", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
@@ -722,7 +719,6 @@ angular.module( "RTM" ).controller( "DeviceController", [ "$rootScope", "$scope"
     // refresh latest firmware envelope
     Thinx.getLatestFirmwareEnvelope( $scope.deviceForm.udid )
     .done( function( data ) {
-      console.log( "+++ updateLatestFirmwareEnvelope " );
       $scope.$emit( "updateLatestFirmwareEnvelope", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );

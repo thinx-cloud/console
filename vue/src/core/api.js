@@ -69,11 +69,19 @@ export default class Api {
 
   parseResult(result) {
     if (result && typeof result.success !== 'undefined' && result.success) {
-      let keys = Object.keys(result).filter( key => key !== 'success' );
-      return {
+      let keys = Object.keys(result).filter( key => key !== 'success' && key !== 'paging' );
+      // 35 IN-01: no data key gives an undefined response (not {}), so empty states hold.
+      const out = {
         'success': result.success,
-        'response': result[keys[0]]
+        'response': Object.prototype.hasOwnProperty.call(result, 'response')
+          ? result.response
+          : (keys.length === 0 ? undefined : keys.length === 1 ? result[keys[0]] : keys.reduce((doc, key) => { doc[key] = result[key]; return doc; }, {}))
       };
+      // Paged log endpoints (phase 26, D-19) send `paging` next to `response`.
+      if (result.paging && typeof result.paging === 'object') {
+        out.paging = result.paging;
+      }
+      return out;
     }
     return result || { success: false };
   }
@@ -90,10 +98,29 @@ export default class Api {
       // SEC-CSRF-01 (21-REVIEW CR-01): mutating calls await the shared XSRF prime
       // and retry once on a csrf_token_invalid rejection. GETs are never checked.
       const options = this.composeOptions(method, body);
-      const response = (method === 'GET')
-        ? await fetch(this.composePath(path), options)
-        : await fetchWithCsrf(this.csrfBase(), this.composePath(path), options);
-      const text = await response.text();
+      let response;
+      let text;
+      try {
+        response = (method === 'GET')
+          ? await fetch(this.composePath(path), options)
+          : await fetchWithCsrf(this.csrfBase(), this.composePath(path), options);
+        // The body is read inside the same guard: a stream that fails after the headers
+        // arrived (connection reset, page unload, an aborted intercept) fails the same
+        // way as a request that never got a response (48-REVIEW WR-01).
+        text = await response.text();
+      } catch (_networkError) {
+        // A request that never got a response (offline, aborted by a page unload)
+        // resolves instead of rejecting, so a caller without a catch never leaves an
+        // unhandled rejection (48-08, CI-07). networkError tells it apart from an empty
+        // or refused reply, so a page can still show its load or network error
+        // (48-REVIEW CR-01).
+        return {
+          success: false,
+          status: response ? response.status : 0,
+          response: null,
+          networkError: true,
+        };
+      }
 
       if (!text) {
         return {
@@ -132,6 +159,11 @@ export default class Api {
 
   async $put(path, body) {
       return this.request('PUT', path, body);
+  }
+
+  // Mutating like PUT and DELETE, so request() sends it through fetchWithCsrf.
+  async $patch(path, body) {
+      return this.request('PATCH', path, body);
   }
 
   async $delete(path, body) {

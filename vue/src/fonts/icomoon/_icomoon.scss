@@ -1,0 +1,26 @@
+// icomoon icon font, ported from the Legacy console (services/console/src/assets/
+// thinx/css/custom.css, lines 1-30) for the one hammer glyph of the Build action
+// (phase 44, D-05). Only the woff and ttf files are copied (no IE, no SVG fonts).
+// URLs are relative to src/styles/theme.scss, which imports this partial, the same
+// way as src/fonts/flaticon/_flaticon.scss.
+
+@font-face {
+  font-family: 'icomoon';
+  src:
+    url('../fonts/icomoon/icomoon.woff') format('woff'),
+    url('../fonts/icomoon/icomoon.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.icomoon-hammer_icon {
+  font-family: 'icomoon' !important;
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+}
+
+.icomoon-hammer_icon:before {
+  content: "\e900";
+}

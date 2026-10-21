@@ -1,4 +1,17 @@
 
+// A write the server stored stays a success when only the follow-up list read fails (the
+// Phase 35 IN-02 / 46-02 pattern): it resolves with refreshed: false and the page reloads,
+// instead of telling the user the write failed. The follow-up read is fetchRepositories.
+async function refreshAfter(dispatch, result) {
+  if (!result || !result.success) return result;
+  try {
+    await dispatch('fetchRepositories');
+  } catch (e) {
+    return Object.assign({}, result, { refreshed: false });
+  }
+  return result;
+}
+
 export default {
     namespaced: true,
     state: {
@@ -52,25 +65,31 @@ export default {
       },
     },
     actions: {
+      // A refused or empty reply keeps the current list. A request that never got a
+      // response (result.networkError) throws, so Repositories.vue shows its load error and
+      // no stale rows instead of a silent empty list (audit W2, 48-REVIEW CR-01 pattern);
+      // DeviceDetail reads it through allSettled. refreshAfter catches it for the follow-up
+      // read of a write.
       async fetchRepositories({ state, commit }) {
         const result = await this.$api.$get('/source');
         if (result.success) {
-          commit('saveItems', { items: result.response });
+          commit('saveItems', { items: result.response || [] });
+        } else if (result.networkError) {
+          throw new Error('Could not reach the server.');
         }
         return state.items;
       },
+      // Delegates, so it rejects with fetchRepositories.
       async fetchItems({ dispatch }) {
         return dispatch('fetchRepositories');
       },
       async createItem({ dispatch }, payload) {
         const result = await this.$api.$put('/source', JSON.stringify(payload));
-        if (result.success) await dispatch('fetchRepositories');
-        return result;
+        return refreshAfter(dispatch, result);
       },
       async deleteItems({ dispatch }, source_ids) {
         const result = await this.$api.$delete('/source', JSON.stringify({ source_ids }));
-        if (result.success) await dispatch('fetchRepositories');
-        return result;
+        return refreshAfter(dispatch, result);
       },
     },
     getters: {

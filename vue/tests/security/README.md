@@ -46,9 +46,8 @@ Dependency audit:
   eval disabled. The test permits only these exact known helper bodies at the
   CSP-reported bundle locations. Any other eval or script violation fails.
   These blocked probes can still appear in a browser's CSP diagnostics.
-- `vue2-google-maps` 0.10.7 has a lazy external-script loader. No current page
-  invokes a Maps component. No additional Maps origins were allowed; live Maps
-  and unused dependency paths are outside this fixture test's coverage.
+- The console has no Google Maps dependency or origin (the unused `vue2-google-maps` plugin was
+  removed with the demo map). A future device map must add its origin to the CSP deliberately.
 
 The browser regression does not exercise real OAuth providers, email delivery,
 or production backend mutations. Existing Sass deprecation and bundle-size

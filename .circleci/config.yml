@@ -97,20 +97,21 @@ jobs:
       - run:
           name: Install dependencies and build
           command: |
-            export ENV NODE_OPTIONS=--openssl-legacy-provider
+            export NODE_OPTIONS=--openssl-legacy-provider
             cd vue
             yarn
+            # Node unit suites, no browser (35 WR-07). LC_ALL=C pins
+            # toLocaleString, which log-paging-store.cjs compares against.
+            LC_ALL=C yarn test:unit
+            LC_ALL=C node ../src/test/deploykey.cjs
+            LC_ALL=C node ../src/test/legacy-close-out.cjs
             yarn build:perf
-            yarn test
+            yarn test:ci
 
       - store_test_results:
                 name: Collect test results
-                path: ./vue/coverage
-
-          # The `path` key is an absolute or relative path to your working_directory containing 
-          # subdirectories of JUnit XML or Cucumber JSON test metadata files,
-          # or the path of a single file containing all test results.
-          # Make sure that your path value is not a hidden folder (example: .my_hidden_directory would be an invalid format).
+                # The Cypress JUnit files written by cy:test:ci (one per spec file).
+                path: ./vue/cypress/results
 
       - store_artifacts:
           name: Collect screenshots
@@ -179,9 +180,11 @@ workflows:
       #         only:
       #           - thinx-staging
 
+      # No context (48-REVIEW WR-03): this job runs yarn with no lockfile, so unpinned
+      # dependencies' lifecycle scripts run here, and no step needs a credential. The
+      # Cypress suites stub the API; the parent repo's test-vue-console runs them the same way.
       - test_vue:
           name: Test Vue console
-          context: sonarcloud
 
       # - ggshield/scan:
       #     name: Scan using Gitguardian shield
@@ -212,7 +215,6 @@ workflows:
           context:
             - dockerhub
             - thinx-docker-repo
-            - sonarcloud
             - console
           requires:
             - Test Vue console

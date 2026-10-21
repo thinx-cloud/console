@@ -1,9 +1,10 @@
 <template>
   <div class="auth-page">
     <b-container>
+      <img class="auth-logo" src="/assets/thinx/img/logo_white_200.png" alt="THiNX" width="200" height="100">
       <Widget
         class="widget-auth mx-auto"
-        title="THiNX Login"
+        title="Welcome to THiNX Management Console."
       >
         <p class="widget-auth-info">Use your username to sign in.</p>
         <form class="mt" @submit.prevent="login">
@@ -58,13 +59,9 @@
           </b-form-group>
           <router-link class="d-block text-center mb-2" to="/password-reset">Forgot password?</router-link>
           <div class="bg-widget auth-widget-footer">
-            <b-button type="submit" variant="danger" class="auth-btn" size="sm">
+            <b-button type="submit" variant="success" class="auth-btn" size="sm">
               Login
             </b-button>
-            <p class="widget-auth-info mt-4">Don't have an account? Sign up now!</p>
-            <router-link class="d-block text-center mb-4" to="login"
-              >Create an Account</router-link
-            >
             <div class="social-buttons">
               <b-button
                 size="sm"
@@ -83,32 +80,32 @@
                 <i class="fa fa-github"></i> Login with GitHub
               </b-button>
             </div>
+            <p class="widget-auth-info mt-4">Don't have an account? Sign up now!</p>
+            <router-link class="d-block text-center mb-4" to="login"
+              >Create an Account</router-link
+            >
           </div>
         </form>
       </Widget>
     </b-container>
-    <footer class="auth-footer">
-      <a :href="this.$hostnames.CONSOLE" target="_blank">THiNX Console</a> by
-      <a :href="this.$hostnames.LANDING" target="_blank">THiNX Cloud</a>
-      <span class="build-id" style="display:block;font-size:0.7rem;opacity:0.5;margin-top:4px">{{ buildHash }}</span>
-    </footer>
+    <AppFooter variant="auth" />
   </div>
 </template>
 
 <script>
 import Widget from "@/components/Widget/Widget";
+import AppFooter from "@/components/AppFooter/AppFooter";
 import { mapGetters, mapActions } from "vuex";
 import hostnameMixin from "@/mixins/hostnames";
 import { fetchWithCsrf, isCsrfRejection, reportCsrfRejection, CSRF_REJECTED_MESSAGE } from "@/utils/cookies";
 
 export default {
   name: "LoginPage",
-  components: { Widget },
+  components: { Widget, AppFooter },
   mixins: [hostnameMixin],
   data() {
     return {
       errorMessage: null,
-      buildHash: process.env.VUE_APP_BUILD_HASH || '',
     };
   },
   computed: {
@@ -215,7 +212,14 @@ export default {
       }
 
       if (this.isAuthenticated()) {
-        await this.fetchProfile();
+        // Drop whatever account the store still holds first: a failed read below then
+        // leaves {}, never a previous account's admin flag (48.1-REVIEW WR-01).
+        this.$store.commit("profile/saveProfile", {});
+        try {
+          await this.fetchProfile();
+        } catch (profileError) {
+          // A failed profile read must not block sign-in; the Header retries (audit W2).
+        }
         this.$store.commit("auth/setUser", this.getProfile());
         await this.pushIfNeeded("/app/dashboard");
       } else {

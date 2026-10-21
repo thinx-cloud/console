@@ -8,10 +8,14 @@
       <b-list-group-item v-if="!recentBuilds.length" class="listGroupItem">
         <p class="m-0 text-muted">No recent builds.</p>
       </b-list-group-item>
+      <!-- A row is a button only with a build log (hasBuildLog); without one it is static text (D-14). -->
       <b-list-group-item
         v-for="build in recentBuilds"
         :key="build.id || `${build.date}-${build.name || build.udid}`"
-        class="listGroupItem"
+        :class="['listGroupItem', { 'listGroupItem--static': !hasBuildLog(build) }]"
+        :button="hasBuildLog(build)"
+        data-cy="recent-build"
+        v-on="rowListeners(build)"
       >
         <span class="notificationIcon thumb-sm">
           <span :class="statusIconClass(build)">
@@ -19,13 +23,14 @@
           </span>
         </span>
         <time class="text-link help float-right">{{ formatDate(build.date) }}</time>
-        <h6 class="m-0 mb-1 text-ellipsis">{{ build.name || shortUdid(build.udid) }}</h6>
-        <p class="deemphasize text-ellipsis m-0">
-          <span :class="statusTextClass(build)">{{ build.status || 'UNKNOWN' }}</span>
+        <span class="notification-title text-ellipsis">{{ build.name || shortUdid(build.udid) }}</span>
+        <span class="notification-meta deemphasize text-ellipsis">
+          <span :class="statusTextClass(build)">{{ build.status || '—' }}</span>
           <span v-if="build.udid"> · {{ shortUdid(build.udid) }}</span>
-        </p>
+        </span>
       </b-list-group-item>
     </b-list-group>
+    <BuildLogDialog ref="buildLogDialog" />
     <footer class="text-sm footer px-4 py-2">
       <router-link to="/app/history/builds" class="fs-mini">See all builds</router-link>
       <b-button
@@ -41,11 +46,14 @@
 </template>
 
 <script>
+import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import Vue from 'vue';
 import { mapActions, mapGetters } from 'vuex';
+import { buildStatusVariant, hasBuildLog } from '@/utils/buildLog';
 
 export default {
   name: 'Notification',
+  components: { BuildLogDialog },
   data() {
     return {
       isLoad: false,
@@ -65,6 +73,12 @@ export default {
     this.loadNotifications();
   },
   methods: {
+    hasBuildLog,
+    openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
+    // Only a row with a build log gets a click listener; a row without one sends no request.
+    rowListeners(build) {
+      return hasBuildLog(build) ? { click: () => this.openBuildLog(build) } : {};
+    },
     ...mapGetters({ getBuildLog: 'buildlog/getItems' }),
     ...mapActions({ fetchBuildLog: 'buildlog/fetchBuildLog' }),
     async loadNotifications() {
@@ -91,19 +105,15 @@ export default {
       if (!value) return '—';
       return `${value.substring(0, 8)}...`;
     },
-    isSuccess(build) {
-      return (build.status || '').toUpperCase() === 'OK';
-    },
     statusGlyph(build) {
-      return this.isSuccess(build) ? 'fa fa-check text-white' : 'fa fa-times text-white';
+      const glyph = { success: 'fa-check', warning: 'fa-clock-o', info: 'fa-circle-o-notch' }[buildStatusVariant(build.status)];
+      return 'fa ' + (glyph || 'fa-times') + ' text-white';
     },
     statusIconClass(build) {
-      return this.isSuccess(build)
-        ? 'circle circle-lg bg-success'
-        : 'circle circle-lg bg-danger';
+      return 'circle circle-lg bg-' + buildStatusVariant(build.status);
     },
     statusTextClass(build) {
-      return this.isSuccess(build) ? 'text-success' : 'text-danger';
+      return 'text-' + buildStatusVariant(build.status);
     },
   },
 };

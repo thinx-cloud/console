@@ -18,13 +18,17 @@
     </p>
 
     <b-alert v-if="error" variant="danger" show dismissible @dismissed="error = null">{{ error }}</b-alert>
+    <b-alert v-if="loadFailed" variant="danger" show data-cy="repositories-load-error">Could not load repositories. Refresh to retry.</b-alert>
 
     <List
+      v-if="!loadFailed"
       @selection-update="selectionUpdated"
       :datasource="items"
       :dataheaders="headers"
       :showLoading="loading"
-    ></List>
+    >
+      <template #cell(platform)="{ value }"><PlatformBullet :platform="value" /></template>
+    </List>
 
     <!-- Create Modal -->
     <b-modal id="create-repo-modal" title="Add Repository" @ok="create" ok-title="Add" size="lg">
@@ -59,11 +63,12 @@
 
 <script>
 import List from '@/components/List/List';
+import PlatformBullet from '@/components/PlatformBullet/PlatformBullet';
 import { mapGetters, mapActions } from 'vuex';
 
 export default {
   name: "Repositories",
-  components: { List },
+  components: { List, PlatformBullet },
   data() {
     return {
       isSelected: false,
@@ -72,6 +77,7 @@ export default {
       items: [],
       headers: [],
       loading: true,
+      loadFailed: false,
       error: null,
       form: {
         url: '',
@@ -126,7 +132,16 @@ export default {
         .map(item => item.id);
       if (!source_ids.length) return;
       const result = await this.deleteItems(source_ids);
-      if (!result.success) this.error = result.message || 'Failed to delete repositories.';
+      if (!result.success) {
+        this.error = result.message || 'Failed to delete repositories.';
+      } else if (result.refreshed === false) {
+        // The delete was stored but the follow-up read failed: reload, so the page shows
+        // the load error instead of the deleted rows (audit W2).
+        await this.loadData();
+      } else {
+        // The store re-read the list after the delete; show it (PD-09).
+        this.items = this.getItems();
+      }
       this.selectedIds = [];
       this.isSelected = false;
       this.selectedCount = 0;
@@ -136,13 +151,26 @@ export default {
       this.selectedCount = value.count;
       this.selectedIds = value.items || [];
     },
-    loadData() {
+    // A network failure throws out of repositories/fetchItems (audit W2): show one load error
+    // and no stale rows or selection, so nothing stale can be deleted. A refused reply
+    // resolves with the current list, as before.
+    async loadData() {
       this.loading = true;
-      this.fetchItems().then(() => {
+      try {
+        await this.fetchItems();
         this.items = this.getItems();
         this.headers = this.getHeaders();
+        this.loadFailed = false;
+      } catch (e) {
+        this.items = [];
+        this.selectedIds = [];
+        this.isSelected = false;
+        this.selectedCount = 0;
+        this.loadFailed = true;
+        this.error = null;
+      } finally {
         this.loading = false;
-      });
+      }
     },
   },
 };

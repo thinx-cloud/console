@@ -1,0 +1,100 @@
+// Phase 45 Deploy Keys page (UI-SPEC UI-K02..UI-K06, UI-K09, UI-K11, UI-K15).
+
+// Stripes per key group, so an open detail row never shifts the stripes below it (UI-K02).
+.deploy-keys-table > tbody.key-group:nth-of-type(odd) > tr {
+  background-color: rgba(0, 0, 0, .05);
+}
+
+// Name: ellipsised on a block inside the cell, full name in the title (UI-K03, 44 IN-03).
+// dir="auto" plus isolation keep a right-to-left name from reordering its neighbours.
+.key-name {
+  display: block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  unicode-bidi: isolate;
+}
+
+@include media-breakpoint-up(md) {
+  .key-name {
+    max-width: 240px;
+  }
+}
+
+// Fingerprint in monospace, body colour (no <code>: its theme colour is pink) (UI-K04).
+.key-fingerprint {
+  font-family: $font-family-monospace;
+  font-size: .875rem;
+  font-weight: 400;
+  color: inherit;
+}
+
+// Expanded public key: wraps inside its detail row and never widens the table (UI-K06).
+.key-text {
+  margin: 0;
+  padding: 8px;
+  background: $pre-bg;
+  color: $pre-color;
+  font-family: $font-family-monospace;
+  font-size: .875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+// Generate form: label, input and button on one row, 8px apart, also when it wraps (UI-K15).
+// The form and its feedback line share div.key-create, which carries the 16px below them,
+// so the line sits 4px under its field (Spacing xs) and never touches the next block.
+.key-create {
+  margin-bottom: 16px;
+}
+
+.key-create-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+// Bulk toolbar: its own right-aligned row above the table (UI-K11). It holds one button,
+// so it needs no gap; the glyph/text spacing is the label's own margin.
+.key-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.key-toolbar__text {
+  margin-left: 4px;
+}
+
+// Name feedback under the Generate form and the rename field (UI-K09). #FF8A8A measures
+// 4.86:1 on the page and 6.46:1 on the modal; the line takes no space when it is empty.
+.key-name-feedback {
+  margin: 4px 0 0;
+  color: #FF8A8A;
+  font-size: .875rem;
+  font-weight: 400;
+}
+
+.key-name-feedback:empty {
+  display: none;
+}
+
+// Rename help line in body colour, not form-text's muted grey (UI-K09), at the Label
+// weight 400 like the feedback line above it (the body is 300).
+.key-name-help {
+  margin: 4px 0 0;
+  color: inherit;
+  font-size: .875rem;
+  font-weight: 400;
+}
+
+// Created-key modal: the key text sits 8px above the Copy key button (4px grid; was mb-2,
+// 7px at the 14px root size).
+.key-result-text {
+  margin-bottom: 8px;
+}

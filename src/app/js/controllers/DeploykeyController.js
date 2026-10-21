@@ -13,7 +13,6 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
 
     Thinx.deploykeyList()
     .done( function( data ) {
-      console.log( "+++ updateDeploykeys " );
       $scope.$emit( "updateDeploykeys", data );
     } )
     .fail( error => $scope.$emit( "xhrFailed", error ) );
@@ -24,45 +23,118 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
 
   $scope.searchText = "";
 
+  // Deploy key names (v1.18 Phase 48, D-09, UI-C18, 35 IN-03/IN-04). The sentences mirror
+  // vue/src/utils/keyNames.js word for word (src/test/deploykey.cjs D10 compares them); the
+  // server (RSAKey.validateKeyName) stays the authority, this check only saves a round trip.
+  var KEY_NAME_MAX = 120;
+  var KEY_NAME_MESSAGES = {
+    empty: "Enter a name for the key.",
+    too_long: "The name is longer than 120 characters.",
+    control_chars: "The name contains a control character, such as a tab or a line break.",
+    line_separator: "The name contains a hidden line or paragraph separator.",
+    bidi: "The name contains a hidden direction-override character.",
+    invisible: "The name contains an invisible character, such as a zero-width space.",
+    reserved: "This name is reserved for the key's default label. Choose a different name."
+  };
+  var KEY_NAME_FALLBACK = "This name is not allowed. Choose a different name.";
+  var CREATE_FAILED = "Could not generate the deploy key. Try again.";
+  // Phase 40 D-03: OpenBao unavailable or key generation switched off (503). The fixed
+  // sentence only; the code and any OpenBao detail are never shown.
+  var KEY_SERVICE_UNAVAILABLE = "Deploy keys can't be created right now, try again later.";
+
+  // The reason the trimmed name is refused before sending, or null.
+  // Code units are compared as numbers on purpose: a regular expression with a
+  // control-character class trips Codacy no-control-regex (quick 261012-r9z).
+  function keyNameProblem( name ) {
+    for ( var i = 0; i < name.length; i++ ) {
+      var c = name.charCodeAt( i );
+      if ( c < 0x20 || c === 0x7F ) {
+        return "control_chars";
+      }
+    }
+    if ( name.length > KEY_NAME_MAX ) {
+      return "too_long";
+    }
+    return null;
+  }
+
+  // The fixed sentence for a refusal reason; never the reason code itself.
+  function keyNameSentence( reason ) {
+    if ( typeof reason === "string" && Object.prototype.hasOwnProperty.call( KEY_NAME_MESSAGES, reason ) ) {
+      return KEY_NAME_MESSAGES[ reason ];
+    }
+    return KEY_NAME_FALLBACK;
+  }
+
+  // One fixed sentence, written as text (toastr renders HTML, so no reply field goes in).
+  function showCreateError( sentence ) {
+    $( ".msg-warning" ).text( sentence );
+    $( ".msg-warning" ).show();
+    toastr.error( sentence, "<ENV::loginPageTitle>", { timeOut: 5000 } );
+  }
+
   $scope.createDeploykey = function() {
 
     console.log( "--creating deploy key--" );
 
-    Thinx.createDeploykey()
+    if ($scope.creatingDeploykey || !$scope.deploykeyName || !$scope.deploykeyName.trim()) return;
+    var name = $scope.deploykeyName.trim();
+    var problem = keyNameProblem( name );
+    if ( problem !== null ) {
+      showCreateError( keyNameSentence( problem ) );
+      return;
+    }
+    $scope.creatingDeploykey = true;
+    Thinx.createDeploykey( name )
     .done( function( response ) {
+      // jQuery does not wrap .done callbacks: a throw here would skip .always, so the
+      // reset lives in finally as well (35 IN-03).
+      try {
+        if ( response && response.success ) {
+          var key = response.response || response.status;
+          if ( !key || typeof key !== "object" || !key.pubkey ) {
+            showCreateError( CREATE_FAILED );
+          } else {
+            toastr.success( "Key created.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
 
-      response = JSON.parse( response );
+            $scope.deploykeyCreated = key.date || key.name;
+            $scope.deploykeyValue = key.pubkey;
 
-      if ( typeof( response ) !== "undefined" ) {
-        if ( response.success ) {
-          console.log( response );
-          toastr.success( "Key created.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
-
-          $scope.deploykeyCreated = response.status.name;
-          $scope.deploykeyValue = response.status.pubkey;
-
-          Thinx.deploykeyList()
-          .done( function( data ) {
-            console.log( "+++ updateDeploykeys " );
-            $scope.$emit( "updateDeploykeys", data );
-          } )
-          .fail( error => $scope.$emit( "xhrFailed", error ) );
-
+            Thinx.deploykeyList()
+            .done( function( data ) {
+              $scope.$emit( "updateDeploykeys", data );
+            } )
+            .fail( error => $scope.$emit( "xhrFailed", error ) );
+          }
+        } else if ( response && response.response === "invalid_key_name" ) {
+          showCreateError( keyNameSentence( response.reason ) );
+        } else if ( response && response.response === "key_service_unavailable" ) {
+          showCreateError( KEY_SERVICE_UNAVAILABLE );
         } else {
-          console.log( response.status );
-          toastr.error( "Error.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
+          showCreateError( CREATE_FAILED );
         }
-      } else {
-        console.log( "error" );
-        console.log( response );
+      } catch ( e ) {
+        showCreateError( CREATE_FAILED );
+      } finally {
+        $scope.creatingDeploykey = false;
+        $scope.$applyAsync();
       }
     } )
-    .fail( function( error ) {
-      $( ".msg-warning" ).text( error );
-      $( ".msg-warning" ).show();
-      $scope.$emit( "xhrFailed", error );
-      toastr.error( "Error.", "<ENV::loginPageTitle>", { timeOut: 5000 } );
-    } );
+    .fail( function( jqXHR ) {
+      var body = jqXHR && jqXHR.responseJSON;
+      if ( body && body.response === "invalid_key_name" ) {
+        showCreateError( keyNameSentence( body.reason ) );
+      } else if ( body && body.response === "key_service_unavailable" ) {
+        showCreateError( KEY_SERVICE_UNAVAILABLE );
+      } else {
+        showCreateError( CREATE_FAILED );
+      }
+      $scope.$emit( "xhrFailed", jqXHR );
+    } )
+    .always(function() {
+      $scope.creatingDeploykey = false;
+      $scope.$applyAsync();
+    });
 
   };
 
@@ -80,7 +152,6 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
 
         Thinx.deploykeyList()
         .done( function( data ) {
-          console.log( "+++ updateDeploykeys " );
           $scope.$emit( "updateDeploykeys", data );
         } )
         .fail( error => $scope.$emit( "xhrFailed", error ) );
@@ -116,6 +187,8 @@ angular.module( "RTM" ).controller( "DeploykeyController", [ "$rootScope", "$sco
   };
 
   $scope.resetModal = function() {
+    $scope.deploykeyName = "";
+    $scope.creatingDeploykey = false;
     $scope.deploykeyCreated = null;
     $scope.deploykeyValue = null;
     $scope.selectedItems = [];
