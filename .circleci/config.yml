@@ -99,7 +99,7 @@ jobs:
           command: |
             export NODE_OPTIONS=--openssl-legacy-provider
             cd vue
-            yarn
+            yarn install --frozen-lockfile
             # Node unit suites, no browser (35 WR-07). LC_ALL=C pins
             # toLocaleString, which log-paging-store.cjs compares against.
             LC_ALL=C yarn test:unit
@@ -180,8 +180,8 @@ workflows:
       #         only:
       #           - thinx-staging
 
-      # No context (48-REVIEW WR-03): this job runs yarn with no lockfile, so unpinned
-      # dependencies' lifecycle scripts run here, and no step needs a credential. The
+      # No context (48-REVIEW WR-03): third-party lifecycle scripts run here (pinned by
+      # vue/yarn.lock, but still third-party code), and no step needs a credential. The
       # Cypress suites stub the API; the parent repo's test-vue-console runs them the same way.
       - test_vue:
           name: Test Vue console

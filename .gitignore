@@ -10,6 +10,7 @@ src/cypress/screenshots
 src/cypress/videos
 src/cypress/.env.test
 yarn.lock
+!vue/yarn.lock
 .dccache
 settings.json
 # Nightshift plan artifacts (keep out of version control)

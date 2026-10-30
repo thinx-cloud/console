@@ -10,7 +10,7 @@ const noop = require('gulp-noop');
 const sourcemaps = require('gulp-sourcemaps');
 const debug = require('gulp-debug');
 
-const injectEnvs = require('gulp-inject-envs');
+const replaceTask = require('gulp-replace-task');
 const removeCode = require('gulp-remove-code');
 const merge = require('merge-stream');
 const concat = require('gulp-concat');
@@ -25,6 +25,27 @@ let versionCode = typeof(process.env.COMMIT_ID) == 'undefined' ? process.env.VER
 let isProduction = typeof(process.env.ENVIRONMENT) == 'undefined' || process.env.ENVIRONMENT !== 'production' ? false : true;
 let isEnterprise = typeof(process.env.ENTERPRISE) == 'undefined' || process.env.ENTERPRISE !== 'true' ? false : true;
 let makeBundle;
+
+// Replaces <ENV::NAME> placeholders with env[NAME]. Inlined from gulp-inject-envs@1.2.0
+// (MIT, Tiaan du Plessis): that package's 1.2.1 and 1.2.2 releases were malware
+// (GHSA-f74h-jm63-v9h3) and every version is now flagged, so it is no longer a dependency.
+function injectEnvs(envVars) {
+  return replaceTask({
+    patterns: [
+      {
+        match: /<ENV::(.*?)>/g,
+        replacement: function (_, current) {
+          const val = envVars[current];
+          if (val === undefined || val === null) {
+            console.warn(`Environment not provided for ${current}`);
+          } else {
+            return val;
+          }
+        }
+      }
+    ]
+  });
+}
 
 function parseUrl(input, fallbackProtocol) {
   if (typeof input !== "string" || input.length === 0) {
