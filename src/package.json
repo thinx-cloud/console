@@ -35,15 +35,15 @@
   "license": "ISC",
   "dependencies": {
     "negotiator": "0.6.3",
-    "qs": "6.16.0"
+    "qs": "6.17.1"
   },
   "overrides": {
     "negotiator": "0.6.3",
-    "lodash": "4.17.21",
+    "lodash": "4.18.1",
     "lodash.template": "4.5.0",
-    "postcss": "8.2.13",
+    "postcss": "8.5.32",
     "uuid": "8.3.2",
-    "minimatch": "3.0.4",
+    "minimatch": "3.1.5",
     "glob-parent": "5.1.2",
     "graceful-fs": "4.2.10"
   },
@@ -59,14 +59,13 @@
     "gulp": "^3.9.1",
     "gulp-clean-css": "^4.3.0",
     "gulp-concat": "^2.6.1",
-    "gulp-connect": "^5.7.0",
     "gulp-debug": "3.2.0",
     "gulp-ignore": "^3.0.0",
-    "gulp-inject-envs": "^1.1.1",
     "gulp-noop": "^1.0.1",
     "gulp-prettify": "^0.5.0",
     "gulp-remove-code": "^3.0.4",
     "gulp-rename": "^2.0.0",
+    "gulp-replace-task": "^2.0.1",
     "gulp-rtlcss": "^1.4.2",
     "gulp-sass": "^5.1.0",
     "gulp-sourcemaps": "^2.6.5",
@@ -75,7 +74,7 @@
     "http-server": "^14.1.0",
     "merge-stream": "^2.0.0",
     "nyc": "^15.1.0",
-    "start-server-and-test": "^1.14.0"
+    "start-server-and-test": "^3.0.13"
   },
   "nyc": {
     "check-coverage": true,
