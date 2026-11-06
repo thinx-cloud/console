@@ -153,8 +153,10 @@ describe('Device Detail feature', function() {
 
     // Legacy parity: the Auto Update switch from device.html. udid-z has no auto_update, so it is off.
     it('Should save Auto Update from the switch', function() {
-      cy.get('[data-cy=auto-update-switch] input[type=checkbox]').should('not.be.checked');
-      cy.get('[data-cy=auto-update-switch] .custom-control-label').click();
+      // bootstrap-vue puts data-cy on the checkbox input itself.
+      cy.get('input[data-cy=auto-update-switch]').should('not.be.checked');
+      // The switch's own label, not the form group's (both are for=device-auto-update).
+      cy.get('input[data-cy=auto-update-switch]').next('.custom-control-label').click();
       cy.wait('@updateDevice').its('request.body')
         .should('deep.equal', { changes: { udid: 'udid-z', auto_update: true } });
       cy.get('[data-cy=device-detail-content] .alert-success').should('contain', 'Auto Update enabled.');
@@ -172,8 +174,7 @@ describe('Device Detail feature', function() {
       cy.wait('@updateDevice').its('request.body')
         .should('deep.equal', { changes: { udid: 'udid-z', tags: ['lab'] } });
 
-      cy.get('[data-cy=timezone-input]').clear().type('UTC');
-      cy.get('[data-cy=timezone-save]').click();
+      cy.get('[data-cy=timezone-select]').select('UTC');
       cy.wait('@updateDevice').its('request.body')
         .should('deep.equal', { changes: { udid: 'udid-z', timezone_utc: 'UTC', timezone_abbr: 'UTC' } });
     });
