@@ -1362,6 +1362,7 @@ checkAsync('K3 OAuthReturn complete() with a valid sign-in reply still calls set
 });
 
 const deviceDetailPage = lazy(() => loadSfc('pages/Devices/DeviceDetail.vue', {
+  ...require('./device-detail-deps.cjs')(),
   BuildLogDialog: { name: 'BuildLogDialog', render: (h) => h('div') },
   moment: () => ({ format: () => '', fromNow: () => '' }),
   parseEnvironmentJSON: () => ({ ok: true }),
@@ -1382,6 +1383,8 @@ checkAsync('K4 DeviceDetail loadDevice() resolves and shows the generic banner w
     fetchTransformers: async () => [],
     fetchRepositories: () => storeRun('store/repositories.js', 'fetchItems', { fetchImpl: NETWORK_FAIL })
       .then((r) => { if (r.outcome.error) throw r.outcome.error; return r.outcome.value; }),
+    fetchApikeys: async () => [],
+    fetchChannels: async () => [],
     getByUdid: () => (id) => (id === udid ? device : null),
     getBuildItems: () => [],
   });

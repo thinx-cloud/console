@@ -65,7 +65,7 @@ assert.equal(preferences.notifForm.important,false);
 assert.equal(preferences.notifForm.info,false);
 const transformers = load('store/transformers.js');
 const keys = load('store/rsakeys.js');
-const device = load('pages/Devices/DeviceDetail.vue');
+const device = load('pages/Devices/DeviceDetail.vue', require('./device-detail-deps.cjs')());
 const dialog = load('components/BuildLogDialog/BuildLogDialog.vue',{buildLogText:text,buildLogSearch:logModule.exports.buildLogSearch,IconButton:{}});
 // Phase 45: the page imports the client key-name check; load the real module.
 const keyNamesModule = {exports:{}};
@@ -131,7 +131,8 @@ async function renderDeviceDetail(builds, dev, transformerItems = [], options = 
   const compiled = compiler.compileToFunctions(source);
   const opened = [];
   const noop = async () => {};
-  const overrides = { openBuildLog: b => opened.push(b), fetchItems: noop, loadDevices: noop, fetchBuildLog: noop, fetchTransformers: noop, fetchRepositories: noop,
+  const overrides = { openBuildLog: b => opened.push(b), fetchItems: noop, loadDevices: noop, fetchBuildLog: noop, fetchTransformers: noop, fetchRepositories: noop, fetchApikeys: noop, fetchChannels: noop,
+    getApikeys: () => [], getChannels: () => [], iconSrc: () => 'sym:icon',
     getByUdid: () => udid => (udid === dev.udid ? dev : null), getBuildItems: () => builds, getTransformers: () => transformerItems, getRepositories: () => [] };
   renderError = null;
   const warnings = [], prevWarn = Vue.config.warnHandler;

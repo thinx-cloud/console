@@ -910,6 +910,7 @@ check('R2 History row click: an inner button target (keyboard activation of Expa
 // ================================================================ T: Device Detail Create & Assign (35 IN-08)
 
 const deviceDetailPage = lazy(() => loadSfc('pages/Devices/DeviceDetail.vue', {
+  ...require('./device-detail-deps.cjs')(),
   BuildLogDialog: { name: 'BuildLogDialog', render: (h) => h('div') },
   moment: () => ({ fromNow: () => '' }),
   parseEnvironmentJSON: () => ({ ok: true }),
@@ -967,9 +968,11 @@ const F_DEVICE = { udid: 'udid-foxtrot', alias: 'foxtrot-01', source: 'src-foxtr
 function detailPage(state = {}) {
   const r = renderPage(deviceDetailPage().def, Object.assign({
     device: JSON.parse(JSON.stringify(F_DEVICE)),
-    editForm: { alias: F_DEVICE.alias, description: '', transformers: [] },
+    editForm: Object.assign(deviceDetailPage().def.data.call({}).editForm, { alias: F_DEVICE.alias, description: '', transformers: [] }),
     getTransformers: () => [],
     getRepositories: () => [],
+    getApikeys: () => [],
+    getChannels: () => [],
   }, state));
   assert.equal(r.error, null, 'DeviceDetail renders without error');
   assert.deepEqual(r.warnings, [], 'DeviceDetail renders without Vue warnings');

@@ -99,6 +99,19 @@ export default {
         const result = await this.$api.$put('/device', JSON.stringify({ changes: { udid, ...changes } }));
         return result;
       },
+      // Legacy parity (device.html Source / Mesh Channels): the v2 routes in lib/router.device.js.
+      async attachSource(_, { udid, source_id }) {
+        return this.$api.$put('/source/attach', JSON.stringify({ udid, source_id }));
+      },
+      async detachSource(_, { udid }) {
+        return this.$api.$put('/source/detach', JSON.stringify({ udid }));
+      },
+      async attachMesh(_, { udid, mesh_id }) {
+        return this.$api.$put('/mesh/attach', JSON.stringify({ udid, mesh_id }));
+      },
+      async detachMesh(_, { udid, mesh_id }) {
+        return this.$api.$put('/mesh/detach', JSON.stringify({ udid, mesh_id }));
+      },
     },
     getters: {
         getItems(state) {

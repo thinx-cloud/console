@@ -5,3 +5,38 @@
 .device-detail-content {
   max-width: 1140px;
 }
+
+// Device Settings icon picker (Legacy parity: device.html iot-iconset). The medium icons on a
+// light tile, as on the device list; the stored icon is outlined.
+.device-icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.device-icon-choice {
+  width: 44px;
+  height: 44px;
+  padding: 2px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background-color: #F9F9F9;
+  cursor: pointer;
+
+  img {
+    width: 36px;
+    height: 36px;
+  }
+
+  &.is-selected,
+  &:focus-visible {
+    border-color: $primary;
+  }
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.6;
+  }
+}

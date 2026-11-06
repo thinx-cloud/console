@@ -151,6 +151,38 @@ describe('Device Detail feature', function() {
       cy.get('.page-title').should('exist');
     });
 
+    // Legacy parity: the Auto Update switch from device.html. udid-z has no auto_update, so it is off.
+    it('Should save Auto Update from the switch', function() {
+      cy.get('[data-cy=auto-update-switch] input[type=checkbox]').should('not.be.checked');
+      cy.get('[data-cy=auto-update-switch] .custom-control-label').click();
+      cy.wait('@updateDevice').its('request.body')
+        .should('deep.equal', { changes: { udid: 'udid-z', auto_update: true } });
+      cy.get('[data-cy=device-detail-content] .alert-success').should('contain', 'Auto Update enabled.');
+    });
+
+    // Legacy parity: category, tags and timezone from device.html.
+    it('Should save the category, tags and timezone settings', function() {
+      cy.get('[data-cy=card-device-settings] [data-cy=category-select]').should('have.value', 'green').select('blue');
+      cy.wait('@updateDevice').its('request.body')
+        .should('deep.equal', { changes: { udid: 'udid-z', category: 'blue' } });
+
+      cy.get('[data-cy=tags-save]').should('be.disabled');
+      cy.get('#device-tags').type('lab{enter}');
+      cy.get('[data-cy=tags-save]').should('be.enabled').click();
+      cy.wait('@updateDevice').its('request.body')
+        .should('deep.equal', { changes: { udid: 'udid-z', tags: ['lab'] } });
+
+      cy.get('[data-cy=timezone-input]').clear().type('UTC');
+      cy.get('[data-cy=timezone-save]').click();
+      cy.wait('@updateDevice').its('request.body')
+        .should('deep.equal', { changes: { udid: 'udid-z', timezone_utc: 'UTC', timezone_abbr: 'UTC' } });
+    });
+
+    it('Should show the MQTT channel and the missing API key warning', function() {
+      cy.get('[data-cy=mqtt-channel]').should('contain', '/udid-z');
+      cy.get('[data-cy=apikey-missing]').should('contain', 'No API Key assigned');
+    });
+
   });
 
 });
