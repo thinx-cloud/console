@@ -159,16 +159,10 @@
               </b-input-group>
             </b-form-group>
 
+            <!-- A select, not a text input with a datalist: typing into a datalist-backed input
+                 crashes the Electron renderer Cypress runs in (SIGSEGV, CI 2026-11-06). -->
             <b-form-group label="Timezone" label-for="device-timezone" :description="deviceTimeText">
-              <b-input-group>
-                <b-form-input id="device-timezone" v-model="editForm.timezone_utc" list="device-timezone-list" placeholder="e.g. Europe/Prague" autocomplete="off" data-cy="timezone-input" />
-                <b-input-group-append>
-                  <b-button variant="primary" :disabled="!timezoneDirty || settingsSaving" data-cy="timezone-save" @click="saveTimezone">Save</b-button>
-                </b-input-group-append>
-              </b-input-group>
-              <datalist id="device-timezone-list">
-                <option v-for="zone in timezoneOptions" :key="zone" :value="zone" />
-              </datalist>
+              <b-form-select id="device-timezone" v-model="editForm.timezone_utc" :options="timezoneSelectOptions" :disabled="settingsSaving" data-cy="timezone-select" @change="saveTimezone" />
             </b-form-group>
 
             <b-form-group label="Mesh Channels" class="mb-0">
@@ -445,8 +439,13 @@ export default {
     tagsDirty() {
       return !!this.device && !sameSet(cleanTags(this.editForm.tags), cleanTags(this.device.tags));
     },
-    timezoneDirty() {
-      return !!this.device && (this.editForm.timezone_utc || '').trim() !== (this.device.timezone_utc || '');
+    // IANA zones the browser knows; a stored zone outside that list still gets an option.
+    timezoneSelectOptions() {
+      const zones = [...this.timezoneOptions];
+      const current = this.device && this.device.timezone_utc;
+      if (current && !zones.includes(current)) zones.unshift(current);
+      if (!zones.includes('UTC')) zones.push('UTC');
+      return [{ value: '', text: '— Choose a timezone —', disabled: true }, ...zones.map(z => ({ value: z, text: z }))];
     },
     deviceTimeText() {
       const zone = this.device && this.device.timezone_utc;
@@ -550,7 +549,6 @@ export default {
       const keepDescription = !!before && (this.editForm.description || '') !== (before.description || '');
       const keepTransformers = !!before && this.transformersDirty;
       const keepTags = !!before && this.tagsDirty;
-      const keepTimezone = !!before && this.timezoneDirty;
       if (results[0].status === 'rejected' && before) this.device = before;
       else this.device = this.getByUdid()(udid) || null;
       if (this.device) {
@@ -561,10 +559,9 @@ export default {
         // is on: the API's auto-update checks are truthy/=== true, and a missing field is off.
         this.editForm.auto_update = this.device.auto_update === true;
         // Selects, the icon and the mesh ticks save on change, so they always mirror the device;
-        // tags and the timezone have a Save button and keep an unsaved draft like alias does.
+        // tags have a Save button and keep an unsaved draft like alias does.
         this.syncSettings();
         if (!keepTags) this.editForm.tags = cleanTags(this.device.tags);
-        if (!keepTimezone) this.editForm.timezone_utc = this.device.timezone_utc || '';
         const allBuilds = this.getBuildItems() || [];
         this.buildHistory = allBuilds.filter(b => b.udid === udid);
       }
@@ -615,6 +612,7 @@ export default {
       this.editForm.source = this.device.source || null;
       this.editForm.icon = iconNumber(this.device.icon) || 1;
       this.editForm.category = normalizeCategory(this.device.category);
+      this.editForm.timezone_utc = this.device.timezone_utc || '';
       this.editForm.mesh_ids = Array.isArray(this.device.mesh_ids) ? [...this.device.mesh_ids] : [];
     },
     // One PUT /device for a Device Settings field (API key, icon, category, tags, timezone).
@@ -650,8 +648,10 @@ export default {
     },
     async saveTimezone() {
       const zone = (this.editForm.timezone_utc || '').trim();
+      if (zone === (this.device.timezone_utc || '')) return;
       const abbr = timezoneAbbr(zone);
       if (!zone || abbr === null) {
+        this.syncSettings();
         this.error = 'Choose a timezone from the list, for example Europe/Prague.';
         return;
       }

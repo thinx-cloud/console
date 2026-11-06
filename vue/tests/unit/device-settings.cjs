@@ -99,11 +99,13 @@ check('template: Auto Update switch is gated on buildSupported and saves on chan
 
 check('template: Device Settings card has API key, source, icon, category, tags, timezone and mesh controls', () => {
   const card = page.template.slice(page.template.indexOf('data-cy="card-device-settings"'));
-  for (const cy of ['apikey-select', 'source-select', 'device-icon-toggle', 'category-select', 'tags-input', 'tags-save', 'timezone-input', 'timezone-save', 'manage-channels']) {
+  for (const cy of ['apikey-select', 'source-select', 'device-icon-toggle', 'category-select', 'tags-input', 'tags-save', 'timezone-select', 'manage-channels']) {
     assert.ok(card.includes('data-cy="' + cy + '"'), cy);
   }
   assert.ok(page.template.includes('data-cy="mqtt-channel"'), 'mqtt channel');
   assert.ok(page.template.includes('data-cy="transformer-error"'), 'transformer error');
+  // Typing into an input with a <datalist> crashes Cypress's Electron renderer (CI 2026-11-06).
+  assert.ok(!/<datalist\b/.test(page.template), 'no datalist');
 });
 
 // ---------------------------------------------------------------- computed
@@ -130,12 +132,19 @@ check('meshOptions lists channels and keeps attached ids with no channel', () =>
   assert.deepEqual(vm.meshOptions, [{ value: 'm1', text: 'One' }, { value: 'm2', text: 'm2' }, { value: 'gone', text: '(missing) gone' }]);
 });
 
-check('tagsDirty / timezoneDirty compare the drafts with the stored device', () => {
-  const vm = vmFor({ udid: 'u', tags: ['a', 'b'], timezone_utc: 'Europe/Prague' });
-  vm.editForm.tags = ['b', 'a']; vm.editForm.timezone_utc = 'Europe/Prague';
-  assert.equal(vm.tagsDirty, false); assert.equal(vm.timezoneDirty, false);
-  vm.editForm.tags = ['a']; vm.editForm.timezone_utc = 'UTC';
-  assert.equal(vm.tagsDirty, true); assert.equal(vm.timezoneDirty, true);
+check('tagsDirty compares the draft with the stored tags as sets', () => {
+  const vm = vmFor({ udid: 'u', tags: ['a', 'b'] });
+  vm.editForm.tags = ['b', 'a'];
+  assert.equal(vm.tagsDirty, false);
+  vm.editForm.tags = ['a'];
+  assert.equal(vm.tagsDirty, true);
+});
+
+check('timezoneSelectOptions: a disabled placeholder, the zones, a stored zone outside the list, and UTC', () => {
+  const vm = vmFor({ udid: 'u', timezone_utc: 'Legacy/Zone' }, { timezoneOptions: ['Europe/Prague'] });
+  const values = vm.timezoneSelectOptions.map(o => o.value);
+  assert.deepEqual(values, ['', 'Legacy/Zone', 'Europe/Prague', 'UTC']);
+  assert.equal(vm.timezoneSelectOptions[0].disabled, true);
 });
 
 // ---------------------------------------------------------------- methods
@@ -185,9 +194,13 @@ checkAsync('saveTimezone refuses an unknown zone and sends timezone_utc with its
   await vm.saveTimezone();
   assert.equal(sent.length, 0);
   assert.match(vm.error, /Choose a timezone/);
-  vm.editForm.timezone_utc = ' UTC ';
+  assert.equal(vm.editForm.timezone_utc, '', 'select back to the stored (none)');
+  vm.editForm.timezone_utc = 'UTC';
   await vm.saveTimezone();
   assert.deepEqual(sent, [{ udid: 'u', changes: { timezone_utc: 'UTC', timezone_abbr: 'UTC' } }]);
+  vm.editForm.timezone_utc = 'UTC';
+  await vm.saveTimezone();
+  assert.equal(sent.length, 1, 'the stored zone again sends nothing');
 });
 
 checkAsync('saveTags sends the cleaned list', async () => {
