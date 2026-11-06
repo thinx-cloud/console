@@ -38,12 +38,22 @@
               <tr><td class="text-muted">Status</td><td>{{ device.status }}</td></tr>
               <tr><td class="text-muted">Last seen</td><td>{{ device.lastupdate | fromNow }}</td></tr>
               <tr><td class="text-muted">Commit</td><td><code>{{ device.commit }}</code></td></tr>
+              <tr>
+                <td class="text-muted">MQTT Channel</td>
+                <td>
+                  <code data-cy="mqtt-channel">{{ mqttChannel }}</code>
+                  <b-button size="sm" variant="link" class="p-0 ml-2" data-cy="mqtt-channel-copy" aria-label="Copy MQTT channel" @click="copyText(mqttChannel)"><i class="fa fa-clipboard" aria-hidden="true"></i></b-button>
+                </td>
+              </tr>
             </table>
+            <!-- Legacy shows the device's transformer error above its status. -->
+            <b-alert v-if="device.transformer_error" variant="danger" show class="mt-2 mb-0" data-cy="transformer-error">{{ device.transformer_error }}</b-alert>
           </b-card>
 
           <b-card title="Network" class="mb-3">
             <table class="table table-sm table-borderless mb-0">
               <tr><td class="text-muted" style="width:140px">RSSI</td><td>{{ device.rssi }}</td></tr>
+              <tr v-if="device.snr !== undefined && device.snr !== null"><td class="text-muted">SNR</td><td data-cy="device-snr">{{ device.snr }}</td></tr>
               <tr><td class="text-muted">Station</td><td>{{ device.station }}</td></tr>
               <tr><td class="text-muted">Lat/Lon</td><td>{{ device.lat }}, {{ device.lon }}</td></tr>
             </table>
@@ -68,6 +78,110 @@
                   <b-button variant="primary" @click="saveField('description')">Save</b-button>
                 </b-input-group-append>
               </b-input-group>
+            </b-form-group>
+            <!-- Legacy parity (device.html "Auto Update"): shown only for platforms THiNX can build,
+                 saved on toggle. The API reads it on check-in and on a push to the linked repository. -->
+            <b-form-group
+              v-if="buildSupported"
+              label="Auto Update"
+              label-for="device-auto-update"
+              description="Build and deliver new firmware automatically when the linked repository changes."
+              class="mb-0"
+              data-cy="auto-update-group">
+              <b-form-checkbox
+                id="device-auto-update"
+                v-model="editForm.auto_update"
+                switch
+                :disabled="autoUpdateSaving"
+                data-cy="auto-update-switch"
+                @change="saveAutoUpdate">
+                {{ editForm.auto_update ? 'On' : 'Off' }}
+              </b-form-checkbox>
+            </b-form-group>
+          </b-card>
+
+          <!-- Legacy parity (services/console/src/app/views/device.html): the device settings the Legacy
+               Device view edits. Selects and toggles save on change, text fields have a Save button. -->
+          <b-card title="Device Settings" class="mb-3" data-cy="card-device-settings">
+            <b-form-group label="API Key" label-for="device-apikey">
+              <b-input-group>
+                <b-form-select id="device-apikey" v-model="editForm.keyhash" :options="apikeyOptions" :disabled="settingsSaving" data-cy="apikey-select" @change="saveSetting({ keyhash: $event }, 'API key saved.')" />
+                <b-input-group-append>
+                  <b-button variant="warning" to="/app/apikeys" data-cy="manage-apikeys">Manage API Keys</b-button>
+                </b-input-group-append>
+              </b-input-group>
+              <b-alert v-if="!editForm.keyhash" variant="warning" show class="mt-2 mb-0" data-cy="apikey-missing">
+                <strong><i class="fa fa-warning" aria-hidden="true"></i> No API Key assigned.</strong>
+                We recommend one API Key per device to track key usage and misuse. A key is required for build.
+                <span v-if="isSigfox">On Sigfox, change the key in the <a href="https://backend.sigfox.com" target="_blank" rel="noopener noreferrer">Sigfox Backend</a> callback configuration manually.</span>
+              </b-alert>
+            </b-form-group>
+
+            <b-form-group label="Source" label-for="device-source" :description="buildSupported ? null : 'This platform runs vendor firmware; THiNX does not build it.'">
+              <b-input-group>
+                <b-form-select id="device-source" v-model="editForm.source" :options="sourceOptions" :disabled="!buildSupported || sourceSaving" data-cy="source-select" @change="changeSource" />
+                <b-input-group-append>
+                  <b-button variant="warning" to="/app/repositories" data-cy="manage-repositories">Manage Repositories</b-button>
+                </b-input-group-append>
+              </b-input-group>
+            </b-form-group>
+
+            <b-form-group label="Icon">
+              <div class="d-flex align-items-center">
+                <span class="device-icon mr-2" :class="'platform-' + platformKey"><img class="device-icon-symbol" :src="iconSrc(editForm.icon)" alt="Current device icon" data-cy="device-icon-current"></span>
+                <b-button size="sm" variant="secondary" :aria-expanded="showIcons ? 'true' : 'false'" data-cy="device-icon-toggle" @click="showIcons = !showIcons">{{ showIcons ? 'Close' : 'Change icon' }}</b-button>
+              </div>
+              <div v-if="showIcons" class="device-icon-picker mt-2" role="listbox" aria-label="Device icons" data-cy="device-icon-picker">
+                <button
+                  v-for="n in iconNumbers"
+                  :key="n"
+                  type="button"
+                  class="device-icon-choice"
+                  :class="{ 'is-selected': n === editForm.icon }"
+                  role="option"
+                  :aria-selected="n === editForm.icon ? 'true' : 'false'"
+                  :aria-label="'Icon ' + n"
+                  :disabled="settingsSaving"
+                  @click="pickIcon(n)"><img :src="iconSrc(n)" alt=""></button>
+              </div>
+            </b-form-group>
+
+            <b-form-group label="Category" label-for="device-category">
+              <b-form-select id="device-category" v-model="editForm.category" :options="categoryOptions" :disabled="settingsSaving" data-cy="category-select" @change="saveSetting({ category: $event }, 'Category saved.')" />
+            </b-form-group>
+
+            <b-form-group label="Tags" label-for="device-tags" description="Type a tag and press Enter.">
+              <b-input-group>
+                <b-form-tags input-id="device-tags" v-model="editForm.tags" separator="," remove-on-delete placeholder="Add tag…" :disabled="settingsSaving" data-cy="tags-input" />
+                <b-input-group-append>
+                  <b-button variant="primary" :disabled="!tagsDirty || settingsSaving" data-cy="tags-save" @click="saveTags">Save</b-button>
+                </b-input-group-append>
+              </b-input-group>
+            </b-form-group>
+
+            <b-form-group label="Timezone" label-for="device-timezone" :description="deviceTimeText">
+              <b-input-group>
+                <b-form-input id="device-timezone" v-model="editForm.timezone_utc" list="device-timezone-list" placeholder="e.g. Europe/Prague" autocomplete="off" data-cy="timezone-input" />
+                <b-input-group-append>
+                  <b-button variant="primary" :disabled="!timezoneDirty || settingsSaving" data-cy="timezone-save" @click="saveTimezone">Save</b-button>
+                </b-input-group-append>
+              </b-input-group>
+              <datalist id="device-timezone-list">
+                <option v-for="zone in timezoneOptions" :key="zone" :value="zone" />
+              </datalist>
+            </b-form-group>
+
+            <b-form-group label="Mesh Channels" class="mb-0">
+              <b-form-checkbox-group
+                v-if="meshOptions.length"
+                v-model="editForm.mesh_ids"
+                :options="meshOptions"
+                :disabled="meshSaving"
+                stacked
+                data-cy="mesh-checkboxes"
+                @change="changeMesh" />
+              <p v-else class="mb-1" data-cy="mesh-empty">No channels yet.</p>
+              <b-button size="sm" variant="warning" class="mt-1" to="/app/channels" data-cy="manage-channels">Manage Channels</b-button>
             </b-form-group>
           </b-card>
 
@@ -212,6 +326,16 @@ import moment from 'moment';
 import { parseEnvironmentJSON } from '@/utils/envJson';
 import { buildStatusVariant, hasBuildLog } from '@/utils/buildLog';
 import { confirmLeave } from '@/utils/confirmLeave';
+import { platformInfo } from '@/utils/platforms';
+import { CATEGORIES, DEFAULT_CATEGORY, ICON_COUNT, iconNumber, iconFileNumber, normalizeCategory, timezoneNames, timezoneAbbr, timeInZone, cleanTags, sameSet } from '@/utils/deviceSettings';
+
+// The medium iot icons, as on the device list (Devices.vue DEVICE_SYMBOLS). Resolved on first
+// use, so the plain-node unit tests can load this file and pass their own resolver.
+let deviceSymbols = null;
+function deviceSymbol(raw) {
+  if (!deviceSymbols) deviceSymbols = require.context('@/assets/thinx/ioticons', false, /^\.\/b_medium_\d\d\.png$/);
+  return deviceSymbols('./b_medium_' + iconFileNumber(raw) + '.png');
+}
 
 export default {
   name: "DeviceDetail",
@@ -230,7 +354,22 @@ export default {
       message: null,
       // POL-01 D-17: set from the Build Firmware click until POST /build settles; not the build itself.
       buildPending: false,
-      editForm: { alias: '', description: '', transformers: [] },
+      editForm: {
+        alias: '', description: '', transformers: [], auto_update: false,
+        keyhash: null, source: null, icon: 1, category: DEFAULT_CATEGORY, tags: [], timezone_utc: '', mesh_ids: [],
+      },
+      // Single-shot flag for the Auto Update switch: one PUT per toggle.
+      autoUpdateSaving: false,
+      // Device Settings card (Legacy parity): one write at a time per kind.
+      settingsSaving: false,
+      sourceSaving: false,
+      meshSaving: false,
+      showIcons: false,
+      iconNumbers: Array.from({ length: ICON_COUNT }, (_, i) => i + 1),
+      timezoneOptions: timezoneNames(),
+      // Re-evaluated every minute so "It is … in the device's timezone" stays current.
+      now: new Date(),
+      clockTimer: null,
       transformerForm: { alias: '', body: 'var transformer = function(status, device) { return status; };' },
       transformerSaving: false,
       transformerError: null,
@@ -262,6 +401,58 @@ export default {
     },
   },
   computed: {
+    // Same gate as the Legacy Auto Update row and the device list's Build action.
+    buildSupported() {
+      return !!this.device && platformInfo(this.device.platform).build === true;
+    },
+    platformKey() {
+      return this.device ? platformInfo(this.device.platform).key : 'unknown';
+    },
+    isSigfox() {
+      return this.platformKey === 'sigfox';
+    },
+    // Legacy: '/' + owner + '/' + udid. The device list carries the owner id.
+    mqttChannel() {
+      if (!this.device) return '';
+      return '/' + (this.device.owner || '') + '/' + this.device.udid;
+    },
+    // Keys by alias, hash prefix to tell same-named keys apart. A keyhash with no key behind it
+    // (deleted key) still gets an option, so the select shows it instead of going blank.
+    apikeyOptions() {
+      const keys = (this.getApikeys() || []).filter(k => k && typeof k.hash === 'string');
+      const options = [{ value: null, text: '— No API key —' }, ...keys.map(k => ({ value: k.hash, text: (k.alias || 'Unnamed key') + ' (' + k.hash.slice(0, 6) + ')' }))];
+      const current = this.device && this.device.keyhash;
+      if (current && !keys.some(k => k.hash === current)) options.push({ value: current, text: '(missing key) ' + String(current).slice(0, 6) });
+      return options;
+    },
+    sourceOptions() {
+      const repos = (this.getRepositories() || []).filter(r => r && r.id);
+      const options = [{ value: null, text: '— No source —' }, ...repos.map(r => ({ value: r.id, text: (r.alias || r.id) + (r.url ? ' — ' + r.url : '') }))];
+      const current = this.device && this.device.source;
+      if (current && !repos.some(r => r.id === current)) options.push({ value: current, text: '(missing repository) ' + current });
+      return options;
+    },
+    categoryOptions() {
+      return CATEGORIES.map(c => ({ value: c, text: c }));
+    },
+    meshOptions() {
+      const channels = (this.getChannels() || []).filter(c => c && c.mesh_id);
+      const known = new Set(channels.map(c => c.mesh_id));
+      const attached = (this.device && Array.isArray(this.device.mesh_ids)) ? this.device.mesh_ids : [];
+      const missing = attached.filter(id => id && !known.has(id));
+      return [...channels.map(c => ({ value: c.mesh_id, text: c.alias || c.mesh_id })), ...missing.map(id => ({ value: id, text: '(missing) ' + id }))];
+    },
+    tagsDirty() {
+      return !!this.device && !sameSet(cleanTags(this.editForm.tags), cleanTags(this.device.tags));
+    },
+    timezoneDirty() {
+      return !!this.device && (this.editForm.timezone_utc || '').trim() !== (this.device.timezone_utc || '');
+    },
+    deviceTimeText() {
+      const zone = this.device && this.device.timezone_utc;
+      const time = zone ? timeInZone(zone, this.now) : null;
+      return time ? `It is ${time} in the device's timezone.` : 'No timezone set.';
+    },
     envError() {
       if (this.envLoadError) return this.envLoadError;
       const result = parseEnvironmentJSON(this.envDraft);
@@ -305,6 +496,10 @@ export default {
   },
   created() {
     this.loadDevice();
+    this.clockTimer = setInterval(() => { this.now = new Date(); }, 60000);
+  },
+  beforeDestroy() {
+    clearInterval(this.clockTimer);
   },
   // Every route leave (Manage Transformers, sidebar, breadcrumb, Back) asks first while the
   // assignment has unsaved ticks (37 IN-02, D-10). There is no page-unload prompt (D-12).
@@ -320,7 +515,7 @@ export default {
     buildStatusVariant,
     hasBuildLog,
     openBuildLog(build) { this.$refs.buildLogDialog.open(build); },
-    ...mapGetters({ getByUdid: 'devices/getByUdid', getBuildItems: 'buildlog/getItems', getTransformers: 'transformers/getItems', getRepositories: 'repositories/getItems' }),
+    ...mapGetters({ getByUdid: 'devices/getByUdid', getBuildItems: 'buildlog/getItems', getTransformers: 'transformers/getItems', getRepositories: 'repositories/getItems', getApikeys: 'apikeys/getItems', getChannels: 'channels/getItems' }),
     ...mapActions({
       loadDevices: 'devices/loadDevices',
       revokeDevices: 'devices/revokeDevices',
@@ -332,7 +527,14 @@ export default {
       fetchRepositories: 'repositories/fetchItems',
       transferDevices: 'devices/transferDevices',
       fetchDeviceDetail: 'devices/fetchDeviceDetail',
+      fetchApikeys: 'apikeys/fetchItems',
+      fetchChannels: 'channels/fetchItems',
+      attachSource: 'devices/attachSource',
+      detachSource: 'devices/detachSource',
+      attachMesh: 'devices/attachMesh',
+      detachMesh: 'devices/detachMesh',
     }),
+    iconSrc(raw) { return deviceSymbol(raw); },
     // A re-read never overwrites a draft the user changed that the triggering save did not write
     // (CR-01): each save first applies what it wrote to a copy of the device, so only the other
     // cards' unsaved alias, description or ticks differ from the device on screen and are kept.
@@ -341,18 +543,28 @@ export default {
     async loadDevice() {
       this.loading = true;
       const udid = this.$route.params.udid;
-      const results = await Promise.allSettled([this.loadDevices(), this.fetchBuildLog(), this.fetchTransformers(), this.fetchRepositories()]);
+      const results = await Promise.allSettled([this.loadDevices(), this.fetchBuildLog(), this.fetchTransformers(), this.fetchRepositories(), this.fetchApikeys(), this.fetchChannels()]);
       if (results.some(result => result.status === 'rejected')) this.error = 'Some device details could not be loaded. Refresh to retry.';
       const before = this.device;
       const keepAlias = !!before && this.editForm.alias !== before.alias;
       const keepDescription = !!before && (this.editForm.description || '') !== (before.description || '');
       const keepTransformers = !!before && this.transformersDirty;
+      const keepTags = !!before && this.tagsDirty;
+      const keepTimezone = !!before && this.timezoneDirty;
       if (results[0].status === 'rejected' && before) this.device = before;
       else this.device = this.getByUdid()(udid) || null;
       if (this.device) {
         if (!keepAlias) this.editForm.alias = this.device.alias;
         if (!keepDescription) this.editForm.description = this.device.description || '';
         if (!keepTransformers) this.editForm.transformers = [...(this.device.transformers || [])];
+        // Saved on toggle, so there is never an unsaved draft to keep. Only a stored `true`
+        // is on: the API's auto-update checks are truthy/=== true, and a missing field is off.
+        this.editForm.auto_update = this.device.auto_update === true;
+        // Selects, the icon and the mesh ticks save on change, so they always mirror the device;
+        // tags and the timezone have a Save button and keep an unsaved draft like alias does.
+        this.syncSettings();
+        if (!keepTags) this.editForm.tags = cleanTags(this.device.tags);
+        if (!keepTimezone) this.editForm.timezone_utc = this.device.timezone_utc || '';
         const allBuilds = this.getBuildItems() || [];
         this.buildHistory = allBuilds.filter(b => b.udid === udid);
       }
@@ -371,6 +583,142 @@ export default {
         await this.loadDevice();
       } else {
         this.error = result.message || 'Failed to save.';
+      }
+    },
+    // The switch's user change event (not a watcher, so loadDevice() setting it is not a save).
+    // A failed save puts the switch back to the stored value.
+    async saveAutoUpdate(value) {
+      if (this.autoUpdateSaving) return;
+      const enabled = value === true;
+      this.autoUpdateSaving = true;
+      let result = null;
+      try {
+        result = await this.updateDevice({ udid: this.device.udid, changes: { auto_update: enabled } });
+      } catch (e) {
+        result = null;
+      }
+      if (result && result.success) {
+        this.device = Object.assign({}, this.device, { auto_update: enabled });
+        this.message = enabled ? 'Auto Update enabled.' : 'Auto Update disabled.';
+        this.autoUpdateSaving = false;
+        await this.loadDevice();
+      } else {
+        this.editForm.auto_update = this.device.auto_update === true;
+        this.error = (result && result.message) || 'Could not save Auto Update.';
+        this.autoUpdateSaving = false;
+      }
+    },
+    // The save-on-change settings back to what the device stores (after a refused write).
+    syncSettings() {
+      if (!this.device) return;
+      this.editForm.keyhash = this.device.keyhash || null;
+      this.editForm.source = this.device.source || null;
+      this.editForm.icon = iconNumber(this.device.icon) || 1;
+      this.editForm.category = normalizeCategory(this.device.category);
+      this.editForm.mesh_ids = Array.isArray(this.device.mesh_ids) ? [...this.device.mesh_ids] : [];
+    },
+    // One PUT /device for a Device Settings field (API key, icon, category, tags, timezone).
+    // A refused write puts the controls back to the stored values.
+    async saveSetting(changes, okMessage) {
+      if (this.settingsSaving || !this.device) return false;
+      this.settingsSaving = true;
+      let result = null;
+      try {
+        result = await this.updateDevice({ udid: this.device.udid, changes });
+      } catch (e) {
+        result = null;
+      }
+      this.settingsSaving = false;
+      if (result && result.success) {
+        this.device = Object.assign({}, this.device, changes);
+        this.message = okMessage;
+        await this.loadDevice();
+        return true;
+      }
+      this.syncSettings();
+      this.error = (result && typeof result.message === 'string' && result.message) || 'Could not save the device settings.';
+      return false;
+    },
+    async pickIcon(n) {
+      if (iconNumber(n) === null) return;
+      if (n === iconNumber(this.device.icon)) { this.showIcons = false; return; }
+      this.editForm.icon = n;
+      if (await this.saveSetting({ icon: n }, 'Icon saved.')) this.showIcons = false;
+    },
+    async saveTags() {
+      await this.saveSetting({ tags: cleanTags(this.editForm.tags) }, 'Tags saved.');
+    },
+    async saveTimezone() {
+      const zone = (this.editForm.timezone_utc || '').trim();
+      const abbr = timezoneAbbr(zone);
+      if (!zone || abbr === null) {
+        this.error = 'Choose a timezone from the list, for example Europe/Prague.';
+        return;
+      }
+      await this.saveSetting({ timezone_utc: zone, timezone_abbr: abbr }, 'Timezone saved.');
+    },
+    // Source select: a repository attaches it (PUT /source/attach), "No source" detaches.
+    async changeSource(value) {
+      if (this.sourceSaving || !this.device) return;
+      const sourceId = value || null;
+      if (sourceId === (this.device.source || null)) return;
+      this.sourceSaving = true;
+      let result = null;
+      try {
+        result = sourceId
+          ? await this.attachSource({ udid: this.device.udid, source_id: sourceId })
+          : await this.detachSource({ udid: this.device.udid });
+      } catch (e) {
+        result = null;
+      }
+      this.sourceSaving = false;
+      if (result && result.success) {
+        this.device = Object.assign({}, this.device, { source: sourceId });
+        this.message = sourceId ? 'Repository attached.' : 'Repository detached.';
+        await this.loadDevice();
+      } else {
+        this.syncSettings();
+        this.error = sourceId ? 'Could not attach the repository.' : 'Could not detach the repository.';
+      }
+    },
+    // Mesh ticks: each newly ticked channel is attached, each unticked one detached
+    // (PUT /mesh/attach, /mesh/detach), one request at a time.
+    async changeMesh(selected) {
+      if (this.meshSaving || !this.device) return;
+      const stored = Array.isArray(this.device.mesh_ids) ? this.device.mesh_ids : [];
+      const wanted = Array.isArray(selected) ? selected : [];
+      const add = wanted.filter(id => !stored.includes(id));
+      const remove = stored.filter(id => !wanted.includes(id));
+      if (!add.length && !remove.length) return;
+      this.meshSaving = true;
+      const now = new Set(stored);
+      let failed = 0;
+      const run = async (action, mesh_id) => {
+        try {
+          const result = await action({ udid: this.device.udid, mesh_id });
+          return !!(result && result.success);
+        } catch (e) {
+          return false;
+        }
+      };
+      for (const mesh_id of add) {
+        if (await run(this.attachMesh, mesh_id)) now.add(mesh_id); else failed++;
+      }
+      for (const mesh_id of remove) {
+        if (await run(this.detachMesh, mesh_id)) now.delete(mesh_id); else failed++;
+      }
+      this.meshSaving = false;
+      this.device = Object.assign({}, this.device, { mesh_ids: [...now] });
+      if (failed) this.error = 'Could not update ' + failed + ' mesh channel(s).';
+      else this.message = 'Mesh channels saved.';
+      await this.loadDevice();
+    },
+    async copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        this.message = 'Copied to clipboard.';
+      } catch (e) {
+        this.error = 'Could not copy. Select the text and copy it manually.';
       }
     },
     // One POST /build per click (D-17, UI-C05): a second click, a double click or a key repeat

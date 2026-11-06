@@ -1225,6 +1225,7 @@ const history = lazy(() => loadSfc('pages/History/History.vue', {
   hasBuildLog: logUtils().hasBuildLog,
 }));
 const deviceDetail = lazy(() => loadSfc('pages/Devices/DeviceDetail.vue', {
+  ...require('./device-detail-deps.cjs')(),
   BuildLogDialog: namedStub('BuildLogDialog'),
   moment: () => ({ fromNow: () => '' }),
   parseEnvironmentJSON: () => ({ ok: true }),

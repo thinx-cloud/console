@@ -1792,6 +1792,7 @@ function confirmLeaveDeps() {
 
 const stubComponent = (name) => ({ name, render: (h) => h('div') });
 const devicePage = lazy(() => loadSfc('pages/Devices/DeviceDetail.vue', Object.assign({
+  ...require('./device-detail-deps.cjs')(),
   BuildLogDialog: stubComponent('BuildLogDialog'),
   moment: () => ({ fromNow: () => 'just now' }),
   parseEnvironmentJSON: () => ({ ok: true, value: {} }),
@@ -1809,9 +1810,11 @@ const DEVICE = { udid: 'udid-delta', alias: 'delta-01', transformers: ['utid-bat
 function deviceHarness(device = DEVICE, state = {}) {
   const r = renderPage(devicePage().def, Object.assign({
     device: JSON.parse(JSON.stringify(device)),
-    editForm: { alias: device.alias, description: '', transformers: [...(device.transformers || [])] },
+    editForm: Object.assign(devicePage().def.data.call({}).editForm, { alias: device.alias, description: '', transformers: [...(device.transformers || [])] }),
     getTransformers: () => items(),
     getRepositories: () => [],
+    getApikeys: () => [],
+    getChannels: () => [],
   }, state));
   assert.equal(r.error, null, 'DeviceDetail renders without error');
   assert.deepEqual(r.warnings, [], 'DeviceDetail renders without Vue warnings');
@@ -2193,6 +2196,8 @@ function draftHarness(opts = {}) {
   vm.fetchBuildLog = async () => {};
   vm.fetchTransformers = async () => {};
   vm.fetchRepositories = async () => {};
+  vm.fetchApikeys = async () => {};
+  vm.fetchChannels = async () => {};
   vm.getBuildItems = () => [];
   vm.createTransformerItem = async () => ({ success: true, utid: 'utid-new' });
   const confirm = confirmRecorder();
