@@ -1,4 +1,5 @@
 const { execSync } = require('child_process');
+const webpack = require('webpack');
 
 let publicPath = process.env.NODE_ENV === 'production' ? '/' : '/';
 
@@ -39,6 +40,19 @@ module.exports = {
   publicPath,
   lintOnSave: process.env.NODE_ENV !== 'production',
   productionSourceMap: false,
+  configureWebpack: {
+    plugins: [
+      // The device map (src/components/DeviceMap) uses amCharts 4 without its export menu.
+      // amCharts loads pdfmake, xlsx and canvg only to export a chart; leaving them out
+      // drops about 5.5 MiB of never-loaded chunks. Exporting a chart would fail to load them.
+      new webpack.IgnorePlugin({
+        checkResource(resource, context) {
+          return /[\\/]@amcharts[\\/]amcharts4[\\/]/.test(context || '')
+            && /(^|[\\/])(pdfmake|xlsx|canvg)([\\/.]|$)/.test(resource);
+        },
+      }),
+    ],
+  },
   devServer: {
     proxy: 'https://console.thinx.cloud',
   }
