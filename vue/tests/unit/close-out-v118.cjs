@@ -557,6 +557,8 @@ const visits = lazy(() => loadSfc('pages/Visits/Visits.vue', {
   BuildLogDialog: { name: 'BuildLogDialog', render: (h) => h('div') },
   CheckinsTimeline: { name: 'CheckinsTimeline', render: (h) => h('div') },
   hostnameMixin: {},
+  DeviceMap: { name: 'DeviceMap', render: (h) => h('div') },
+  devicePins: require('./device-detail-deps.cjs')().devicePins,
 }));
 const adminUsers = lazy(() => loadSfc('pages/AdminUsers/AdminUsers.vue'));
 

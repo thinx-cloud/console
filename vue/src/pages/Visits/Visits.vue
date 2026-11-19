@@ -53,6 +53,16 @@
         </b-col>
       </b-row>
 
+      <!-- Device map: one pin per device with a usable reported location (utils/deviceGeo.js). -->
+      <b-row class="mb-4">
+        <b-col cols="12">
+          <b-card title="Device map" data-cy="dashboard-device-map">
+            <div v-if="!mapPins.length" class="text-muted" data-cy="device-map-empty">No device has reported a location yet.</div>
+            <device-map v-else :pins="mapPins" :height="380" clickable @select="openDevice" />
+          </b-card>
+        </b-col>
+      </b-row>
+
       <!-- Recent audit events (DASH-05) and Recent builds (DASH-04) -->
       <b-row>
         <b-col md="6" class="mb-4">
@@ -112,12 +122,14 @@ import { mapGetters, mapActions } from 'vuex';
 import { buildStatusVariant, hasBuildLog } from '@/utils/buildLog';
 import BuildLogDialog from '@/components/BuildLogDialog/BuildLogDialog';
 import CheckinsTimeline from './components/CheckinsTimeline/CheckinsTimeline.vue';
+import DeviceMap from '@/components/DeviceMap/DeviceMap';
+import { devicePins } from '@/utils/deviceGeo';
 import hostnameMixin from '@/mixins/hostnames';
 
 export default {
   name: "Dashboard",
   mixins: [hostnameMixin],
-  components: { CheckinsTimeline, BuildLogDialog },
+  components: { CheckinsTimeline, BuildLogDialog, DeviceMap },
   filters: {
     shortDate(val) {
       if (!val) return '—';
@@ -190,6 +202,11 @@ export default {
         },
       ];
     },
+    // Read through the store getter (not the one-off count in loadData), so the pins follow
+    // every later device list refresh.
+    mapPins() {
+      return devicePins(this.getDevices());
+    },
     timelineCheckins() {
       return (this.getTimeline() && this.getTimeline().CHECKINS) || [];
     },
@@ -231,6 +248,9 @@ export default {
       return buildStatusVariant(status);
     },
     hasBuildLog,
+    openDevice(udid) {
+      if (udid) this.$router.push({ name: 'DeviceDetail', params: { udid } });
+    },
     // The dialog refuses a row without a build_id, a second guard behind the template (UI-B13).
     openBuildLog(build) {
       this.$refs.buildLogDialog.open(build);

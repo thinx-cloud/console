@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "response": [
+    {
+      "udid": "udid-geo-zero", "alias": "legacy-zero", "category": "grey-mint",
+      "platform": "esp8266", "firmware": "fw-1.2.0", "version": "1.2.0",
+      "status": "disconnected", "mac": "AA:BB:CC:00:00:13",
+      "lastupdate": "2026-09-16T10:00:00.000Z", "commit": "def5678",
+      "rssi": " ", "station": "lab-ap", "lat": 0, "lon": 0,
+      "source": "", "last_build_id": "", "transformers": [], "environment": {}, "description": ""
+    },
+    {
+      "udid": "udid-geo-junk", "alias": "legacy-junk", "category": "grey-mint",
+      "platform": "esp8266", "firmware": "fw-1.2.0", "version": "1.2.0",
+      "status": "disconnected", "mac": "AA:BB:CC:00:00:14",
+      "lastupdate": "2026-09-15T10:00:00.000Z", "commit": "def5678",
+      "rssi": null, "station": "lab-ap", "lat": "abc", "lon": null,
+      "source": "", "last_build_id": "", "transformers": [], "environment": {}, "description": ""
+    }
+  ]
+}

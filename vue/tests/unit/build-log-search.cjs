@@ -923,6 +923,8 @@ const visits = lazy(() => loadSfc('pages/Visits/Visits.vue', {
   CheckinsTimeline: namedStub('CheckinsTimeline'),
   hostnameMixin: {},
   BuildLogDialog: namedStub('BuildLogDialog'),
+  DeviceMap: namedStub('DeviceMap'),
+  devicePins: require('./device-detail-deps.cjs')().devicePins,
 }));
 
 // The store getters the page's computed properties and loadData call (mapGetters is stubbed).

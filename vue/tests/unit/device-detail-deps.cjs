@@ -1,7 +1,7 @@
 // Shared stand-ins for DeviceDetail.vue's imports, for the unit tests that evaluate its script
 // with the import lines stripped (milestone-v116, close-out-v118, audit-gaps-v118,
-// build-log-search, transformers-enviros). The real src/utils/deviceSettings.js and
-// src/utils/platforms.js are evaluated here; require.context (webpack only) is faked so the
+// build-log-search, transformers-enviros). The real src/utils/deviceSettings.js,
+// src/utils/deviceGeo.js and src/utils/platforms.js are evaluated here; require.context (webpack only) is faked so the
 // icon resolves to 'sym:b_medium_NN.png'.
 
 const fs = require('fs');
@@ -24,6 +24,9 @@ module.exports = function deviceDetailDeps() {
     cached = Object.assign(
       {},
       evalModule('utils/deviceSettings.js'),
+      evalModule('utils/deviceGeo.js'),
+      // The map is drawn by amCharts in a browser only; in node it is an empty element.
+      { DeviceMap: { name: 'DeviceMap', props: ['pins', 'height', 'clickable'], render: (h) => h('div', { attrs: { 'data-stub': 'device-map' } }) } },
       { platformInfo: evalModule('utils/platforms.js').platformInfo },
       { require: { context: () => (p) => 'sym:' + String(p).replace(/^\.\//, '') } },
     );

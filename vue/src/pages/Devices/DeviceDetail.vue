@@ -52,11 +52,15 @@
 
           <b-card title="Network" class="mb-3">
             <table class="table table-sm table-borderless mb-0">
-              <tr><td class="text-muted" style="width:140px">RSSI</td><td>{{ device.rssi }}</td></tr>
+              <tr><td class="text-muted" style="width:140px">RSSI</td><td data-cy="device-rssi">{{ rssiText }}</td></tr>
               <tr v-if="device.snr !== undefined && device.snr !== null"><td class="text-muted">SNR</td><td data-cy="device-snr">{{ device.snr }}</td></tr>
               <tr><td class="text-muted">Station</td><td>{{ device.station }}</td></tr>
               <tr><td class="text-muted">Lat/Lon</td><td>{{ device.lat }}, {{ device.lon }}</td></tr>
             </table>
+            <!-- Only for a usable location (utils/deviceGeo.js); legacy 0/0 or junk shows no map. -->
+            <div v-if="mapPins.length" class="mt-2" data-cy="device-map">
+              <device-map :pins="mapPins" :height="220" />
+            </div>
           </b-card>
         </b-col>
 
@@ -321,6 +325,8 @@ import { parseEnvironmentJSON } from '@/utils/envJson';
 import { buildStatusVariant, hasBuildLog } from '@/utils/buildLog';
 import { confirmLeave } from '@/utils/confirmLeave';
 import { platformInfo } from '@/utils/platforms';
+import { devicePins, formatRssi } from '@/utils/deviceGeo';
+import DeviceMap from '@/components/DeviceMap/DeviceMap';
 import { CATEGORIES, DEFAULT_CATEGORY, ICON_COUNT, iconNumber, iconFileNumber, normalizeCategory, timezoneNames, timezoneAbbr, timeInZone, cleanTags, sameSet } from '@/utils/deviceSettings';
 
 // The medium iot icons, as on the device list (Devices.vue DEVICE_SYMBOLS). Resolved on first
@@ -333,7 +339,7 @@ function deviceSymbol(raw) {
 
 export default {
   name: "DeviceDetail",
-  components: { BuildLogDialog },
+  components: { BuildLogDialog, DeviceMap },
   filters: {
     fromNow(val) {
       if (!val) return '—';
@@ -395,6 +401,13 @@ export default {
     },
   },
   computed: {
+    rssiText() {
+      return this.device ? formatRssi(this.device.rssi) : '—';
+    },
+    // One pin, or none when the device has no usable location.
+    mapPins() {
+      return this.device ? devicePins([this.device]) : [];
+    },
     // Same gate as the Legacy Auto Update row and the device list's Build action.
     buildSupported() {
       return !!this.device && platformInfo(this.device.platform).build === true;
